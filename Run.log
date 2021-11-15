@@ -1,0 +1,13 @@
+bash: source: No such file or directory
+
+  /// MultiQC 🔍 | v1.11
+
+|           multiqc | Search path : /home/xiang/DNA_seq/BJAB_LANA_RNAseq
+|         searching | ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 94/94  |    feature_counts | Found 4 reports
+|              star | Found 4 reports
+|          cutadapt | Found 8 reports
+|            fastqc | Found 8 reports
+|           multiqc | Compressing plot data
+|           multiqc | Report      : ../../DNA_seq/BJAB_LANA_RNAseq/multiqc_report.html
+|           multiqc | Data        : ../../DNA_seq/BJAB_LANA_RNAseq/multiqc_data
+|           multiqc | MultiQC complete
