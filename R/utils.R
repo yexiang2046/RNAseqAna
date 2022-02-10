@@ -1,18 +1,24 @@
 
 
 
-plot_MDS <- function(edger_obj = "edgeR_object.rds"){
+plot_MDS <- function(edger_obj = "edgeR_object.rds", labels = NULL){
+
   y <- readRDS(edger_obj)
-  mds <- plotMDS(y)
-  plot(mds, pch = 19, cex = 1)
-  text(c(-2.8, -2.8, -2.6, -2.70, -2.3, -2.5, 5.0, 4, 1.2, 1.6, 1.0, 0.5, -1.2, -1.2),
-       c(0.1, 0.6, 0.1, 0.7, 0.3, 0.6, -1.8, 5.7, -1.9, -1.4, -0.9, -1.2, -0.8, -0.4),
-       c("G", "G", "9", "9", "5", "5",
-         "GFP_CLIP", "GFP_CLIP", "K9_CLIP",
-         "K9_CLIP", "ORF52_CLIP", "ORF52_CLIP",
-         "ORF52_input", "ORF52_input"),
-       cex=0.6, pos=4, col="red")
+  if(is.null(labels)){
+    lab = colnames(y$counts)}
+  else {
+    lab = labels}
+  plotMDS(y, top = 2000, labels = lab, cex = 0.6)
+  #text(c(-2.8, -2.8, -2.6, -2.70, -2.3, -2.5, 5.0, 4, 1.2, 1.6, 1.0, 0.5, -1.2, -1.2),
+  #     c(0.1, 0.6, 0.1, 0.7, 0.3, 0.6, -1.8, 5.7, -1.9, -1.4, -0.9, -1.2, -0.8, -0.4),
+  #     c("G", "G", "9", "9", "5", "5",
+  #       "GFP_CLIP", "GFP_CLIP", "K9_CLIP",
+  #       "K9_CLIP", "ORF52_CLIP", "ORF52_CLIP",
+  #       "ORF52_input", "ORF52_input"),
+  #     cex=0.6, pos=4, col="red")
 }
+
+
 
 
 plot_vol <- function(qlf, log_FC){
@@ -32,14 +38,24 @@ plot_vol <- function(qlf, log_FC){
 }
 
 
-step5_export_KEGG_terms <- function(edgeR_tb = step4_output, gene_col = 20, comparison = "Name", gene_input = "Up"){
-  gene_list <- edgeR_tb[edgeR_tb$padj < 0.05 & edgeR_tb$logFC > 2,]
-  gene_list <- gene_list[!is.na(gene_list$entrez),]
-  kegg_gene_sets = msigdbr(species = "human", category = "C5", subcategory = "GO:BP")
-  m2tg <- kegg_gene_sets %>% dplyr::select(gs_name, entrez_gene) %>% as.data.frame()
+step5_export_KEGG_terms <- function(edgeR_tb = step4_output, gene_col = 20, comparison = "Name"){
+  if("padj" %in% colnames(edgeR_tb)){
+    gene_list <- edgeR_tb[edgeR_tb$padj < 0.05,]
+    gene_list <- gene_list[!is.na(gene_list$entrez),]
+  }else {
+    gene_list <- edgeR_tb[!is.na(edgeR_tb$entrez), ]
+  }
 
-  ekg <- enricher(gene = gene_list$entrez, TERM2GENE = m2tg)
+  kegg_gene_sets = msigdbr(species = "human", category = "C5", subcategory = "GO:BP")
+  #m2tg <- kegg_gene_sets %>% dplyr::select(gs_name, entrez_gene) %>% as.data.frame()
+
+  #ekg <- enricher(gene = gene_list$entrez, TERM2GENE = m2tg)
+
+  ekg <- enrichGO(gene = gene_list$entrez, OrgDb = org.Hs.eg.db, ont = "BP")
+  ekg <- simplify(ekg, cutoff = 0.7)
   #dotplot(ekg)
   gene_list
   return(ekg)
 }
+
+

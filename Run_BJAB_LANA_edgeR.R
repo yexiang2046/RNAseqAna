@@ -43,9 +43,38 @@ step4_annotate_output_LANA_GFP <- step4_annotate(qlf = step2_edgeR_analysis_outp
                                                Id_col = "ensembl",
                                                file_name = "BJABs_LANA_vs_GFP")
 
-LANA_Up_genes <- step4_annotate_output_LANA_GFP[step4_annotate_output_LANA_GFP$threshold == "Up",]
 
-LANA_Down_genes <- step4_annotate_output_LANA_GFP[step4_annotate_output_LANA_GFP$threshold == "Down",]
+
+
+sig_degs <- step4_annotate_output_LANA_GFP[step4_annotate_output_LANA_GFP$padj < 0.05 & abs(step4_annotate_output_LANA_GFP$logFC) > 1,]
+
+sig_label <- step4_annotate_output_LANA_GFP[step4_annotate_output_LANA_GFP$padj < 1e-5 & abs(step4_annotate_output_LANA_GFP$logFC) >5,]
+
+step4_annotate_output_LANA_GFP %>%
+  mutate(significance = factor(c(ifelse((abs(logFC) > 1 & padj < 0.05), "Yes", "No")), levels = c("Yes", "No"))) %>%
+  ggplot(aes(x = logFC, y = -log10(padj))) +
+  geom_point(aes(color = significance), size = 0.2) +
+  scale_color_manual(name = "significant", values = c("red", "black")) +
+  theme_classic() +
+  geom_label_repel(data = step4_annotate_output_LANA_GFP %>%
+                     filter(abs(logFC) > 2 & -log10(padj) > 5), aes(label = symbol), max.overlaps = 50)
+
+BJABsLANA_OE <- step5_export_KEGG_terms(edgeR_tb = step4_annotate_output_LANA_GFP)
+dotplot(BJABsLANA_OE)
+
+LANA_Up_genes <-
+  step4_annotate_output_LANA_GFP[step4_annotate_output_LANA_GFP$padj < 0.05 &
+                                   step4_annotate_output_LANA_GFP$logFC > 1,]
+
+LANA_Down_genes <- step4_annotate_output_LANA_GFP[step4_annotate_output_LANA_GFP$padj < 0.05 &
+                                                    step4_annotate_output_LANA_GFP$logFC < 1,]
+
+
+BJABsLANA_OE_up <- step5_export_KEGG_terms(edgeR_tb = LANA_Up_genes)
+dotplot(BJABsLANA_OE_up)
+
+BJABsLANA_OE_down <- step5_export_KEGG_terms(edgeR_tb = LANA_Down_genes)
+dotplot(BJABsLANA_OE_down)
 
 kegg_gene_sets = msigdbr(species = "human", category = "C5", subcategory = "GO:BP")
 m2tg <- kegg_gene_sets %>% dplyr::select(gs_name, entrez_gene) %>% as.data.frame()
@@ -69,3 +98,30 @@ topPathwaysDown <- c5BP_en[ES < 0][head(order(pval), n=10), pathway]
 topPathways <- c(topPathwaysUp, rev(topPathwaysDown))
 plotGseaTable(msigdbr_list[topPathways], ranked_gl, c5BP_en,
               gseaParam=0.5)
+
+
+# rank gene expression ---------------------------------------------------------------
+
+gene_mat <- read.csv(file = "BJABs_LANA_OE_cpm.csv")
+colnames(gene_mat)[1] <- "ensembl"
+
+g_mat <- gene_mat[, 2:5]
+rownames(g_mat) <- gene_mat$ensembl
+
+boxplot(log2(g_mat))
+
+gene_df <- g_mat %>% data_frame() %>% pivot_longer(names_to = "treatment", values_to = "count_per_m",
+                                        cols = c("GFP1", "GFP2", "LANA1", "LANA2"))
+ggplot(data = gene_df, aes(x=log2(count_per_m))) +
+  geom_histogram(data=subset(gene_df, treatment == 'GFP1'), fill = "red", alpha = 0.2, bins = 2000) +
+  geom_histogram(data=subset(gene_df, treatment == 'GFP2'), fill = "red", alpha = 0.2, bins = 2000) +
+  geom_histogram(data=subset(gene_df, treatment == 'LANA1'), fill = "yellow", alpha = 0.2, bins = 2000) +
+  geom_histogram(data=subset(gene_df, treatment == 'LANA2'), fill = "yellow", alpha = 0.2, bins = 2000)
+
+g_mat %>% mutate(GFP = (GFP1 + GFP2)/2, LANA = (LANA1 + LANA2)/2) %>% ggplot(aes(x = log2(GFP), y = log2(LANA))) + geom_point()
+hist(log2(g_mat[,1]), breaks = 1000)
+hist(log2(g_mat[,2]), breaks = 1000)
+hist(log2(g_mat[,3]), breaks = 1000)
+hist(log2(g_mat[,4]), breaks = 1000)
+
+

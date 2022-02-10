@@ -21,6 +21,9 @@ def get_para(configfile):
             pairend = re.match(r"(PAIREND):(.*)$", line)
             trimmed = re.match(r"(Trimmed_dir):(.*)$", line)
             fastqdir = re.match(r"(Fastq_dir):(.*)", line)
+            species = re.match(r"(GENOME):(.*)", line)
+            gtf = re.match(r"(ANNOTATION):(.*)", line)
+            counts = re.match(r"(FEATURECOUNTS_OUT):(.*)", line)
             if m:
                 thread_num = m.group(2)
             elif idx:
@@ -37,8 +40,15 @@ def get_para(configfile):
                 trimmed_dir = trimmed.group(2)
             elif fastqdir:
                 fastq_dir = fastqdir.group(2)
+            elif species:
+                genome = species.group(2)
+            elif gtf:
+                annotation = gtf.group(2)
+            elif counts:
+                featureCounts_out = counts.group(2)
 
-    return thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, pair_end, trimmed_dir, fastq_dir
+
+    return thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, pair_end, trimmed_dir, fastq_dir, genome, annotation, featureCounts_out
 
 
 def get_fastq(configfile):
@@ -61,10 +71,14 @@ def index_bam(bamfile, thread):
 
 
 
-def filter_bam(bamfile, thread, outdir, output_file):
-
-        #output_path = os.path.join(outdir, output_file)
+def filter_bam(bamfile, thread, outdir, output_file, genome):
+    if genome == "hg38":
+        # output_path = os.path.join(outdir, output_file)
+        # filtered on combined genome of human and HHV8
         subprocess.run(["samtools", "view", "-b", "-h", "-@", thread, "-o", output_file, bamfile, "chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrGQ994935"])
+    elif genome == "mm10":
+
+        subprocess.run(["samtools", "view", "-b", "-h", "-@", thread, "-o", output_file, bamfile, "chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chrX", "chrY"])
 
 
 def bam_to_bw(bamfile, thread, output_file):
@@ -78,9 +92,10 @@ def count_features(bamfiles, gtf, thread, count_outfile):
 
 
 
+subprocess.run(["bash", "source", "/home/xiang/miniconda3/bin/activate"])
 
 
-Para = get_para(configfile="config_BJABs_LANA_OE.txt")
+Para = get_para(configfile="config_template.txt")
 thread_num = Para[0]
 align_idx = Para[1]
 out_dir = Para[2]
@@ -89,10 +104,14 @@ alignment_dir = Para[4]
 pair_end = Para[5]
 trimmed_output = Para[6]
 fastq_dir = Para[7]
+genome = Para[8]
+annotation = Para[9]
+counts_outfile = Para[10]
 
 
-
-fastq_files = get_fastq(configfile="config_BJABs_LANA_OE.txt")
+######################################
+# change the config file accorddingly
+fastq_files = get_fastq(configfile="config_template.txt")
 
 samples = []
 
@@ -101,18 +120,25 @@ for f in fastq_files:
 
 alignment_path = os.path.join(out_dir, alignment_dir)
 trimmed_path = os.path.join(out_dir, trimmed_output)
-os.mkdir(trimmed_path)
-os.mkdir(alignment_path)
+
+if not os.path.exists(trimmed_path):
+    os.mkdir(trimmed_path)
+
+if not os.path.exists(alignment_path):
+    os.mkdir(alignment_path)
+
+
 print(Para)
 print(fastq_files)
 if (pair_end == "Yes"):
     sample_num = int(len(fastq_files)/2)
     for i in range(sample_num):
+        print(i)
         subprocess.run(["./bash/step1_reads_trimming.sh", thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, pair_end, trimmed_path, fastq_files[i*2], fastq_files[i*2+1]])
 else:
     for i in range(len(fastq_files)):
         subprocess.run(["./bash/step1_reads_trimming.sh", thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, pair_end, trimmed_path, os.path.join(fastq_dir, fastq_files[i])])
-    print(os.path.join(fastq_dir, fastq_files[1]))
+        print(os.path.join(fastq_dir, fastq_files[i]))
 
 sample_num = int(len(fastq_files)/2)
 for i in range(sample_num):
@@ -131,16 +157,21 @@ for i in range(sample_num):
     file = os.path.basename(fastq_files[i*2]).split('_', 1)[0]
     bamfile = "".join([alignment_path, "/", file, "_S1_L005_R1_001_val_1.fq.gzAligned.sortedByCoord.out.bam"])
     outputfile = "".join([alignment_path, "/", file, ".filtered.bam"])
-    filter_bam(bamfile = bamfile, thread = thread_num, outdir = alignment_path, output_file = outputfile)
+    index_bam(bamfile, thread = thread_num)
+    filter_bam(bamfile = bamfile, thread = thread_num, outdir = alignment_path, output_file = outputfile, genome = genome)
 
 for i in range(sample_num):
 
-        file = os.path.basename(fastq_files[i*2]).split('_', 1)[0]
-        filtered_bam = "".join([alignment_path, "/", file, ".filtered.bam"])
-        index_bam(filtered_bam, thread = thread_num)
+    file = os.path.basename(fastq_files[i*2]).split('_', 1)[0]
+    filtered_bam = "".join([alignment_path, "/", file, ".filtered.bam"])
+    index_bam(filtered_bam, thread = thread_num)
 
 bw_dir = os.path.join(out_dir, "bw_files")
-os.mkdir(bw_dir)
+
+if not os.path.exists(bw_dir):
+    os.mkdir(bw_dir)
+
+
 for i in range(sample_num):
 
     file = os.path.basename(fastq_files[i*2]).split('_', 1)[0]
@@ -152,12 +183,14 @@ for i in range(sample_num):
 bam_list =[]
 for i in range(sample_num):
 
-        file = os.path.basename(fastq_files[i*2]).split('_', 1)[0]
-        filtered_bam = "".join([alignment_path, "/", file, ".filtered.bam"])
-        bam_list.append(filtered_bam)
-GTF = "GRCh38.annotation.gtf"
+    file = os.path.basename(fastq_files[i*2]).split('_', 1)[0]
+    filtered_bam = "".join([alignment_path, "/", file, ".filtered.bam"])
+    bam_list.append(filtered_bam)
+
+
+GTF = annotation
 GTF_file = os.path.join(out_dir, GTF)
-count_file = "BJABs_LANA_RNA_count.txt"
+count_file = counts_outfile
 count_path_file = os.path.join(out_dir, count_file)
 #print(count_file)
 #print(count_path_file)
@@ -166,5 +199,4 @@ count_features(bamfiles = bam_list, gtf=GTF_file, thread=thread_num, count_outfi
 
 
 ## Generate report files
-subprocess.run(["bash", "source", "/home/xiang/miniconda3/bin/activate"])
 subprocess.run(["multiqc", out_dir, "-o", out_dir])

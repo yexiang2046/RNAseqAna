@@ -17,6 +17,6 @@ if [[ $pairend == 'Yes' ]]; then
   echo "Trim paired reads: $pairend"
   trim_galore --illumina --gzip --paired -q 20 --fastqc -j $threads $fastq_file1 $fastq_file2 -o $trimmed_dir
 else
-  echo "Trim single reads: No"
+  echo "Trim single reads with single end reads"
   trim_galore --illumina --gzip -q 20 --fastqc -j $threads $fastq_file1 -o $trimmed_dir
 fi

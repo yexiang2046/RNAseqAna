@@ -3,9 +3,10 @@
 
 export PATH=$PATH:/home/xiang/src/FastQC
 
-FASTQC_OUT=/home/xiang/DNA_seq/BJAB_LANA_RNAseq/fastqc_out
-THREADS=8
-FASTQ_DIR=/home/xiang/DNA_seq/BJAB_LANA_RNAseq/OG
+FASTQC_OUT=$1
+THREADS=$2
+FASTQ_FILE=$3
 
-mkdir $FASTQC_OUT
-fastqc -o $FASTQC_OUT -t $THREADS -f fastq $FASTQ_DIR/*
+
+mkdir ${FASTQC_OUT}
+fastqc -o ${FASTQC_OUT} -t ${THREADS} -f fastq ${FASTQ_FILE}

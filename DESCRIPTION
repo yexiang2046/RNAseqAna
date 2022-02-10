@@ -1,0 +1,28 @@
+Package: RNAseqAna
+Title: This package wrap up RNAseq analysis process into several steps
+Version: 0.0.0.9000
+Authors@R: 
+    person("Xiang", "Ye", , "yexiang2046@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "https://orcid.org/0000-0002-8694-8710"))
+Description: What the package does (one paragraph).
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.2
+Imports: 
+    clusterProfiler,
+    cowplot,
+    dplyr,
+    edgeR,
+    fgsea,
+    ggfortify,
+    ggrepel,
+    msigdbr,
+    org.Hs.eg.db,
+    Organism.dplyr,
+    readr,
+    TxDb.Hsapiens.UCSC.hg38.knownGene,
+    factoextra
+Depends: 
+    R (>= 2.10)
+LazyData: true
