@@ -1,0 +1,5 @@
+Sample	Total	Assigned	Unassigned_Unmapped	Unassigned_Read_Type	Unassigned_Singleton	Unassigned_MappingQuality	Unassigned_Chimera	Unassigned_FragmentLength	Unassigned_Duplicate	Unassigned_MultiMapping	Unassigned_Secondary	Unassigned_NonSplit	Unassigned_NoFeatures	Unassigned_Overlapping_Length	Unassigned_Ambiguity	percent_assigned
+7183-XY-1.filtered	84325618	43390535	0	0	0	0	0	0	0	11907435	0	0	21849781	0	7177867	51.45593477891855
+7183-XY-2.filtered	73506100	37488872	0	0	0	0	0	0	0	10525668	0	0	19300753	0	6190807	51.00103528822778
+7183-XY-3.filtered	81566741	33429535	0	0	0	0	0	0	0	11134956	0	0	31577047	0	5425203	40.984272008611946
+7183-XY-4.filtered	85456624	35157618	0	0	0	0	0	0	0	11952771	0	0	32784802	0	5561433	41.14089271769032

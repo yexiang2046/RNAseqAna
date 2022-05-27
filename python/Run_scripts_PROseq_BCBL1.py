@@ -4,15 +4,15 @@ import subprocess
 import os
 from glob import glob
 import itertools
-#from bioinfodit.analysis import gff
 import py_lib.utils as pu
+#from bioinfodit.analysis import gff
 
 
 
 subprocess.run(["bash", "source", "/home/xiang/miniconda3/bin/activate"])
 
 
-Para = pu.get_para(configfile="config_template.txt")
+Para = pu.get_para(configfile="config_PROseq.txt")
 thread_num = Para[0]
 align_idx = Para[1]
 out_dir = Para[2]
@@ -28,7 +28,7 @@ counts_outfile = Para[10]
 
 ######################################
 # change the config file accorddingly
-fastq_files = get_fastq(configfile="config_template.txt")
+fastq_files = pu.get_fastq(configfile="config_PROseq.txt")
 
 samples = []
 
@@ -53,26 +53,36 @@ if (pair_end == "Yes"):
         print(i)
         subprocess.run(["./bash/step1_reads_trimming.sh", thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, pair_end, trimmed_path, fastq_files[i*2], fastq_files[i*2+1]])
 else:
+    sample_num = len(fastq_files)
     for i in range(len(fastq_files)):
-        subprocess.run(["./bash/step1_reads_trimming.sh", thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, pair_end, trimmed_path, os.path.join(fastq_dir, fastq_files[i])])
+        #subprocess.run(["./bash/step1_reads_trimming.sh", thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, pair_end, trimmed_path, os.path.join(fastq_dir, fastq_files[i])])
         print(os.path.join(fastq_dir, fastq_files[i]))
 
-sample_num = int(len(fastq_files)/2)
+if (pair_end == "Yes"):
+
+
+    for i in range(sample_num):
+        file = os.path.basename(fastq_files[i*2]).split('_', 1)[0]
+        #print(file)
+        trimmed_file1 = "".join([file, "_S1_L005_R1_001_val_1.fq.gz"])
+        trimmed_files1 = os.path.join(trimmed_path, trimmed_file1)
+        trimmed_file2 = "".join([file, "_S1_L005_R2_001_val_2.fq.gz"])
+        trimmed_files2 = os.path.join(trimmed_path, trimmed_file2)
+        #print(trimmed_files1, trimmed_files2)
+        subprocess.run(["./bash/align.sh", thread_num, align_idx, out_dir, trimmed_files1, trimmed_files2, alignment_path])
+elif (pair_end == "No"):
+    for i in range(sample_num):
+        file = os.path.basename(fastq_files[i]).split('_', 1)[0]
+        trimmed_files = "".join([file, "_S1_L005_R1_001_trimmed.fq.gz"])
+        subprocess.run(["./bash/align.sh", thread_num, align_idx, out_dir, trimmed_files, "No", alignment_path])
+
+else:
+    print("Answer to pair_end should be Yes or No")
+
 for i in range(sample_num):
-    file = os.path.basename(fastq_files[i*2]).split('_', 1)[0]
-#    print(file)
-    trimmed_file1 = "".join([file, "_S1_L005_R1_001_val_1.fq.gz"])
-    trimmed_files1 = os.path.join(trimmed_path, trimmed_file1)
-    trimmed_file2 = "".join([file, "_S1_L005_R2_001_val_2.fq.gz"])
-    trimmed_files2 = os.path.join(trimmed_path, trimmed_file2)
-#    print(trimmed_files1, trimmed_files2)
-    subprocess.run(["./bash/align.sh", thread_num, align_idx, out_dir, trimmed_files1, trimmed_files2, alignment_path])
-
-
-for i in range(sample_num):
 
     file = os.path.basename(fastq_files[i*2]).split('_', 1)[0]
-    bamfile = "".join([alignment_path, "/", file, "_S1_L005_R1_001_val_1.fq.gzAligned.sortedByCoord.out.bam"])
+    bamfile = "".join([alignment_path, "/", file, "_S1_L005_R1_001_trimmed.fq.gzAligned.sortedByCoord.out.bam"])
     outputfile = "".join([alignment_path, "/", file, ".filtered.bam"])
     index_bam(bamfile, thread = thread_num)
     filter_bam(bamfile = bamfile, thread = thread_num, outdir = alignment_path, output_file = outputfile, genome = genome)

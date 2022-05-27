@@ -22,7 +22,8 @@ Imports:
     Organism.dplyr,
     readr,
     TxDb.Hsapiens.UCSC.hg38.knownGene,
-    factoextra
+    factoextra,
+    TxDb.Mmusculus.UCSC.mm10.knownGene
 Depends: 
     R (>= 2.10)
 LazyData: true
