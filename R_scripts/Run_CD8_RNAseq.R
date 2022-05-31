@@ -204,12 +204,14 @@ if(FALSE){
   lapply(qlf, export_tb_from_dgelist)
 }
 
+if(FALSE){
+  # export DEGs for 48hr
+  T48hr_CB839_vs_CTL <- export_tb_from_dgelist(qlf[[19]])
+  T48hr_DON_vs_CTL <- export_tb_from_dgelist(qlf[[20]])
+  T48hr_NoQ_vs_CTL <- export_tb_from_dgelist(qlf[[21]])
+}
 
-T48hr_CB839_vs_CTL <- export_tb_from_dgelist(qlf[[19]])
-T48hr_DON_vs_CTL <- export_tb_from_dgelist(qlf[[20]])
-T48hr_NoQ_vs_CTL <- export_tb_from_dgelist(qlf[[21]])
-
-T48hr_CB839_vs_CTL_DEGs <- filter_DEGs(T48hr_CB839_vs_CTL)
+# T48hr_CB839_vs_CTL_DEGs <- filter_DEGs(T48hr_CB839_vs_CTL)
 
 
 ## T48hr merged peaks from CUT&RUN-------------------
