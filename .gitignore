@@ -13,3 +13,6 @@ data/
 *.tiff
 *.csv
 *.pdf
+*.rds
+*.xlsx
+*.eps

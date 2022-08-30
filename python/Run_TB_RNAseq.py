@@ -9,33 +9,8 @@ import py_lib.utils as pu
 
 
 
-subprocess.run(["bash", "source", "/home/xiang/miniconda3/bin/activate"])
+# subprocess.run(["bash", "source", "/home/xiang/miniconda3/bin/activate"])
 
-
-# take fastq files and generate a dictionary of sample ID with respective fastq files
-def get_samples(mode = "PE", fastq_file = fastq_files):
-    while True:
-        try:
-            mode in ["PE", "SE"]
-            break
-        except ValueError:
-            print("mode need to be PE or SE")
-    samples = {}
-    if mode == "PE":
-        while isinstance(len(fastq_file)/2, int):
-            try:
-                for i in range(len(fastq_file)/2):
-                    ID = os.path.basename(fastq_file[2*i]).split("_", 1)[0]
-                    samples[ID] = [fastq_file[2*i], fastq_file[2*i+1]]
-                break
-            except ValueError:
-                print("Make sure the fastq files are in pairs")
-    else:
-        for f in fastq_file:
-            ID = os.path.basename(f).split("_", 1)[0]
-            samples[ID] = f
-
-    return samples
 
 
 
@@ -43,13 +18,12 @@ def get_samples(mode = "PE", fastq_file = fastq_files):
 
 
 
-thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, Seq_mode, trimmed_output, fastq_dir, genome, annotation, counts_oufile = pu.get_para(configfile="config_template.txt")
+thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, Seq_mode, trimmed_output, fastq_dir, genome, annotation, counts_oufile, aligners= pu.get_para(configfile="config_TB_RNAseq.txt")
 
 
-fastq_files = get_fastq(configfile="config_template.txt")
+fastq_files = pu.get_fastq(configfile="config_TB_RNAseq.txt")
 
-samples = get_samples(mode = Seq_mode, fastq_file = fastq_files)
-
+print(fastq_files)
 
 alignment_path = os.path.join(out_dir, alignment_dir)
 trimmed_path = os.path.join(out_dir, trimmed_output)
@@ -60,16 +34,17 @@ if not os.path.exists(trimmed_path):
 if not os.path.exists(alignment_path):
     os.mkdir(alignment_path)
 
+sample_num = int(len(fastq_files)/2)
 
 for i in range(sample_num):
     file = os.path.basename(fastq_files[i*2]).split('_', 1)[0]
 #    print(file)
-    trimmed_file1 = "".join([file, "_S1_L005_R1_001.fastq.gz"])
-    trimmed_files1 = os.path.join(trimmed_path, trimmed_file1)
-    trimmed_file2 = "".join([file, "_S1_L005_R2_001.fastq.gz"])
-    trimmed_files2 = os.path.join(trimmed_path, trimmed_file2)
+    file1 = "".join([file, "_S1_L005_R1_001.fastq.gz"])
+    files1 = os.path.join(fastq_dir, file1)
+    file2 = "".join([file, "_S1_L005_R2_001.fastq.gz"])
+    files2 = os.path.join(fastq_dir, file2)
 #    print(trimmed_files1, trimmed_files2)
-    subprocess.run(["./bash/align.sh", thread_num, align_idx, out_dir, trimmed_files1, trimmed_files2, alignment_path])
+    subprocess.run(["./bash/align.sh", thread_num, align_idx, out_dir, files1, files2, alignment_path])
 
 
 for i in range(sample_num):

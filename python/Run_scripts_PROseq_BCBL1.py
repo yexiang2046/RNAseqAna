@@ -58,25 +58,24 @@ if (pair_end == "Yes"):
 elif (pair_end == "No"):
     for i in range(len(samples)):
         file = os.path.basename(fastq_files[i]).split('_', 1)[0]
-        input_file = "".join([file, "_S1_L005_R1_001.fastq.gz"])
-        subprocess.run(["./bash/Step2_SE_align.sh", thread_num, genome, align_idx, out_dir, aligner, alignment_path, "No", input_file])
+        input_file = file
+        input_file_p = os.path.join(fastq_dir, input_file)
+        subprocess.run(["./bash/Step2_SE_align.sh", thread_num, genome, align_idx, out_dir, aligner, alignment_path, "No", input_file_p])
 
 else:
     print("Answer to pair_end should be Yes or No")
 
+
+# filer bam file
 for i in range(len(samples)):
 
-    file = os.path.basename(fastq_files[i]).split('_', 1)[0]
-    bamfile = "".join([alignment_path, "/", file, "_S1_L005_R1_001_trimmed.fq.gzAligned.sortedByCoord.out.bam"])
+    file = samples[i]
+    bamfile = "".join([alignment_path, "/", file, "_S1_L005_R1_001_sorted.bam"])
     outputfile = "".join([alignment_path, "/", file, ".filtered.bam"])
-    index_bam(bamfile, thread = thread_num)
-    filter_bam(bamfile = bamfile, thread = thread_num, outdir = alignment_path, output_file = outputfile, genome = genome)
+    pu.index_bam(bamfile, thread = thread_num)
+    pu.filter_bam(bamfile = bamfile, thread = thread_num, outdir = alignment_path, output_file = outputfile, genome = genome)
+    pu.index_bam(outputfile, thread = thread_num)
 
-for i in range(len(samples)):
-
-    file = os.path.basename(fastq_files[i*2]).split('_', 1)[0]
-    filtered_bam = "".join([alignment_path, "/", file, ".filtered.bam"])
-    index_bam(filtered_bam, thread = thread_num)
 
 bw_dir = os.path.join(out_dir, "bw_files")
 
@@ -86,11 +85,11 @@ if not os.path.exists(bw_dir):
 
 for i in range(len(samples)):
 
-    file = os.path.basename(fastq_files[i*2]).split('_', 1)[0]
+    file = samples[i]
     filtered_bam = "".join([alignment_path, "/", file, ".filtered.bam"])
     bigwig_file = "".join([bw_dir, "/", file, ".bw"])
 
-    bam_to_bw(bamfile = filtered_bam, thread=thread_num, output_file=bigwig_file)
+    pu.bam_to_bw(bamfile = filtered_bam, thread=thread_num, output_file=bigwig_file)
 
 bam_list =[]
 for i in range(len(samples)):
