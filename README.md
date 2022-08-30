@@ -9,3 +9,20 @@ Funtions
   4.  Functional analyses on DEGs
       1. GSEA analyses using log2Foldchange ranked gene list
       2. ORA analyses with DEGs
+
+
+Dependencies
+
+Command line tools
+  1. samtools
+  2. STAR
+ 
+Python tools
+  1. deeptools
+  
+R tools
+  1. tidyverse
+  2. edgeR
+  3. msigdbr
+  4. fgsea
+  5. clusterProfiler
