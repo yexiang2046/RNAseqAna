@@ -1,0 +1,49 @@
+using 8 threads:
+The star index folder is /home/xiang/RNAseq/RNAseq_test/star_idx:
+The current directory is: /home/xiang/RNAseq/BC3_RNAseq
+The fastq files used are: /home/xiang/New_disk4/FASTQ/BC3_RNAseq_OG/6405-SR-1_S1_L005_R1_001.fastq.gz and /home/xiang/New_disk4/FASTQ/BC3_RNAseq_OG/6405-SR-1_S1_L005_R2_001.fastq.gz as pairs
+the alignment files are in /home/xiang/RNAseq/BC3_RNAseq/aligned
+Jul 21 08:12:43 ..... started STAR run
+Jul 21 08:12:43 ..... loading genome
+Jul 21 08:12:56 ..... started mapping
+Jul 21 15:46:51 ..... finished mapping
+Jul 21 15:46:54 ..... started sorting BAM
+Jul 21 17:59:47 ..... finished successfully
+using 8 threads:
+The star index folder is /home/xiang/RNAseq/RNAseq_test/star_idx:
+The current directory is: /home/xiang/RNAseq/BC3_RNAseq
+The fastq files used are: /home/xiang/New_disk4/FASTQ/BC3_RNAseq_OG/6405-SR-2_S1_L005_R1_001.fastq.gz and /home/xiang/New_disk4/FASTQ/BC3_RNAseq_OG/6405-SR-2_S1_L005_R2_001.fastq.gz as pairs
+the alignment files are in /home/xiang/RNAseq/BC3_RNAseq/aligned
+Jul 21 18:00:23 ..... started STAR run
+Jul 21 18:00:23 ..... loading genome
+Jul 21 18:05:16 ..... started mapping
+Jul 21 22:50:23 ..... finished mapping
+Jul 21 22:50:25 ..... started sorting BAM
+Jul 21 23:29:44 ..... finished successfully
+using 8 threads:
+The star index folder is /home/xiang/RNAseq/RNAseq_test/star_idx:
+The current directory is: /home/xiang/RNAseq/BC3_RNAseq
+The fastq files used are: /home/xiang/New_disk4/FASTQ/BC3_RNAseq_OG/6405-SR-3_S1_L005_R1_001.fastq.gz and /home/xiang/New_disk4/FASTQ/BC3_RNAseq_OG/6405-SR-3_S1_L005_R2_001.fastq.gz as pairs
+the alignment files are in /home/xiang/RNAseq/BC3_RNAseq/aligned
+Jul 21 23:30:02 ..... started STAR run
+Jul 21 23:30:02 ..... loading genome
+Jul 21 23:34:51 ..... started mapping
+Jul 22 05:29:46 ..... finished mapping
+Jul 22 05:29:48 ..... started sorting BAM
+Jul 22 06:40:37 ..... finished successfully
+using 8 threads:
+The star index folder is /home/xiang/RNAseq/RNAseq_test/star_idx:
+The current directory is: /home/xiang/RNAseq/BC3_RNAseq
+The fastq files used are: /home/xiang/New_disk4/FASTQ/BC3_RNAseq_OG/6405-SR-4_S1_L005_R1_001.fastq.gz and /home/xiang/New_disk4/FASTQ/BC3_RNAseq_OG/6405-SR-4_S1_L005_R2_001.fastq.gz as pairs
+the alignment files are in /home/xiang/RNAseq/BC3_RNAseq/aligned
+Jul 22 06:40:54 ..... started STAR run
+Jul 22 06:40:54 ..... loading genome
+Jul 22 06:45:50 ..... started mapping
+Jul 22 12:36:16 ..... finished mapping
+Jul 22 12:36:18 ..... started sorting BAM
+Jul 22 13:36:17 ..... finished successfully
+['6405-SR-1_S1_L005_R1_001.fastq.gz', '6405-SR-1_S1_L005_R2_001.fastq.gz', '6405-SR-2_S1_L005_R1_001.fastq.gz', '6405-SR-2_S1_L005_R2_001.fastq.gz', '6405-SR-3_S1_L005_R1_001.fastq.gz', '6405-SR-3_S1_L005_R2_001.fastq.gz', '6405-SR-4_S1_L005_R1_001.fastq.gz', '6405-SR-4_S1_L005_R2_001.fastq.gz']
+Traceback (most recent call last):
+  File "/home/xiang/Dropbox/RNAseqAna/Run_BC3_RNAseq_align.py", line 62, in <module>
+    index_bam(filtered_bam, thread = thread_num)
+NameError: name 'index_bam' is not defined

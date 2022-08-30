@@ -12,28 +12,45 @@ import py_lib.utils as pu
 subprocess.run(["bash", "source", "/home/xiang/miniconda3/bin/activate"])
 
 
-Para = pu.get_para(configfile="config_template.txt")
-thread_num = Para[0]
-align_idx = Para[1]
-out_dir = Para[2]
-trimmer_dir = Para[3]
-alignment_dir = Para[4]
-pair_end = Para[5]
-trimmed_output = Para[6]
-fastq_dir = Para[7]
-genome = Para[8]
-annotation = Para[9]
-counts_outfile = Para[10]
+# take fastq files and generate a dictionary of sample ID with respective fastq files
+def get_samples(mode = "PE", fastq_file = fastq_files):
+    while True:
+        try:
+            mode in ["PE", "SE"]
+            break
+        except ValueError:
+            print("mode need to be PE or SE")
+    samples = {}
+    if mode == "PE":
+        while isinstance(len(fastq_file)/2, int):
+            try:
+                for i in range(len(fastq_file)/2):
+                    ID = os.path.basename(fastq_file[2*i]).split("_", 1)[0]
+                    samples[ID] = [fastq_file[2*i], fastq_file[2*i+1]]
+                break
+            except ValueError:
+                print("Make sure the fastq files are in pairs")
+    else:
+        for f in fastq_file:
+            ID = os.path.basename(f).split("_", 1)[0]
+            samples[ID] = f
+
+    return samples
 
 
-######################################
-# change the config file accorddingly
+
+def trim_reads(files):
+    
+
+
+
+thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, Seq_mode, trimmed_output, fastq_dir, genome, annotation, counts_oufile = pu.get_para(configfile="config_template.txt")
+
+
 fastq_files = get_fastq(configfile="config_template.txt")
 
-samples = []
+samples = get_samples(mode = Seq_mode, fastq_file = fastq_files)
 
-for f in fastq_files:
-    samples.append(os.path.basename(f).split('_', 1)[0])
 
 alignment_path = os.path.join(out_dir, alignment_dir)
 trimmed_path = os.path.join(out_dir, trimmed_output)
@@ -45,19 +62,15 @@ if not os.path.exists(alignment_path):
     os.mkdir(alignment_path)
 
 
-print(Para)
-print(fastq_files)
-if (pair_end == "Yes"):
-    sample_num = int(len(fastq_files)/2)
-    for i in range(sample_num):
-        print(i)
-        subprocess.run(["./bash/step1_reads_trimming.sh", thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, pair_end, trimmed_path, fastq_files[i*2], fastq_files[i*2+1]])
-else:
-    for i in range(len(fastq_files)):
-        subprocess.run(["./bash/step1_reads_trimming.sh", thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, pair_end, trimmed_path, os.path.join(fastq_dir, fastq_files[i])])
-        print(os.path.join(fastq_dir, fastq_files[i]))
 
-sample_num = int(len(fastq_files)/2)
+
+if (Seq_mode == "PE"):
+    for sample in samples.keys():
+        subprocess.run(["./bash/step1_reads_trimming.sh", thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, Seq_mode, trimmed_path, samples[sample][0], samples[sample][1]])
+else:
+    for sample, fastq in samples:
+        subprocess.run(["./bash/step1_reads_trimming.sh", thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, Seq_mode, trimmed_path, os.path.join(fastq_dir, fastq)])
+
 for i in range(sample_num):
     file = os.path.basename(fastq_files[i*2]).split('_', 1)[0]
 #    print(file)

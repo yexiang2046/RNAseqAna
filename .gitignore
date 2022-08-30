@@ -9,3 +9,7 @@ annotations/
 resources/
 SAMPLE_SHEET/
 data/
+
+*.tiff
+*.csv
+*.pdf

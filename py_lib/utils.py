@@ -20,6 +20,7 @@ def get_para(configfile):
             species = re.match(r"(GENOME):(.*)", line)
             gtf = re.match(r"(ANNOTATION):(.*)", line)
             counts = re.match(r"(FEATURECOUNTS_OUT):(.*)", line)
+            aligner = re.match(r"(ALIGNER):(.*)", line)
             if m:
                 thread_num = m.group(2)
             elif idx:
@@ -42,7 +43,9 @@ def get_para(configfile):
                 annotation = gtf.group(2)
             elif counts:
                 featureCounts_out = counts.group(2)
-    return thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, pair_end, trimmed_dir, fastq_dir, genome, annotation, featureCounts_out
+            elif aligner:
+                aligners = aligner.group(2)
+    return thread_num, align_idx, out_dir, trimmer_dir, alignment_dir, pair_end, trimmed_dir, fastq_dir, genome, annotation, featureCounts_out, aligners
 
 
 def get_fastq(configfile):

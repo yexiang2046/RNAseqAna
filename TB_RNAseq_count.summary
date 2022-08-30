@@ -1,0 +1,15 @@
+Status	/home/xiang/RNAseq/TB_RNAseq/aligned/5727-SR-1-CGATGTAT-CGAGATCT.filtered.bam	/home/xiang/RNAseq/TB_RNAseq/aligned/5727-SR-2-TGACCAAT-CGAGATCT.filtered.bam	/home/xiang/RNAseq/TB_RNAseq/aligned/5727-SR-3-ACAGTGAT-CGAGATCT.filtered.bam	/home/xiang/RNAseq/TB_RNAseq/aligned/5727-SR-4-GCCAATAT-CGAGATCT.filtered.bam
+Assigned	35095548	31412849	37582391	36409174
+Unassigned_Unmapped	0	0	0	0
+Unassigned_Read_Type	0	0	0	0
+Unassigned_Singleton	0	0	0	0
+Unassigned_MappingQuality	0	0	0	0
+Unassigned_Chimera	0	0	0	0
+Unassigned_FragmentLength	0	0	0	0
+Unassigned_Duplicate	0	0	0	0
+Unassigned_MultiMapping	77735124	50631690	64026362	61386178
+Unassigned_Secondary	0	0	0	0
+Unassigned_NonSplit	0	0	0	0
+Unassigned_NoFeatures	31164626	24473937	19458098	21082510
+Unassigned_Overlapping_Length	0	0	0	0
+Unassigned_Ambiguity	5357718	4818716	6415271	6282600

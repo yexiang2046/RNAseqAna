@@ -98,6 +98,7 @@ if(FALSE){
 
 }
 
+library(devtools)
 data("CD8_RNAseq_meta")
 data("CD8_RNAseq_GLUTAMINE_METABOLISM_SAMPLES")
 data("CD8_RNAseq_GLUTAMINE_METABOLISM_COUNTS")
@@ -115,6 +116,7 @@ if(FALSE){
 
 
   plotMDS(y, top = 5000, pch = points, col = colors)
+
 }
 
 
@@ -157,7 +159,6 @@ con12 <- makeContrasts(groupNo_Q.48hr - groupVehicle.0hr, levels = design)
 con13 <- makeContrasts(groupCB839.4hr - groupVehicle.4hr, levels = design)
 con14 <- makeContrasts(groupDON.4hr - groupVehicle.4hr, levels = design)
 con15 <- makeContrasts(groupNo_Q.4hr - groupVehicle.4hr, levels = design)
-
 con16 <- makeContrasts(groupCB839.24hr - groupVehicle.24hr, levels = design)
 con17 <- makeContrasts(groupDON.24hr - groupVehicle.24hr, levels = design)
 con18 <- makeContrasts(groupNo_Q.24hr - groupVehicle.24hr, levels = design)
@@ -222,10 +223,10 @@ get_ProPeak_genes <- function(ann_tb){
   return(anno_tb)
 }
 
-T48hr_ac_peaks <- c("T48hr_CTL_H3K27ac_idr.05.annotation.txt", "T48hr_CB839_H3K27ac_idr.05.annotation.txt", "T48hr_DON_H3K27ac_idr.05.annotation.txt", "T48hr_NoQ_H3K27ac_idr.05.annotation.txt")
-T48hr_me3_peaks <- c("T48hr_CTL_H3K27me3_idr.05.annotation.txt", "T48hr_CB839_H3K27me3_idr.05.annotation.txt", "T48hr_DON_H3K27me3_idr.05.annotation.txt", "T48hr_NoQ_H3K27me3_idr.05.annotation.txt")
-T48hr_H3K27ac_peaks <- "T48hr_H3K27ac_annotation.txt"
-T48hr_H3K27me3_peaks <- "T48hr_H3K27me3_annotation.txt"
+T48hr_ac_peaks <- c("TXT/T48hr_CTL_H3K27ac_idr.05.annotation.txt", "TXT/T48hr_CB839_H3K27ac_idr.05.annotation.txt", "TXT/T48hr_DON_H3K27ac_idr.05.annotation.txt", "TXT/T48hr_NoQ_H3K27ac_idr.05.annotation.txt")
+T48hr_me3_peaks <- c("TXT/T48hr_CTL_H3K27me3_idr.05.annotation.txt", "TXT/T48hr_CB839_H3K27me3_idr.05.annotation.txt", "TXT/T48hr_DON_H3K27me3_idr.05.annotation.txt", "TXT/T48hr_NoQ_H3K27me3_idr.05.annotation.txt")
+T48hr_H3K27ac_peaks <- "TXT/T48hr_H3K27ac_annotation.txt"
+T48hr_H3K27me3_peaks <- "TXT/T48hr_H3K27me3_annotation.txt"
 
 
 T48hr_ac_pro_peaks <- lapply(T48hr_ac_peaks, function(x){get_ProPeak_genes(x)})
@@ -238,7 +239,7 @@ T48hr_H3K27me3 <- read.delim2(file = T48hr_H3K27me3_peaks)
 T48hr_H3K27me3_pro <- T48hr_H3K27me3[abs(T48hr_H3K27me3$Distance.to.TSS) < 2000, ]
 
 
-cpm <- read.csv(file = "CD8_RNAseq_cpm.csv")
+cpm <- read.csv(file = "CSV_FILEs/CD8_RNAseq_cpm.csv")
 
 if(FALSE){
   cpm_T48hr_CTL_ac <- cpm[cpm$symbol %in% T48hr_ac_pro_peaks[[1]]$Gene.Name, c(1:7, 44:47)]
@@ -274,18 +275,37 @@ if(FALSE){
 cpm_mean <- cpm %>% mutate(T48hr_CTL = (X7342.MM.37 + X7342.MM.38 + X7342.MM.39 + X7342.MM.40)/4, T48hr_CB839 = c(X7342.MM.41 + X7342.MM.42 + X7342.MM.43 + X7342.MM.44)/4, T48hr_DON = (X7342.MM.45 + X7342.MM.46 + X7342.MM.47 + X7342.MM.48)/4, T48hr_NoQ = c(X7342.MM.49 + X7342.MM.50 + X7342.MM.51 + X7342.MM.52)/4)
 
 cpm_mean_ac <- cpm_mean[cpm_mean$symbol %in% T48hr_H3K27ac_pro$Gene.Name, c(1:7, 60:63)]
+wilcox.test(cpm_mean_ac$T48hr_CTL, cpm_mean_ac$T48hr_CB839, paired = TRUE)
 wilcox.test(cpm_mean_ac$T48hr_CTL, cpm_mean_ac$T48hr_DON, paired = TRUE)
+wilcox.test(cpm_mean_ac$T48hr_CTL, cpm_mean_ac$T48hr_NoQ, paired = TRUE)
+wilcox.test(cpm_mean_ac$T48hr_CB839, cpm_mean_ac$T48hr_DON, paired = TRUE)
+wilcox.test(cpm_mean_ac$T48hr_CB839, cpm_mean_ac$T48hr_NoQ, paired = TRUE)
+wilcox.test(cpm_mean_ac$T48hr_NoQ, cpm_mean_ac$T48hr_DON, paired = TRUE)
 # cpm_mean_ac %>% write.csv(file = "H3K27ac_genes.csv")
+cpm_mean_ac_long <-  cpm_mean_ac %>% pivot_longer(cols = 8:11, names_to = "TREATMENT", values_to = "CPM")
 cpm_mean_ac %>% pivot_longer(cols = 8:11, names_to = "TREATMENT", values_to = "CPM") %>% ggplot(aes(x = TREATMENT, y = log10(CPM + 0.1))) + geom_boxplot() + ggtitle("H3K27ac genes expression level")
 ggsave(filename = "H3K27ac_genes_expression.tiff", dpi = 300, width = 4, height = 4)
 
+cpm_mean_ac %>% pivot_longer(cols = 8:11, names_to = "TREATMENT", values_to = "CPM") %>% ggplot(aes(x = TREATMENT, y = log10(CPM + 0.1))) + geom_boxplot() + ggtitle("H3K27ac genes expression level") + coord_cartesian(ylim = c(1.25, 2.2))
+ggsave(filename = "H3K27ac_genes_expression_zoom.pdf", dpi = 300, width = 4, height = 4)
+
+
 
 cpm_mean_me3 <- cpm_mean[cpm_mean$symbol %in% T48hr_H3K27me3_pro$Gene.Name, c(1:7, 60:63)]
+wilcox.test(cpm_mean_me3$T48hr_CTL, cpm_mean_me3$T48hr_CB839, paired = TRUE)
 wilcox.test(cpm_mean_me3$T48hr_CTL, cpm_mean_me3$T48hr_DON, paired = TRUE)
+wilcox.test(cpm_mean_me3$T48hr_CTL, cpm_mean_me3$T48hr_NoQ, paired = TRUE)
+wilcox.test(cpm_mean_me3$T48hr_CB839, cpm_mean_me3$T48hr_DON, paired = TRUE)
+wilcox.test(cpm_mean_me3$T48hr_CB839, cpm_mean_me3$T48hr_NoQ, paired = TRUE)
+wilcox.test(cpm_mean_me3$T48hr_DON, cpm_mean_me3$T48hr_NoQ, paired = TRUE)
 # cpm_mean_me3 %>% write.csv(file = "H3K27me_genes.csv")
 cpm_mean_me3 %>% pivot_longer(cols = 8:11, names_to = "TREATMENT", values_to = "CPM") %>% ggplot(aes(x = TREATMENT, y = log10(CPM + 0.1))) +geom_boxplot() + ggtitle("H3K27me3 genes expression level")
 ggsave(filename = "H3K27me3_genes_expression.tiff", dpi = 300, width = 4, height = 4)
 
+T48hr_H3K27ac_peaked_genes <- cpm_mean_ac
+T48hr_H3K27me3_peaked_genes <- cpm_mean_me3
+use_data(T48hr_H3K27ac_peaked_genes)
+use_data(T48hr_H3K27me3_peaked_genes)
 
 # GSVA analysis ---------------------------------
 library(GSVA)
@@ -333,6 +353,34 @@ pheatmap(KEGG_en, annotation_col = col_ann, cluster_cols = FALSE,
 pheatmap(C1_en, annotation_col = col_ann, cluster_cols = FALSE, show_rownames = TRUE)
 
 pheatmap(REACTOME_en, annotation_col = col_ann, cluster_cols = FALSE, show_rownames = TRUE)
+
+
+## ORA analysis -------------------------------------
+library(clusterProfiler)
+
+data(T48hr_H3K27ac_peaked_genes)
+data(T48hr_H3K27me3_peaked_genes)
+
+kegg_gene_sets = msigdbr(species = "mouse", category = "C2", subcategory = "CP:KEGG")
+m2tg <- kegg_gene_sets %>% dplyr::select(gs_name, entrez_gene) %>% as.data.frame()
+
+ORA_KEGG_H3K27ac_genes <- ORA_enrich(T48hr_H3K27ac_peaked_genes, TERM2genes = m2tg)
+dotplot(ORA_KEGG_H3K27ac_genes, showCategory = 30)
+pdf("ORA_KEGG_H3K27ac_genes.pdf", width = 8, height = 10)
+dotplot(ORA_KEGG_H3K27ac_genes, showCategory = 30)
+dev.off()
+data.frame(ORA_KEGG_H3K27ac_genes) %>% write.csv("T48hr_H3K27ac_genes_KEGG.csv")
+
+ORA_KEGG_H3K27me3_genes <- ORA_enrich(T48hr_H3K27me3_peaked_genes, TERM2genes = m2tg)
+dotplot(ORA_KEGG_H3K27me3_genes, showCategory = 30)
+pdf("ORA_KEGG_H3K27me3_genes.pdf", width = 8, height = 8)
+dotplot(ORA_KEGG_H3K27me3_genes, showCategory = 30)
+dev.off()
+
+data.frame(ORA_KEGG_H3K27me3_genes) %>% write.csv("T48hr_H3K27me3_genes_KEGG.csv")
+
+
+
 
 # for TCseq analysis ---------------------------------------------------------------
 require(TCseq)

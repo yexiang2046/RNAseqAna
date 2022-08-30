@@ -29,7 +29,7 @@ metaData <- data.frame(sampleID = c(paste0(7505, sep = '_', 1:6)),
 
 
 
-step1_get_counts_output <- step1_get_counts(featurecount_file = "BCBL1_dSg_LANA_KD_RNAseq_counts.txt",
+step1_get_counts_output <- step1_get_counts(featurecount_file = "counts/BCBL1_dSg_LANA_KD_RNAseq_counts.txt",
                                             type = "command_line",
                                             col_names = c("Geneid", "Chr", "Start", "End", "Strand", "Length",
                                                           "NT_A", "LANAsg_C1_A", "LANAsg_C2_A",
