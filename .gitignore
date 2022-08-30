@@ -16,3 +16,4 @@ data/
 *.rds
 *.xlsx
 *.eps
+*.gz
