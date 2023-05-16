@@ -17,6 +17,7 @@ RUN R -e 'BiocManager::install(c("Rsubread", "edgeR", "limma", "msigdbr"))'
 RUN apt-get update \
     && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends python3-setuptools \
+    rna-star \
     htop
 
 RUN pip3 install radian
