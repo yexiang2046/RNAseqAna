@@ -1,0 +1,39 @@
+{
+    "build": { "dockerfile": "Dockerfile" },
+  
+    "customizations": {
+      "vscode": {
+        "extensions": ["dbaeumer.vscode-eslint"]
+      }
+    },
+    "remoteEnv": {
+      "PATH": "${containerEnv:PATH}"
+    },
+    "mounts": [
+      "source=${localEnv:HOME}${localEnv:USERPROFILE},target=/home/xiang,type=bind,consistency=cached",
+    ],
+
+    // Configure tool-specific properties.
+	"customizations": {
+		// Configure properties specific to VS Code.
+		"vscode": {
+			// Set *default* container specific settings.json values on container create.
+			"settings": { 
+				"r.rterm.linux": "/usr/local/bin/radian",
+				"r.bracketedPaste": true,
+				"r.plot.useHttpgd": true,
+				"[r]": {
+					"editor.wordSeparators": "`~!@#%$^&*()-=+[{]}\\|;:'\",<>/?"
+				}
+			},
+			
+			// Add the IDs of extensions you want installed when the container is created.
+			"extensions": [
+				"reditorsupport.r",
+				"rdebugger.r-debugger"
+			]
+		}
+	},
+
+    "forwardPorts": [3000]
+  }
