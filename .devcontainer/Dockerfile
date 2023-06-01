@@ -8,8 +8,8 @@ RUN R -e 'install.packages(c("devtools", "viridis", "tidyverse", "hdf5r"))'
 
 
 # install Bioinformatic tools
-RUN R -e 'install.packages(c("pheatmap", "enrichR", "BiocManager"))'
-RUN R -e 'BiocManager::install(c("Rsubread", "edgeR", "limma", "msigdbr"))'
+RUN R -e 'install.packages(c("pheatmap", "enrichR", "BiocManager", "ggfortify", "factoextra"))'
+RUN R -e 'BiocManager::install(c("Rsubread", "edgeR", "limma", "msigdbr", "clusterProfiler", "fgsea", "org.Mm.eg.db", "org.Hs.eg.db", "Organism.dplyr", "TxDb.Mmusculus.UCSC.mm10.knownGene", "TxDb.Mmusculus.UCSC.mm39.knownGene", "TxDb.Hsapiens.UCSC.hg38.knownGene", "GSVA", "Rsubread"))'
 
 
 

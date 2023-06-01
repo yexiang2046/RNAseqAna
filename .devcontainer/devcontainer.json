@@ -6,11 +6,16 @@
         "extensions": ["dbaeumer.vscode-eslint"]
       }
     },
-    "remoteEnv": {
-      "PATH": "${containerEnv:PATH}"
-    },
+	"containerEnv": {
+		"PATH": "${localEnv:PATH}",
+		"userHome": "${localEnv:HOME}",
+		"HOME": "${localEnv:HOME}",
+		"USERNAME": "${localEnv:HOME}",
+		"PWD": "${userHome}/Dropbox/RNAseqAna"
+	},
     "mounts": [
-      "source=${localEnv:HOME}${localEnv:USERPROFILE},target=/home/xiang,type=bind,consistency=cached",
+      "source=${localEnv:HOME}${localEnv:USERPROFILE}/Dropbox/RNAseqAna,target=/home/xiang/Dropbox/RNAseqAna,type=bind,consistency=cached",
+      "source=${localEnv:HOME}${localEnv:USERPROFILE}/New_disk2,target=/home/xiang/New_disk2,type=bind,consistency=cached"
     ],
 
     // Configure tool-specific properties.
@@ -30,7 +35,8 @@
 			// Add the IDs of extensions you want installed when the container is created.
 			"extensions": [
 				"reditorsupport.r",
-				"rdebugger.r-debugger"
+				"rdebugger.r-debugger",
+				"ms-python.python"
 			]
 		}
 	},
