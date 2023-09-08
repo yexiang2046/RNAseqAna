@@ -15,7 +15,10 @@
 	},
     "mounts": [
       "source=${localEnv:HOME}${localEnv:USERPROFILE}/Dropbox/RNAseqAna,target=/home/xiang/Dropbox/RNAseqAna,type=bind,consistency=cached",
-      "source=${localEnv:HOME}${localEnv:USERPROFILE}/New_disk2,target=/home/xiang/New_disk2,type=bind,consistency=cached"
+      "source=${localEnv:HOME}${localEnv:USERPROFILE}/Dropbox/ChIPseqAna,target=/home/xiang/Dropbox/ChIPseqAna,type=bind,consistency=cached",
+      "source=${localEnv:HOME}${localEnv:USERPROFILE}/New_disk1,target=/home/xiang/New_disk1,type=bind,consistency=cached",
+      "source=${localEnv:HOME}${localEnv:USERPROFILE}/New_disk2,target=/home/xiang/New_disk2,type=bind,consistency=cached",
+      "source=${localEnv:HOME}${localEnv:USERPROFILE}/New_disk4,target=/home/xiang/New_disk4,type=bind,consistency=cached"
     ],
 
     // Configure tool-specific properties.

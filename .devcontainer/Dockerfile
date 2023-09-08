@@ -9,7 +9,7 @@ RUN R -e 'install.packages(c("devtools", "viridis", "tidyverse", "hdf5r"))'
 
 # install Bioinformatic tools
 RUN R -e 'install.packages(c("pheatmap", "enrichR", "BiocManager", "ggfortify", "factoextra"))'
-RUN R -e 'BiocManager::install(c("Rsubread", "edgeR", "limma", "msigdbr", "clusterProfiler", "fgsea", "org.Mm.eg.db", "org.Hs.eg.db", "Organism.dplyr", "TxDb.Mmusculus.UCSC.mm10.knownGene", "TxDb.Mmusculus.UCSC.mm39.knownGene", "TxDb.Hsapiens.UCSC.hg38.knownGene", "GSVA", "Rsubread"))'
+RUN R -e 'BiocManager::install(c("Rsubread", "edgeR", "DiffBind", "ChIPseeker", "ChIPpeakAnno", "ChIPQC", "limma", "msigdbr", "clusterProfiler", "fgsea", "org.Mm.eg.db", "org.Hs.eg.db", "Organism.dplyr", "TxDb.Mmusculus.UCSC.mm10.knownGene", "TxDb.Mmusculus.UCSC.mm39.knownGene", "TxDb.Hsapiens.UCSC.hg38.knownGene", "GSVA", "Rsubread", "profileplyr", "BSgenome.Mmusculus.UCSC.mm10"))'
 
 
 
@@ -18,6 +18,7 @@ RUN apt-get update \
     && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends python3-setuptools \
     build-essential \
+    bedtools \
     wget \
     bzip2 \
     ca-certificates \
@@ -41,7 +42,7 @@ RUN apt-get update \
     rna-star \
     htop
 
-RUN pip3 install radian
+RUN pip3 install radian MACS2
 
 ENV SAMTOOLS_INSTALL_DIR=/opt/samtools
 
