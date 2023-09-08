@@ -45,4 +45,8 @@
 	},
 
     "forwardPorts": [3000]
+  }  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": {
+    "ghcr.io/devcontainers/features/aws-cli:1": {}
   }
+}
