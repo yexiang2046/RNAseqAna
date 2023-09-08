@@ -116,11 +116,31 @@ if(FALSE){
 
 }
 
+require(dplyr)
+require(readr)
 
-y <- readRDS("myeloid_edgeR.rds")
+require(clusterProfiler)
+require(fgsea)
+require(msigdbr)
+require(org.Mm.eg.db)
+require(org.Hs.eg.db)
+require(Organism.dplyr)
+require(ggfortify) # for PCA plot
+require(cowplot)
+require(ggrepel)
+require(tibble)
+# require(factoextra)
+# require(VennDiagram)
 
-d1 <- read_xlsx(path = "7247-MW_7247_Wolf_Internal_Nucleic_Acid_Extraction_NGS_Submission_Form.xlsx", skip = 28)
-d2 <- read_xlsx(path = "7525-MW_7525_Wolf_Internal_Nucleic_Acid_Extraction_NGS_Submission_Form.xlsx", skip = 68)
+require(readxl)
+require(edgeR)
+require(devtools)
+load_all()
+
+y <- readRDS("RDS/myeloid_edgeR.rds")
+
+d1 <- read_xlsx(path = "SAMPLE_SHEET/7247-MW_7247_Wolf_Internal_Nucleic_Acid_Extraction_NGS_Submission_Form.xlsx", skip = 28)
+d2 <- read_xlsx(path = "SAMPLE_SHEET/7525-MW_7525_Wolf_Internal_Nucleic_Acid_Extraction_NGS_Submission_Form.xlsx", skip = 68)
 
 
 metaData <- data.frame(FileNameBase = c(d1$`Sample IDs`, d2$...2),
@@ -136,7 +156,10 @@ metaData <- data.frame(FileNameBase = c(d1$`Sample IDs`, d2$...2),
 
 
 idx_use <- c(21, 23:29, 31:52)
-metaData_used <- metaData[idx_use,]
+
+#use only TAM idx
+idx_use_modified <- c(21,23,24,25,27,28,29,31,32,33,35,36,37,39,40,41,43,44,45,47,48,49,51,52)
+metaData_used <- metaData[idx_use_modified,]
 group <- factor(paste(metaData_used$Genotype, metaData_used$Tissue, sep = "_"),
                 levels = unique(paste(metaData_used$Genotype, metaData_used$Tissue, sep = "_")))
 metaData_used <- cbind(metaData_used, group)
@@ -157,6 +180,8 @@ legend("topright", legend=levels(metaData_used$group),
 
 # heatmaps ---------------------------------
 library(Organism.dplyr)
+library(TxDb.Mmusculus.UCSC.mm39.knownGene)
+library(org.Mm.eg.db)
 cts <- cpm(y)
 cts <- cts %>% data.frame() %>% rownames_to_column()
 colnames(cts)[1] <- "ensembl"
@@ -181,14 +206,12 @@ mx <- as.matrix(cts[, 2:31])
 rownames(mx) <- rownames(cts)
 colnames(mx) <- colnames(cts)[2:31]
 
-col_order <- c(16, 24, 5, 12, 20,28,
-               1, 8,  15,  23,4, 11,19,27,
-               2,  9, 17, 25,  6, 13, 21, 29,
-               3, 10, 18,  26,  7, 14, 22, 30)
+col_order <- c(1,7,13,19,4,10,16,22,2,8,14,20,5,11,17,23,
+3,9,15,21,6,12,18,24)
 
 col_ann <- data.frame(genotype = factor(metaData_used$Genotype, levels = c("Vhl_WT", "Vhl_KO")),
                       cell_population = factor(metaData_used$Tissue, levels = c("MDSC", "PMN", "F480lo_CD206lo", "F480hi_CD206hi")))
-rownames(col_ann) <- colnames(cts)[2:31]
+rownames(col_ann) <- metaData[idx_use_modified, "FileNameBase"]
 
 pheatmap(mx[, col_order], scale = "row",  annotation_col = col_ann, cluster_cols = FALSE, show_rownames = FALSE)
 
@@ -204,21 +227,51 @@ library(GSVA)
 library(msigdbr)
 library(pheatmap)
 
-Myeloid_cells_cpm <- as.matrix(cts[, c(2:31)])
+h_gene_sets = msigdbr(species = "mouse", category = "H")
+
+msigdbr_list = split(x = h_gene_sets$ensembl_gene, f = h_gene_sets$gs_name)
+
+# Myeloid_cells_cpm <- as.matrix(cts[, c(2:31)])
+Myeloid_cells_cpm <- as.matrix(cts[, c(2,3,4,5,6,7,9,10,11,13,14,15,17,18,19,21,22,23,25,26,27,29,30,31)])
 rownames(Myeloid_cells_cpm) <- cts$ensembl
 
-col_ann <- data.frame(genotype = factor(metaData$Genotype[idx_use],
+col_ann <- data.frame(genotype = factor(metaData$Genotype[idx_use_modified],
                                         levels = c("Vhl_WT", "Vhl_KO")),
-                      cell_subpopulation = factor(metaData$Tissue[idx_use],
+                      cell_subpopulation = factor(metaData$Tissue[idx_use_modified],
                                                   levels = c("PMN", "MDSC", "F480lo_CD206lo", "F480hi_CD206hi")))
 rownames(col_ann) <- colnames(Myeloid_cells_cpm)
-gs_mye_en <- gsva(Myeloid_cells_cpm, gset.idx.list = H_gs)
+gs_mye_en <- gsva(Myeloid_cells_cpm, gset.idx.list = msigdbr_list)
 
-col_order <- c(16, 24, 5, 12, 20,28,
-               1, 8,  15,  23,4, 11,19,27,
-               2,  9, 17, 25,  6, 13, 21, 29,
-               3, 10, 18,  26,  7, 14, 22, 30)
-pheatmap(gs_mye_en[, col_order], annotation_col = col_ann, cluster_cols = FALSE)
+#col_order <- c(16, 24, 5, 12, 20,28,
+#               1, 8,  15,  23,4, 11,19,27,
+#               2,  9, 17, 25,  6, 13, 21, 29,
+#               3, 10, 18,  26,  7, 14, 22, 30)
+# pheatmap(gs_mye_en[, col_order], annotation_col = col_ann, cluster_cols = FALSE)
+
+col_order <- c(1,7,13,19,4,10,16,22,2,8,14,20,5,11,17,23,3,9,15,21,6,12,18,24)
+pheatmap(gs_mye_en[,col_order], annotation_col = col_ann[col_order,], cluster_cols = FALSE, show_colnames = FALSE)
 
 
+# pearson correlation between samples
+idx <- c(1:6,8:10,12:14,16:18,20:22,24:26,28:30)
+colnames(cpm(y, log = TRUE))
+rlog.norm.counts <- cpm(y, log = TRUE)
+count_sample <- colnames(rlog.norm.counts)
+names(count_sample) <- 1:30
+rlog.norm.counts <- cpm(y, log = TRUE)[,idx]
 
+
+col_ann <- data.frame(genotype = factor(metaData$Genotype[idx_use_modified],
+                                        levels = c("Vhl_WT", "Vhl_KO")),
+                      cell_subpopulation = factor(metaData$Tissue[idx_use_modified],
+                                                  levels = c("PMN", "MDSC", "F480lo_CD206lo", "F480hi_CD206hi")))
+col_ann <- data.frame(genotype = factor(metaData$Genotype[idx_use_modified],
+                                        levels = c("Vhl_WT", "Vhl_KO")),
+                      cell_subpopulation = factor(metaData$Tissue[idx_use_modified],
+                                                  levels = c("PMN", "MDSC", "F480lo_CD206lo", "F480hi_CD206hi")))
+rownames(col_ann) <- colnames(rlog.norm.counts)
+col_order <- c(1,7,13,19,4,10,16,22,2,8,14,20,5,11,17,23,3,9,15,21,6,12,18,24)
+corr_coeff <- cor(rlog.norm.counts[,col_order], method = "pearson") 
+as.dist(1-corr_coeff, upper = TRUE) %>%
+as.matrix %>%
+pheatmap::pheatmap(., main = "Pearson correlation", cluster_cols = FALSE, annotation_col = col_ann)

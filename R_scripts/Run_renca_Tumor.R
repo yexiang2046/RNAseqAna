@@ -21,8 +21,8 @@ require(VennDiagram)
 require(devtools)
 load_all()
 
-d1 <- read_xlsx(path = "7247-MW_7247_Wolf_Internal_Nucleic_Acid_Extraction_NGS_Submission_Form.xlsx", skip = 28)
-d2 <- read_xlsx(path = "7525-MW_7525_Wolf_Internal_Nucleic_Acid_Extraction_NGS_Submission_Form.xlsx", skip = 68)
+d1 <- read_xlsx(path = "SAMPLE_SHEET/7247-MW_7247_Wolf_Internal_Nucleic_Acid_Extraction_NGS_Submission_Form.xlsx", skip = 28)
+d2 <- read_xlsx(path = "SAMPLE_SHEET/7525-MW_7525_Wolf_Internal_Nucleic_Acid_Extraction_NGS_Submission_Form.xlsx", skip = 68)
 
 
 metaData <- data.frame(FileNameBase = c(d1$`Sample IDs`, d2$...2),
@@ -139,13 +139,13 @@ step4_annotate_output_Vhl_WT2_Renca_vs_Vhl_WT1_Renca <- step4_annotate(qlf = ste
                                                                        file_name = "Vhl_WT2_Renca_vs_Vhl_WT1_Renca_DEGs")
 
 
-y <- readRDS("myeloid_edgeR.rds")
+y <- readRDS("RDS/myeloid_edgeR.rds")
 
-idx_use <- c(1:21, 23:29, 31:52)
+#idx_use <- c(1:21, 23:29, 31:52)
 
 
 
-colors <- c(rep(c("gray", "red", "dark", "darkred"), 3), rep(c("green", "blue"), 4),
+colors <- c(rep(c("gray", "red", "black", "darkred"), 3), rep(c("green", "blue"), 4),
             rep(c("coral", "cyan", "deeppink", "deepskyblue",
                   "coral4", "cyan4", "deeppink4", "deepskyblue4"), 4)[c(-2,-10)])
 
@@ -159,8 +159,9 @@ legend("top", legend=levels(metaData_used$group),
 # myeloid only analysis------------------------------------------------------------------
 
 # MDS plot ------------------------------
+y <- readRDS("RDS/myeloid_edgeR.rds")
 idx_myeloid <- c(21:50)
-plotMDS(y[,idx_myeloid], pch = points[idx_myeloid], col = colors[idx_myeloid], gene.selection = "pairwise",
+plotMDS(y, pch = points[idx_myeloid], col = colors[idx_myeloid], gene.selection = "pairwise",
         dim.plot = c(1, 2))
 legend("topright", legend=c("Vhl_WT_MDSC",
                             "Vhl_WT_PMN",
@@ -172,9 +173,9 @@ legend("topright", legend=c("Vhl_WT_MDSC",
                             "Vhl_KO_F480hi_CD206hi"),
        pch=points[43:50], col=colors[43:50], ncol=3, cex = 0.60)
 
-plotMDS(y[,idx_myeloid], pch = points[idx_myeloid], col = colors[idx_myeloid], gene.selection = "pairwise",
+plotMDS(y, pch = points[idx_myeloid], col = colors[idx_myeloid], gene.selection = "pairwise",
         dim.plot = c(1, 3))
-legend("topright", legend=c("Vhl_WT_MDSC",
+legend("right", legend=c("Vhl_WT_MDSC",
                             "Vhl_WT_PMN",
                             "Vhl_WT_F480lo_CD206lo",
                             "Vhl_WT_F480hi_CD206hi",
@@ -182,6 +183,58 @@ legend("topright", legend=c("Vhl_WT_MDSC",
                             "Vhl_KO_PMN",
                             "Vhl_KO_F480lo_CD206lo",
                             "Vhl_KO_F480hi_CD206hi"),
+       pch=points[43:50], col=colors[43:50], ncol=3, cex = 0.60)
+
+
+plotMDS(y, pch = points[idx_myeloid], col = colors[idx_myeloid], gene.selection = "pairwise",
+        dim.plot = c(2, 3))
+legend("right", legend=c("Vhl_WT_MDSC",
+                         "Vhl_WT_PMN",
+                         "Vhl_WT_F480lo_CD206lo",
+                         "Vhl_WT_F480hi_CD206hi",
+                         "Vhl_KO_MDSC",
+                         "Vhl_KO_PMN",
+                         "Vhl_KO_F480lo_CD206lo",
+                         "Vhl_KO_F480hi_CD206hi"),
+       pch=points[43:50], col=colors[43:50], ncol=3, cex = 0.60)
+
+
+plotMDS(y, pch = points[idx_myeloid], col = colors[idx_myeloid], gene.selection = "pairwise",
+        dim.plot = c(1, 4))
+legend("bottomleft", legend=c("Vhl_WT_MDSC",
+                         "Vhl_WT_PMN",
+                         "Vhl_WT_F480lo_CD206lo",
+                         "Vhl_WT_F480hi_CD206hi",
+                         "Vhl_KO_MDSC",
+                         "Vhl_KO_PMN",
+                         "Vhl_KO_F480lo_CD206lo",
+                         "Vhl_KO_F480hi_CD206hi"),
+       pch=points[43:50], col=colors[43:50], ncol=3, cex = 0.60)
+
+
+plotMDS(y, pch = points[idx_myeloid], col = colors[idx_myeloid], gene.selection = "pairwise",
+        dim.plot = c(2, 4))
+legend("bottom", legend=c("Vhl_WT_MDSC",
+                              "Vhl_WT_PMN",
+                              "Vhl_WT_F480lo_CD206lo",
+                              "Vhl_WT_F480hi_CD206hi",
+                              "Vhl_KO_MDSC",
+                              "Vhl_KO_PMN",
+                              "Vhl_KO_F480lo_CD206lo",
+                              "Vhl_KO_F480hi_CD206hi"),
+       pch=points[43:50], col=colors[43:50], ncol=3, cex = 0.60)
+
+
+plotMDS(y, pch = points[idx_myeloid], col = colors[idx_myeloid], gene.selection = "pairwise",
+        dim.plot = c(3, 4))
+legend("bottomleft", legend=c("Vhl_WT_MDSC",
+                          "Vhl_WT_PMN",
+                          "Vhl_WT_F480lo_CD206lo",
+                          "Vhl_WT_F480hi_CD206hi",
+                          "Vhl_KO_MDSC",
+                          "Vhl_KO_PMN",
+                          "Vhl_KO_F480lo_CD206lo",
+                          "Vhl_KO_F480hi_CD206hi"),
        pch=points[43:50], col=colors[43:50], ncol=3, cex = 0.60)
 
 
