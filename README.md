@@ -1,7 +1,7 @@
 # RNASeq_tools
 scripts for processing transcriptomic data from fastq files to DEGs and functional analysis
 
-Funtions
+## Funtions
 
   1.  Align reads with STAR
   2.  generate bigwig file for Genome browsers
@@ -11,18 +11,18 @@ Funtions
       2. ORA analyses with DEGs
 
 
-Dependencies
+## Dependencies
 
-Command line tools
+### Command line tools
   1. FastQC
   2. fastp
   3. samtools
   4. STAR
  
-Python tools
+### Python tools
   1. deeptools
   
-R tools
+### R tools
   1. tidyverse
   2. edgeR
   3. msigdbr
