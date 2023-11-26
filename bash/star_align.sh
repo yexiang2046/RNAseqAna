@@ -63,7 +63,7 @@ mkdir -p "$OUT_PATH"
 
 # STAR --runMode genomeGenerate --genomeDir ${star_index_folder} --genomeFastaFiles ./GRCh38.primary_GQ994935.fa --runThreadN 12
 
-samples_id=$(find "$FILE_PATH" -maxdepth 1 -type f -name '*.fastq.gz' -printf '%P\n' | awk -F'_' '{print $1}' | sort | uniq)
+samples_id=$(find "$FILE_PATH" -maxdepth 1 -type f -name '*.fastq.gz' -printf '%P\n' | awk -F'.' '{print $1}' | sort | uniq)
 # samples_id=$(ls ${FILE_PATH} | cut -d '.' -f 1 | sort | uniq)
 printf '%s\n' "$samples_id" | while IFS= read -r f; do
     echo "Read1: $FILE_PATH/$f${READ1_PAT}"
