@@ -29,7 +29,7 @@ samples_id=$(find "$FILE_PATH" -maxdepth 1 -type f -name '*.fastq.gz' -printf '%
 
 for f in ${samples_id}
 do
-    docker run -v $(pwd):$(pwd) -v ${FILE_PATH}:${FILE_PATH} -v ${ALIGNMENT_PATH}:${ALIGNMENT_PATH} -w $(pwd) xiang2019/samtools:v1.9 samtools index -@ 8 ${ALIGNMENT_PATH}/${f}.unique.bam
+    docker run -v $(pwd):$(pwd) -v ${FILE_PATH}:${FILE_PATH} -v ${ALIGNMENT_PATH}:${ALIGNMENT_PATH} -w $(pwd) xiang2019/samtools:v1.9 samtools index -@ 8 ${ALIGNMENT_PATH}/${f}Aligned.sortedByCoord.out.bam
     docker run -v $(pwd):$(pwd) -v ${FILE_PATH}:${FILE_PATH} -v ${ALIGNMENT_PATH}:${ALIGNMENT_PATH} -w $(pwd) xiang2019/samtools:v1.9 samtools view -@ 8 -q 255 -b -h -o ${ALIGNMENT_PATH}/${f}.unique.bam ${ALIGNMENT_PATH}/${f}Aligned.sortedByCoord.out.bam ${CHROMOSOMES_KEPT}
 done
 
