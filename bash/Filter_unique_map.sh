@@ -25,7 +25,7 @@ fi
 
 
 
-samples_id=$(find "$FILE_PATH" -maxdepth 1 -type f -name '*.fastq.gz' -printf '%P\n' | awk -F'_' '{print $1}' | sort | uniq)
+samples_id=$(find "$FILE_PATH" -maxdepth 1 -type f -name '*.fastq.gz' -printf '%P\n' | awk -F'.' '{print $1}' | sort | uniq)
 
 for f in ${samples_id}
 do
