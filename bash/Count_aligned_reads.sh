@@ -38,4 +38,4 @@ fi
 
 
 # count reads (paired-end)
-featureCounts -T 16 -p -t exon -g gene_id -a ${ANNOTATION_FILE} -o ${OUT_DIR}/${OUT_FILE} ${BAM_DIR}/*.bam
+featureCounts -T 16 -O -p -t exon -g gene_id -a ${ANNOTATION_FILE} -o ${OUT_DIR}/${OUT_FILE} ${BAM_DIR}/*.bam
