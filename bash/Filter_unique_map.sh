@@ -25,8 +25,7 @@ fi
 
 
 
-samples_id=$(ls ${FILE_PATH} | awk -v FS='\t' -v ORS='\n' 'match($0, /^*fastp.fastq.gz$/) {print substr($0, RSTART, RLENGTH-24)}' | awk '!seen[$0]++')
-
+samples_id=$(find "$FILE_PATH" -maxdepth 1 -type f -name '*.fastq.gz' -printf '%P\n' | awk -F'_' '{print $1}' | sort | uniq)
 
 for f in ${samples_id}
 do
