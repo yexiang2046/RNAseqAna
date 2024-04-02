@@ -19,7 +19,7 @@ display_help() {
     echo "  READ2_PAT    Pattern for Read 2 fastq.gz files"
     echo "  STAR_IDX     Path to the STAR index directory"
     echo "  OUT_PATH     Output directory path"
-    echo
+    echo "  GENOME	 GENOME(fasta) to align to"
 }
 
 # Function to log errors
@@ -45,6 +45,7 @@ READ1_PAT="$2"
 READ2_PAT="$3"
 STAR_IDX="$4"
 OUT_PATH="$5"
+GENOME="$6"
 
 # Check if the input file paths exist
 if [[ ! -d "$FILE_PATH" ]]; then
@@ -52,18 +53,20 @@ if [[ ! -d "$FILE_PATH" ]]; then
     exit 1
 fi
 
+# Create output directory if it doesn't exist
+mkdir -p "$OUT_PATH"
+
+
+STAR --runMode genomeGenerate --genomeDir ${STAR_IDX} --genomeFastaFiles ${GENOME} --runThreadN 12
+
 if [[ ! -f "$STAR_IDX/Genome" ]]; then
     log_error "STAR index directory $STAR_IDX is invalid or incomplete."
     exit 1
 fi
 
-# Create output directory if it doesn't exist
-mkdir -p "$OUT_PATH"
 
 
-# STAR --runMode genomeGenerate --genomeDir ${star_index_folder} --genomeFastaFiles ./GRCh38.primary_GQ994935.fa --runThreadN 12
-
-samples_id=$(find "$FILE_PATH" -maxdepth 1 -type f -name '*.fastq.gz' -printf '%P\n' | awk -F'_' '{print $1}' | sort | uniq)
+samples_id=$(find "$FILE_PATH" -maxdepth 1 -type f -name '*.fastq.gz' -printf '%P\n' | awk -F'.' '{print $1}' | sort | uniq)
 # samples_id=$(ls ${FILE_PATH} | cut -d '.' -f 1 | sort | uniq)
 printf '%s\n' "$samples_id" | while IFS= read -r f; do
     echo "Read1: $FILE_PATH/$f${READ1_PAT}"
