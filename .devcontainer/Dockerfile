@@ -42,7 +42,7 @@ RUN apt-get update \
     rna-star \
     htop
 
-RUN pip3 install radian MACS2
+RUN pip3 install radian 
 
 ENV SAMTOOLS_INSTALL_DIR=/opt/samtools
 
