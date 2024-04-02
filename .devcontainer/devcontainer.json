@@ -1,5 +1,5 @@
 {
-    "build": { "dockerfile": "Dockerfile" },
+    "image": "xiang2019/rnaseq_tools:1.0.1",
   
     "customizations": {
       "vscode": {
