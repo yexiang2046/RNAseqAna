@@ -21,7 +21,10 @@ Imports:
     org.Hs.eg.db,
     Organism.dplyr,
     readr,
+    readxl,
+    clusterProfiler,
     TxDb.Hsapiens.UCSC.hg38.knownGene,
+    tibble,
     factoextra,
     TxDb.Mmusculus.UCSC.mm10.knownGene
 Depends: 

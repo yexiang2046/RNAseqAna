@@ -17,3 +17,8 @@ data/
 *.xlsx
 *.eps
 *.gz
+*.log
+*.txt
+*.gtf
+*.bed
+*.saf
