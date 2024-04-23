@@ -56,7 +56,8 @@ fi
 # Create output directory if it doesn't exist
 mkdir -p "$OUT_PATH"
 
-
+# generate index
+mkdir -p ${STAR_IDX}
 STAR --runMode genomeGenerate --genomeDir ${STAR_IDX} --genomeFastaFiles ${GENOME} --runThreadN 12
 
 if [[ ! -f "$STAR_IDX/Genome" ]]; then
