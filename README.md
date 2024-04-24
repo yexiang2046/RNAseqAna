@@ -31,10 +31,10 @@ R tools
 
 Run
   1. trim 
-	'''python
+	```shell
 		bash/fastp_trim.sh data _S1_L005_R1_001.fastq.gz _S1_L005_R2_001.fastq.gz
-	'''
+	```
   2. align
-	'''python
+	```shell
 		bash/star_align.sh /path/to//trimmed .R1.fastp.fastq.gz .R2.fastp.fastq.gz /path/to/star_idx /path/to/aligned /path/to//GRCh38.primary_assembly.genome.fa
-	'''
+	```
