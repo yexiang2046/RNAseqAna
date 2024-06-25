@@ -36,7 +36,7 @@ fetch_geo_metadata <- function() {
   cat("Contact:", metaData(geo_data)$contact, "\n")
   
   # Optionally, return the full metadata if further analysis is required
-  return(metaData(geo_data))
+  return(Table(geo_data))
 }
 
 # Execute the function if the script is called directly
