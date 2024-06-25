@@ -21,7 +21,7 @@ if (length(geo_accession) == 0) {
 fetch_geo_metadata <- function(geo_accession) {
   # Load data from GEO
   cat("Fetching data for GEO accession:", geo_accession, "...\n")
-  geo_data <- getGEO(geo_accession, destdir = tempdir())
+  geo_data <- getGEO(geo_accession, destdir = tempdir(), GSEMatrix=TRUE)
   
   # Check if the data is a list (if multiple platforms are present)
   if (is.list(geo_data)) {
