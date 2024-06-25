@@ -43,5 +43,5 @@ fetch_geo_metadata <- function() {
 if (interactive()) {
   cat("This script should be run from the command line.\n")
 } else {
-  write(fetch_geo_metadata(), file = paste0(geo_accession, "geo_metadata.txt"))
+  write.table(fetch_geo_metadata(), file = paste0(geo_accession, "geo_metadata.txt"))
 }
