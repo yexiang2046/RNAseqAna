@@ -8,6 +8,8 @@ BiocManager::install("GEOquery")
 library(GEOquery)
 
 # Check for command line arguments
+
+args <- commandArgs(trailingOnly = TRUE)
 geo_accession <- args[1]
 
 if (length(geo_accession) == 0) {
@@ -17,14 +19,6 @@ if (length(geo_accession) == 0) {
 
 # Command-line interface function
 fetch_geo_metadata <- function(geo_accession) {
-  args <- commandArgs(trailingOnly = TRUE)
-  
-  if (length(args) == 0) {
-    cat("No GEO accession provided. Usage: Rscript this_script.R <GEO_accession>\n")
-    quit(status = 1)
-  }
-  
-  
   # Load data from GEO
   cat("Fetching data for GEO accession:", geo_accession, "...\n")
   geo_data <- getGEO(geo_accession, destdir = tempdir())
