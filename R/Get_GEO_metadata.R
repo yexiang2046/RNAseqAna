@@ -29,7 +29,7 @@ fetch_geo_metadata <- function() {
   
 
   # Optionally, return the full metadata if further analysis is required
-  return(Table(geo_data))
+  return(pData(phenoData(geo_data)))
 }
 
 # Execute the function if the script is called directly
