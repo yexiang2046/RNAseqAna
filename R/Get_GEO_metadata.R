@@ -28,12 +28,12 @@ fetch_geo_metadata <- function() {
   }
   
   # Extract and print metadata
-  cat("Title:", metaData(geo_data)$title, "\n")
-  cat("Overall Design:", metaData(geo_data)$overall_design, "\n")
-  cat("Summary:", metaData(geo_data)$summary, "\n")
-  cat("Type:", metaData(geo_data)$type, "\n")
-  cat("Contributor:", metaData(geo_data)$contributor, "\n")
-  cat("Contact:", metaData(geo_data)$contact, "\n")
+  cat("Title:", Meta(geo_data)$title, "\n")
+  cat("Overall Design:", Meta(geo_data)$overall_design, "\n")
+  cat("Summary:", Meta(geo_data)$summary, "\n")
+  cat("Type:", Meta(geo_data)$type, "\n")
+  cat("Contributor:", Meta(geo_data)$contributor, "\n")
+  cat("Contact:", Meta(geo_data)$contact, "\n")
   
   # Optionally, return the full metadata if further analysis is required
   return(Table(geo_data))
