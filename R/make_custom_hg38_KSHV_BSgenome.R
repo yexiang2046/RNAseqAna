@@ -40,7 +40,7 @@ writeLines(con = seed_file, text = c(
   #"single_sequences: character(0)",  # Update if there are unplaced scaffolds
   #"masked_seqs: character(0)",
   "genome: GRCh38.p13",
-  "seqfile_name: c('chr10 10.fasta',  'chr12 12.fasta',  'chr15 15.fasta',  'chr18 18.fasta',  'chr21 21.fasta',  'chr3 3.fasta',  'chr6 6.fasta',  'chr9 9.fasta',   'chrY Y.fasta', 'chr11 11.fasta',  'chr13 13.fasta',  'chr16 16.fasta',  'chr19 19.fasta',  'chr22 22.fasta',  'chr4 4.fasta',  'chr7 7.fasta',  'chrM MT.fasta',  'NC_009333.1 Human herpesvirus 8 strain GK18, complete genome.fasta', 'chr1 1.fasta', 'chr14 14.fasta', 'chr17 17.fasta', 'chr20 20.fasta', 'chr2 2.fasta', 'chr5 5.fasta', 'chr8 8.fasta', 'chrX X.fasta')",
+  "seqfile_name: c('chr10.fasta',  'chr12.fasta',  'chr15.fasta',  'chr18.fasta',  'chr21.fasta',  'chr3.fasta',  'chr6.fasta',  'chr9.fasta',   'chrY.fasta', 'chr11.fasta',  'chr13.fasta',  'chr16.fasta',  'chr19.fasta',  'chr22.fasta',  'chr4.fasta',  'chr7.fasta',  'chrM.fasta',  'NC_009333.1.fasta', 'chr1.fasta', 'chr14.fasta', 'chr17.fasta', 'chr20.fasta', 'chr2.fasta', 'chr5.fasta', 'chr8.fasta', 'chrX.fasta')",
   "seqs_srcdir: chr_fasta"
 ))
 
