@@ -8,7 +8,7 @@ library(BSgenome)
 BiocManager::install("rtracklayer")
 
 # Set the path to your FASTA file
-fasta_file <- "path/to/your/fastafile.fasta"
+fasta_file <- "GRCh38.primary_assembly.KSHV.genome.fa"
 
 # Metadata for GRCh38 and KSHV genome
 organism <- "hg38_KSHV"
@@ -29,18 +29,19 @@ writeLines(con = seed_file, text = c(
   "organism: human and Kaposi's sarcoma-associated herpesvirus",
   "common_name: CommonName",
   "provider: Provider",
-  "provider_version: ProviderVersion",
+  #"provider_version: ProviderVersion",
   "release_date: ReleaseDate",
-  "release_name: ReleaseName",
-  "source_url: SourceURL",
+  #"release_name: ReleaseName",
+  #"source_url: SourceURL",
   paste("organism_biocview: ", c("hg38", "KSHV"), sep="_"),
   "BSgenomeObjname: hg38_KSHV",
-  "seqnames: c('chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9', 'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16','chr17', 'chr18', 'chr19', 'chr20', 'chr21', 'chr22', 'chrX', 'chrY', 'NC_009333.1')",  # Modify this line based on actual chromosome names in your FASTA
-  "circ_seqs: character(0)",  # Update if there are circular chromosomes
-  "single_sequences: character(0)",  # Update if there are unplaced scaffolds
-  "masked_seqs: character(0)",
-  "seqfile_name: GRCh38.primary_assembly.KSHV.genome.fa",
-  "seqs_srcdir: ."
+  "seqnames: c('chr10',  'chr12',  'chr15',  'chr18',  'chr21',  'chr3',  'chr6',  'chr9',   'chrY', 'chr11',  'chr13',  'chr16',  'chr19',  'chr22',  'chr4',  'chr7',  'chrM',  'NC_009333.1', 'chr1', 'chr14', 'chr17', 'chr20', 'chr2', 'chr5', 'chr8', 'chrX')",  # Modify this line based on actual chromosome names in your FASTA
+  #"circ_seqs: character(0)",  # Update if there are circular chromosomes
+  #"single_sequences: character(0)",  # Update if there are unplaced scaffolds
+  #"masked_seqs: character(0)",
+  "genome: GRCh38.p13",
+  "seqfile_name: c('chr10 10.fasta',  'chr12 12.fasta',  'chr15 15.fasta',  'chr18 18.fasta',  'chr21 21.fasta',  'chr3 3.fasta',  'chr6 6.fasta',  'chr9 9.fasta',   'chrY Y.fasta', 'chr11 11.fasta',  'chr13 13.fasta',  'chr16 16.fasta',  'chr19 19.fasta',  'chr22 22.fasta',  'chr4 4.fasta',  'chr7 7.fasta',  'chrM MT.fasta',  'NC_009333.1 Human herpesvirus 8 strain GK18, complete genome.fasta', 'chr1 1.fasta', 'chr14 14.fasta', 'chr17 17.fasta', 'chr20 20.fasta', 'chr2 2.fasta', 'chr5 5.fasta', 'chr8 8.fasta', 'chrX X.fasta')",
+  "seqs_srcdir: chr_fasta"
 ))
 
 # Forge the BSgenome data package
