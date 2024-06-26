@@ -8,7 +8,7 @@
 library(CAGEr)
 library(GenomicRanges)
 library(rtracklayer)
-library(BSgenome.Hsapiens.UCSC.hg38)
+#library(BSgenome.Hsapiens.UCSC.hg38)
 library(GenomicFeatures)
 library(GenomicAlignments)
 library(BiocParallel)
@@ -26,7 +26,7 @@ input_data <- read.table(input_file, header = TRUE)
 bam_files <- input_data[,2]
 
 # Create CAGEexp object
-cage_data <- CAGEexp(inputFiles = bam_files, inputFilesType = "bamPairedEnd" genome = BSgenome.Hsapiens.UCSC.hg38, nthreads = 24)
+cage_data <- CAGEexp(inputFiles = bam_files, inputFilesType = "bamPairedEnd",  nthreads = 24)
 
 # Set sequencing protocol to RAMPAGE
 seqProt(cage_data) <- "RAMPAGE"
