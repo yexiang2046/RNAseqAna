@@ -9,6 +9,7 @@ library(CAGEr)
 library(GenomicRanges)
 library(rtracklayer)
 #library(BSgenome.Hsapiens.UCSC.hg38)
+library(BSgenome.Hkshv.encode.p13)
 library(GenomicFeatures)
 library(GenomicAlignments)
 library(BiocParallel)
@@ -19,39 +20,73 @@ args <- commandArgs(trailingOnly = TRUE)
 
 
 # Read the input file
-input_file <- args[1]
+input_file <- "iSLK_samples.txt"
 output_label <- args[2]
 
 input_data <- read.table(input_file, header = TRUE)
 bam_files <- input_data[,2]
 
 # Create CAGEexp object
-cage_data <- CAGEexp(inputFiles = bam_files, inputFilesType = "bamPairedEnd",  nthreads = 24)
+cage_data <- CAGEexp(inputFiles = bam_files, inputFilesType = "bamPairedEnd", genomeName = "BSgenome.Hkshv.encode.p13", sampleLabels  = sub("/home/xiang/New_disk3/GEO_data/RAMPAGE/aligned/", "", sub( "Aligned.sortedByCoord.out.bam", "", basename(bam_files))))
 
-# Set sequencing protocol to RAMPAGE
-seqProt(cage_data) <- "RAMPAGE"
 
-# Specify the genome if not set during initialization
-genome(cage_data) <- "BSgenome.Hsapiens.UCSC.hg38.KSHV" # adjust as needed
 
 # Quantify CAGE tags to identify TSS
-getCTSS(cage_data)
-quantifyCTSS(cage_data)
+iSLK <- getCTSS(cage_data, sequencingQualityThreshold = 10,
+                mappingQualityThreshold = 20, 
+                useMulticore = TRUE, nrCores = 12)
+
 
 # Normalize tag counts
-normalizeTagCount(cage_data, method = "quantile") # You can choose other normalization methods
+iSLK <- normalizeTagCount(iSLK, method = "simpleTpm") # You can choose other normalization methods
 
 # Cluster CTSS to define consensus clusters (i.e., TSS regions)
-clusterCTSS(cage_data, threshold = 100) # The threshold can be adjusted
+iSLK <- clusterCTSS(iSLK, threshold = 1,
+            method = "paraclu", useMulticore = TRUE,
+            nrCores = 12) # The threshold can be adjusted
 
-# Aggregate TSSs into tag clusters
-aggregateTagClusters(cage_data)
+
 
 # Export results or perform additional analysis
-tagClusters <- getTagClusters(cage_data)
+tagClusters <- tagClustersGR(iSLK)
 
-# Optionally, output the tag clusters to a file
-write.table(tagClusters, file = paste0(output_label,"_tagClusters.txt"), sep = "\t", quote = FALSE)
-saveRDS(cage_data, file = paste0(output_label,"_cage_data.rds")
 
+saveRDS(iSLK, file = "iSLK_CAGEr_RAMPAGE.rds")
+
+
+# for BCBL1
+# Read the input file
+input_file <- "BCBL1_sample.txt"
+
+
+input_data <- read.table(input_file, header = TRUE)
+bam_files <- input_data[,2]
+
+# Create CAGEexp object
+cage_data <- CAGEexp(inputFiles = bam_files, inputFilesType = "bamPairedEnd", genomeName = "BSgenome.Hkshv.encode.p13", sampleLabels  = sub("/home/xiang/New_disk3/GEO_data/RAMPAGE/aligned/", "", sub( "Aligned.sortedByCoord.out.bam", "", basename(bam_files))))
+
+
+
+# Quantify CAGE tags to identify TSS
+BCBL1 <- getCTSS(cage_data, sequencingQualityThreshold = 10,
+                mappingQualityThreshold = 20, 
+                useMulticore = TRUE, nrCores = 12)
+
+
+
+# Normalize tag counts
+BCBL1 <- normalizeTagCount(BCBL1, method = "simpleTpm") # You can choose other normalization methods
+
+# Cluster CTSS to define consensus clusters (i.e., TSS regions)
+BCBL1 <- clusterCTSS(BCBL1, threshold = 1,
+            method = "paraclu", useMulticore = TRUE,
+            nrCores = 12) # The threshold can be adjusted
+
+
+
+# Export results or perform additional analysis
+tagClusters <- tagClustersGR(BCBL1)
+
+
+saveRDS(BCBL1, file = "BCBL1_CAGEr_RAMPAGE.rds")
 

@@ -4,11 +4,11 @@ Description: This package provides a BSgenome object for Human with KSHV (Kaposi
 Version: 1.0.0
 organism: Homo sapiens and Human herpesvirus 8
 common_name: Human and KSHV
-provider: UCSC
+provider: encode
 genome: GRCh38.p13
 source_url: http://genome.ucsc.edu
 seqnames: c("chr1", "chr2", "chr3", "chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22", "chrX", "chrY", "chrM", "NC_009333.1")
 seqs_srcdir: /home/xiang/New_disk3/GEO_data/RAMPAGE/chr_fasta
-release_date: "2023-01-01"
-organism_biocview: "Hsapiens_KSHV"
-BSgenomeObjname: "Hkshv"
+release_date: June 2024
+organism_biocview: Hsapiens_KSHV
+BSgenomeObjname: Hkshv
