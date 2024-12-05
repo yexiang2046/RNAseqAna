@@ -10,6 +10,7 @@ display_help() {
     echo "  FILE_PATH    Path to the directory containing fastq.gz files"
     echo "  READ1_PAT    Pattern for Read 1 fastq.gz files"
     echo "  READ2_PAT    Pattern for Read 2 fastq.gz files"
+    echo "  OUT_PATH     Pattern for Read 2 fastq.gz files"
     echo
 }
 
@@ -36,13 +37,16 @@ FILE_PATH=$1
 READ1_PAT=$2
 READ2_PAT=$3
 
+OUT_PATH=$4
 
+
+mkdir -p ${OUT_PATH}
 
 samples_id=$(find "$FILE_PATH" -maxdepth 1 -type f -name '*.fastq.gz' -printf '%P\n' | awk -F'_' '{print $1}' | sort | uniq)
 printf '%s\n' "$samples_id" | while IFS= read -r f; do
     echo "Read1: ${FILE_PATH}/$f${READ1_PAT}"
     echo "Read2: ${FILE_PATH}/$f${READ2_PAT}"
-    fastp -w 16 -l 20 -i ${FILE_PATH}/$f${READ1_PAT} -I ${FILE_PATH}/$f${READ2_PAT} -o ${FILE_PATH}/$f.R1.fastp.fastq.gz -O ${FILE_PATH}/$f.R2.fastp.fastq.gz
+    fastp -w 16 -l 20 -i ${FILE_PATH}/$f${READ1_PAT} -I ${FILE_PATH}/$f${READ2_PAT} -o ${OUT_PATH}/$f.R1.fastp.fastq.gz -O ${OUT_PATH}/$f.R2.fastp.fastq.gz
 done
 
 
