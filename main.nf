@@ -14,26 +14,37 @@ params.refgenome = "$projectDIr/GRCh38.primary.genome.fa"
 params.reflink = "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/GRCh38.primary_assembly.genome.fa.gz"
 
 
-process getref{
-	input:
-	val	reflink
+process FASTQC {
+	tag "FASTQC on $sample_id"
 
+	input:
+	tuple val(sample_id), path(reads)
+
+	output:
+	path "fastqc_${sample_id}_logs"
+
+	script:
+	"""
+	mkdir fastqc_${sample_id}_logs
+	fastqc -o fastqc_${sample_id}_logs -f fastq -q ${reads}
+	"""
+}
 	
 /*
- * define the `INDEX` process that creates a binary index
+ * define the STAR_INDEX process that creates a binary index
  * given the genome file
  */
 process STAR_INDEX {
-    input:
-    path refgenome
+	input:
+	path refgenome
 
-    output:
-    path 'star_index'
+	output:
+	path 'star_index'
 
-    script:
-    """
+	script:
+	"""
 	STAR --runMode genomeGenerate --genomeDir ${star_index} --genomeFastaFiles ${refgenome} --runThreadN ${params.cpus}
-    """
+	"""
 }
 
 process TRIM{
@@ -80,7 +91,20 @@ process ALIGN{
 	"""
 }
 
+process MULTIQC {
+	publishDir params.projectDir, mode:'copy'
 
+	input:
+	path '*'
+
+	output:
+	path 'multiqc_report.html'
+
+	script:
+	"""
+	multiqc .
+	"""
+}
 
 workflow {
 	index_ch = INDEX(params.refgenome)
@@ -89,7 +113,10 @@ workflow {
     		.fromFilePairs(params.reads, checkIfExists: true)
     		.set { read_pairs_ch }
 
+	fastqc_ch = FASTQC(read_pairs_ch)
 	trim_read_pairs_ch = TRIM(read_pairs_ch)
 
-	ALIGN(index_ch, trim_read_pairs_ch))
+	align_ch = ALIGN(index_ch, trim_read_pairs_ch))
+
+    	MULTIQC(align_ch.mix(fastqc_ch).collect())
 }
