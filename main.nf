@@ -138,6 +138,7 @@ workflow {
 		.fromPath( "${projectDir}/aligned/**.bam" )
 		.set { bamfile_ch }
 
+	FEATURECOUNT(bamfile_ch)
 
 	
 }
