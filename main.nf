@@ -9,9 +9,11 @@ params.trim.reads = "$projectDir/trimmed/12512-ZB-[0-9].R{1,2}.fastp.fastq.gz"
 
 params.trimeddir = "$projectDir/trimmed"
 params.aligneddir = "$projectDir/aligned"
-params.refgenome = "$projectDIr/GRCh38.primary.genome.fa"
+params.refgenome = "$projectDir/GRCh38.primary_assembly.genome.fa"
+params.gtf = "$projectDir/gencode.v47.primary_assembly.annotation.gtf"
 
-params.reflink = "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/GRCh38.primary_assembly.genome.fa.gz"
+params.refgenomelink = "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/GRCh38.primary_assembly.genome.fa.gz"
+params.refgtflink = "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/gencode.v47.primary_assembly.annotation.gtf.gz"
 
 
 process FASTQC {
@@ -106,6 +108,17 @@ process MULTIQC {
 	"""
 }
 
+process FEATURECOUNT {
+	input:
+	path	bamfiles
+
+
+	script:
+	"""
+	featureCounts -T 14 -p -t exon -g gene_id -F GTF -a ${params.gtf} -o counts ${bamfiles}
+ 	"""
+}
+
 workflow {
 	index_ch = INDEX(params.refgenome)
 
@@ -119,4 +132,12 @@ workflow {
 	align_ch = ALIGN(index_ch, trim_read_pairs_ch))
 
     	MULTIQC(align_ch.mix(fastqc_ch).collect())
+	
+
+	Channel  
+		.fromPath( "${projectDir}/aligned/**.bam" )
+		.set { bamfile_ch }
+
+
+	
 }
