@@ -1,7 +1,7 @@
 #!/usr/bin/env nextflow
 
 params.cpus = 8
-params.ram = 60000000000 # ~60GB
+params.ram = 60000000000 /* ~60GB */
 
 
 params.reads = "$projectDir/data/12512-ZB-[0-9]_S1_L005_R{1,2}_001.fastq.gz"
@@ -109,13 +109,16 @@ process MULTIQC {
 }
 
 process FEATURECOUNT {
+	
+	publishDir "${projectDir}/featureCounts", mode: 'copy'
+
 	input:
-	path	bamfiles
+	tuple	val(sample_id), path(bamfile)
 
 
 	script:
 	"""
-	featureCounts -T 14 -p -t exon -g gene_id -F GTF -a ${params.gtf} -o counts ${bamfiles}
+	featureCounts -T 14 -p -t exon -g gene_id -F GTF -a ${params.gtf} -o ${sample_id}.txt ${bamfile}
  	"""
 }
 
@@ -134,9 +137,8 @@ workflow {
     	MULTIQC(align_ch.mix(fastqc_ch).collect())
 	
 
-	Channel  
-		.fromPath( "${projectDir}/aligned/**.bam" )
-		.set { bamfile_ch }
+	bamfile_ch = align_ch.filter("*.bam")
+	bamfile_ch.view()
 
 	FEATURECOUNT(bamfile_ch)
 
