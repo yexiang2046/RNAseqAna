@@ -1,5 +1,7 @@
+require(devtools)
+devtools::install_version("dbplyr", version = "2.3.4")
 
-require(dplyr)
+require(dplyr) 
 require(readr)
 require(edgeR)
 require(clusterProfiler)
@@ -15,7 +17,6 @@ require(factoextra)
 require(VennDiagram)
 
 
-require(devtools)
 load_all()
 
 
