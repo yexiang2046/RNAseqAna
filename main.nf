@@ -110,7 +110,7 @@ process MULTIQC {
 
 process FEATURECOUNT {
 	
-	publishDir "${projectDir}/featureCounts", mode: 'copy'
+	publishDir params.projectDir}/featureCounts, mode: 'copy'
 
 	input:
 	tuple	val(sample_id), path(bamfile)
