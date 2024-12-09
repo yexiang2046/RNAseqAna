@@ -110,7 +110,7 @@ process MULTIQC {
 
 process FEATURECOUNT {
 	
-	publishDir params.projectDir}/featureCounts, mode: 'copy'
+	publishDir params.projectDir/featureCounts, mode: 'copy'
 
 	input:
 	tuple	val(sample_id), path(bamfile)
@@ -134,7 +134,7 @@ workflow {
 
 	align_ch = ALIGN(index_ch, trim_read_pairs_ch))
 
-    	MULTIQC(align_ch.mix(fastqc_ch).collect())
+    MULTIQC(align_ch.mix(fastqc_ch).collect())
 	
 
 	bamfile_ch = align_ch.filter("*.bam")
