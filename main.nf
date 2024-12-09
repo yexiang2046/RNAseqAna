@@ -4,8 +4,6 @@ params.cpus = 8
 params.ram = 60000000000 /* ~60GB */
 
 
-params.reads = "$projectDir/data/12512-ZB-[0-9]_S1_L005_R{1,2}_001.fastq.gz"
-params.trim.reads = "$projectDir/trimmed/12512-ZB-[0-9].R{1,2}.fastp.fastq.gz"
 
 params.trimeddir = "$projectDir/trimmed"
 params.aligneddir = "$projectDir/aligned"
@@ -128,7 +126,7 @@ workflow {
 	index_ch.view()
 
 	Channel
-	   		.fromFilePairs("$projectDir/data/12512-ZB-[0-9]_S1_L005_R{1,2}_001.fastq.gz", checkIfExists: true)
+	   		.fromFilePairs("${projectDir}/data/*{1,2}_001.fastq.gz", checkIfExists: true)
 	   		.set { read_pairs_ch }
 	read_pairs_ch.view()
 
