@@ -59,6 +59,11 @@ process TRIM{
 	input:
 	tuple	val(sample_id), path(reads)
 
+	ouput:
+	val $sample_id
+	path	*1.fastp.fastq.gz
+	path	*2.fastp.fastq.gz
+
 	script:
 	"""
 	fastp -w 16 -l 20 -i ${reads[0]} -I ${reads[1]} -o ${params.trimmeddir}/${sample_id}1.fastp.fastq.gz -O ${params.trimmeddir}/${sample_id}2.fastp.fastq.gz
@@ -75,14 +80,14 @@ process ALIGN{
 
 	input:
 	path star_index
-	tuple	val(sample_id), path(reads) 
+	tuple	val(sample_id), path(read1), path(read2) 
 
 	output:
 	path	"${sample_id}.bam"
 
 	script:
 	"""
-	STAR --genomeDir ${star_index} --readFilesIn ${reads[0]} ${reads[1]} \
+	STAR --genomeDir ${star_index} --readFilesIn ${read1} ${read2} \
     		--readFilesCommand zcat --runThreadN ${cpus} --genomeLoad NoSharedMemory      \
     		--outFilterMultimapNmax 20 --alignSJoverhangMin 8 --alignSJDBoverhangMin 1    \
     		--outFilterMismatchNmax 999 --outFilterMismatchNoverReadLmax 0.04              \
