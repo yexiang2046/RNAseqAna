@@ -119,15 +119,15 @@ process FEATURECOUNT {
 	script:
 	"""
 	featureCounts -T 14 -p -t exon -g gene_id -F GTF -a ${params.gtf} -o ${sample_id}.txt ${bamfile}
- 	"""
+	"""
 }
 
 workflow {
 	index_ch = INDEX(params.refgenome)
 
 	Channel
-    		.fromFilePairs(params.reads, checkIfExists: true)
-    		.set { read_pairs_ch }
+	   		.fromFilePairs(params.reads, checkIfExists: true)
+	   		.set { read_pairs_ch }
 
 	fastqc_ch = FASTQC(read_pairs_ch)
 	trim_read_pairs_ch = TRIM(read_pairs_ch)
