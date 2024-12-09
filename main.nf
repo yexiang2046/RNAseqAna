@@ -145,8 +145,7 @@ workflow {
 	fastqc_ch = FASTQC(read_pairs_ch)
 	fastqc_ch.view()
 	
-	(sample_id_ch, reads_ch) = TRIM(read_pairs_ch)
-	sample_id_ch.view()
+	reads_ch = TRIM(read_pairs_ch)
 	reads_ch.view()
 
 	align_ch = ALIGN(index_ch, reads_ch)
