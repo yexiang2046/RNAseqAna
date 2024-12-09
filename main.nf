@@ -126,7 +126,7 @@ workflow {
 	index_ch = INDEX(params.refgenome)
 
 	Channel
-	   		.fromFilePairs(params.reads, checkIfExists: true)
+	   		.fromFilePairs("$projectDir/data/12512-ZB-[0-9]_S1_L005_R{1,2}_001.fastq.gz", checkIfExists: true)
 	   		.set { read_pairs_ch }
 
 	fastqc_ch = FASTQC(read_pairs_ch)
