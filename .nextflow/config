@@ -1,1 +1,2 @@
-docker.enabled = true
+process.container = 'nfcore/rnaseq:1.4.2'
+podman.enabled = true
