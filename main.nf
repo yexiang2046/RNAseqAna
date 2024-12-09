@@ -63,7 +63,6 @@ process TRIM{
 	tuple	val(sample_id), path("${params.trimmeddir}/${sample_id}1.fastp.fastq.gz"), path("${params.trimmeddir}/${sample_id}*2.fastp.fastq.gz")
 
 	script:
-	sample_id = $sample_id
 	"""
 	fastp -w 16 -l 20 -i ${reads[0]} -I ${reads[1]} -o ${params.trimmeddir}/${sample_id}1.fastp.fastq.gz -O ${params.trimmeddir}/${sample_id}2.fastp.fastq.gz
 	"""
