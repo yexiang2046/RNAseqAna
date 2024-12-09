@@ -147,6 +147,7 @@ workflow {
 	
 	(sample_id_ch, reads_ch) = TRIM(read_pairs_ch)
 	sample_id_ch.view()
+	reads_ch.view()
 
 	align_ch = ALIGN(index_ch, reads_ch)
 	align_ch.view()
