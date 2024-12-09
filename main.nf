@@ -132,7 +132,7 @@ workflow {
 	fastqc_ch = FASTQC(read_pairs_ch)
 	trim_read_pairs_ch = TRIM(read_pairs_ch)
 
-	align_ch = ALIGN(index_ch, trim_read_pairs_ch))
+	align_ch = ALIGN(index_ch, trim_read_pairs_ch)
 
     MULTIQC(align_ch.mix(fastqc_ch).collect())
 	
