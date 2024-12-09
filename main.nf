@@ -55,6 +55,7 @@ process STAR_INDEX {
 process TRIM{
 	debug true
 	tag "fastp on $sample_id"
+	publishDir	params.trimmeddir, mode: copy
 
 	input:
 	tuple	val(sample_id), path(reads)
