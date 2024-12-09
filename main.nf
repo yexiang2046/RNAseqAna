@@ -59,11 +59,9 @@ process TRIM{
 	input:
 	tuple	val(sample_id), path(reads)
 
-	output:
-	path	"*.fastp.fastq.gz"
 	script:
 	"""
-	fastp -w 16 -l 20 -i ${reads[0]} -I ${reads[1]} -o ${params.trimmeddir}/${sample_id}.R1.fastp.fastq.gz -O ${params.trimmeddir}/${sample_id}.R2.fastp.fastq.gz
+	fastp -w 16 -l 20 -i ${reads[0]} -I ${reads[1]} -o ${params.trimmeddir}/${sample_id}1.fastp.fastq.gz -O ${params.trimmeddir}/${sample_id}2.fastp.fastq.gz
 	"""
 }
 
