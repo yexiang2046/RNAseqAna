@@ -60,8 +60,7 @@ process TRIM{
 	tuple	val(sample_id), path(reads)
 
 	output:
-	val	sample_id
-	tuple	path("*1.fastp.fastq.gz"), path("*2.fastp.fastq.gz")
+	tuple	val(sample_id), path("*1.fastp.fastq.gz"), path("*2.fastp.fastq.gz")
 
 	script:
 	sample_id = $sample_id
@@ -146,10 +145,10 @@ workflow {
 	fastqc_ch = FASTQC(read_pairs_ch)
 	fastqc_ch.view()
 	
-	trim_read_pairs_ch = TRIM(read_pairs_ch)
-	trim_read_pairs_ch.view()
+	(sample_id_ch, reads_ch) = TRIM(read_pairs_ch)
+	sample_id_ch.view()
 
-	align_ch = ALIGN(index_ch, trim_read_pairs_ch)
+	align_ch = ALIGN(index_ch, reads_ch)
 	align_ch.view()
 
     MULTIQC(align_ch.mix(fastqc_ch).collect())
