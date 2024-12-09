@@ -3,9 +3,9 @@
 params.cpus = 8
 params.ram = 60000000000 /* ~60GB */
 
+params.starindex = "$projectDir/star_index"
+params.trimmeddir = "$projectDir/trimmed"
 
-
-params.trimeddir = "$projectDir/trimmed"
 params.aligneddir = "$projectDir/aligned"
 /* params.refgenome = "$projectDir/GRCh38.primary_assembly.genome.fa" */
 params.gtf = "$projectDir/gencode.v47.primary_assembly.annotation.gtf"
@@ -63,7 +63,7 @@ process TRIM{
 	path	"*.fastp.fastq.gz"
 	script:
 	"""
-	fastp -w 16 -l 20 -i ${reads[0]} -I ${reads[1]} -o ${params.trimmeddir}/${sample_id} -O ${params.trimmeddir}/${sample_id}
+	fastp -w 16 -l 20 -i ${reads[0]} -I ${reads[1]} -o ${params.trimmeddir}/${sample_id}.R1.fastp.fastq.gz -O ${params.trimmeddir}/${sample_id}.R2.fastp.fastq.gz
 	"""
 }
 
