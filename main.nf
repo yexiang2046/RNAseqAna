@@ -126,7 +126,7 @@ process FEATURECOUNT {
 workflow {
 	Channel
 		.fromPath("${projectDir}/*.genome.fa")
-		.set(refgenome_ch)
+		.set{refgenome_ch}
 
 	
 	Channel
