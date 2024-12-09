@@ -60,11 +60,11 @@ process TRIM{
 	tuple	val(sample_id), path(reads)
 
 	output:
-	tuple	val(sample_id), path("${baseDir}/trimmed/${sample_id}1.fastp.fastq.gz"), path("${baseDir}/trimmed/${sample_id}*2.fastp.fastq.gz")
+	tuple	val(sample_id), path("${workDir}/trimmed/${sample_id}1.fastp.fastq.gz"), path("${workDir}/trimmed/${sample_id}*2.fastp.fastq.gz")
 
 	script:
 	"""
-	fastp -w 16 -l 20 -i ${reads[0]} -I ${reads[1]} -o ${baseDir}/trimmed/${sample_id}1.fastp.fastq.gz -O ${baseDir}/trimmed/${sample_id}2.fastp.fastq.gz
+	fastp -w 16 -l 20 -i ${reads[0]} -I ${reads[1]} -o ${workDir}/trimmed/${sample_id}1.fastp.fastq.gz -O ${workDir}/trimmed/${sample_id}2.fastp.fastq.gz
 	"""
 }
 
