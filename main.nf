@@ -61,7 +61,7 @@ process TRIM{
 
 	output:
 	val	sample_id
-	tuple	["*1.fastp.fastq.gz", "*2.fastp.fastq.gz"]
+	tuple	"*1.fastp.fastq.gz", "*2.fastp.fastq.gz"
 
 	script:
 	sample_id = $sample_id
