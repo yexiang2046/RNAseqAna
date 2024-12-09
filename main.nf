@@ -124,7 +124,7 @@ process FEATURECOUNT {
 }
 
 workflow {
-	index_ch = STAR_INDEX(params.refgenome)
+	index_ch = STAR_INDEX(${params.refgenome})
 	index_ch.view()
 
 	Channel
