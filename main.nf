@@ -57,6 +57,8 @@ process TRIM{
 	input:
 	tuple	val(sample_id), path(reads)
 
+	output:
+	path	*.fastp.fastq.gz
 	script:
 	"""
 	fastp -w 16 -l 20 -i ${reads[0]} -I ${reads[1]} -o ${params.trimmeddir}/${sample_id} -O ${trimmeddir}/${sample_id}
@@ -76,7 +78,7 @@ process ALIGN{
 	tuple	val(sample_id), path(reads) 
 
 	output:
-	path	"$sample_id"
+	path	"${sample_id}.bam"
 
 	script:
 	"""
