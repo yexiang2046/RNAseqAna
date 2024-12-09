@@ -7,7 +7,7 @@ params.ram = 60000000000 /* ~60GB */
 
 params.trimeddir = "$projectDir/trimmed"
 params.aligneddir = "$projectDir/aligned"
-params.refgenome = "$projectDir/GRCh38.primary_assembly.genome.fa"
+/* params.refgenome = "$projectDir/GRCh38.primary_assembly.genome.fa" */
 params.gtf = "$projectDir/gencode.v47.primary_assembly.annotation.gtf"
 
 params.refgenomelink = "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/GRCh38.primary_assembly.genome.fa.gz"
@@ -124,8 +124,11 @@ process FEATURECOUNT {
 }
 
 workflow {
+	Channel
+		.fromPath("${projectDir}/*.genome.fa")
+		.set(refgenome_ch)
 
-	index_ch = STAR_INDEX( ${params.refgenome} )
+	index_ch = STAR_INDEX( refgenome_ch )
 	index_ch.view()
 
 	Channel
