@@ -64,7 +64,7 @@ process TRIM{
 
 	script:
 	"""
-	fastp -w 16 -l 20 -i ${reads[0]} -I ${reads[1]} -o ${params.trimmeddir}/${sample_id}1.fastp.fastq.gz -O ${params.trimmeddir}/${sample_id}2.fastp.fastq.gz
+	fastp -w 16 -l 20 -i ${reads[0]} -I ${reads[1]} -o ${projectDir}/trimmed/${sample_id}1.fastp.fastq.gz -O ${projectDir}/trimmed/${sample_id}2.fastp.fastq.gz
 	"""
 }
 
