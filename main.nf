@@ -17,6 +17,7 @@ params.refgtflink = "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/r
 
 
 process FASTQC {
+	debug true
 	tag "FASTQC on $sample_id"
 
 	input:
@@ -37,6 +38,8 @@ process FASTQC {
  * given the genome file
  */
 process STAR_INDEX {
+	debug true
+
 	input:
 	path refgenome
 
@@ -50,7 +53,7 @@ process STAR_INDEX {
 }
 
 process TRIM{
-
+	debug true
 	tag "fastp on $sample_id"
 
 	input:
@@ -68,7 +71,7 @@ process TRIM{
 
 
 process ALIGN{
-
+	debug true
 	tag "STAR on $sample_id"
 
 	publishDir params.aligneddir, mode: 'copy'
@@ -94,7 +97,8 @@ process ALIGN{
 }
 
 process MULTIQC {
-	publishDir params.projectDir, mode:'copy'
+	debug true
+	publishDir "${params.projectDir}", mode:'copy'
 
 	input:
 	path '*'
@@ -109,8 +113,8 @@ process MULTIQC {
 }
 
 process FEATURECOUNT {
-	
-	publishDir params.projectDir/featureCounts, mode: 'copy'
+	debug true
+	publishDir "$params.projectDir}/featureCounts", mode: 'copy'
 
 	input:
 	tuple	val(sample_id), path(bamfile)
