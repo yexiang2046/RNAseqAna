@@ -123,18 +123,25 @@ process FEATURECOUNT {
 }
 
 workflow {
-	index_ch = INDEX(params.refgenome)
+	index_ch = STAR_INDEX(params.refgenome)
+	index_ch.view()
 
 	Channel
 	   		.fromFilePairs("$projectDir/data/12512-ZB-[0-9]_S1_L005_R{1,2}_001.fastq.gz", checkIfExists: true)
 	   		.set { read_pairs_ch }
+	read_pairs_ch.view()
 
 	fastqc_ch = FASTQC(read_pairs_ch)
+	fastqc_ch.view()
+	
 	trim_read_pairs_ch = TRIM(read_pairs_ch)
+	trim_read_pairs_ch.view()
 
 	align_ch = ALIGN(index_ch, trim_read_pairs_ch)
+	align_ch.view()
 
     MULTIQC(align_ch.mix(fastqc_ch).collect())
+
 	
 
 	bamfile_ch = align_ch.filter("*.bam")
