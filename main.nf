@@ -127,6 +127,21 @@ process FEATURECOUNT {
 	"""
 }
 
+process DESEQ2_QC {
+	debug true
+	publishDir "${projectDir}/deseq2_qc_out"
+	input:
+	path val(count_file) /* output from commandline featureCounts */
+
+	output:
+	path "deseq2_qc_out"
+
+	script:
+	"""
+		deseq2_qc.r -i ${count_file} -f 7 -r "Aligned.sortedByCoord.out.bam" -o "deseq2_qc_out" -c ${params.cpus}
+	"""
+}
+
 workflow {
 	Channel
 		.fromPath("${projectDir}/*.genome.fa")
