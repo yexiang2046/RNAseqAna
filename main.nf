@@ -60,7 +60,7 @@ process TRIM{
 	tuple	val(sample_id), path(reads)
 
 	ouput:
-	val $sample_id
+	val 	${sample_id}
 	path	*1.fastp.fastq.gz
 	path	*2.fastp.fastq.gz
 
