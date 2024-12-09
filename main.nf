@@ -46,7 +46,7 @@ process STAR_INDEX {
 
 	script:
 	"""
-	STAR --runMode genomeGenerate --genomeDir ${$params.starindex} --genomeFastaFiles ${refgenome} --runThreadN ${params.cpus}
+	STAR --runMode genomeGenerate --genomeDir ${params.starindex} --genomeFastaFiles ${refgenome} --runThreadN ${params.cpus}
 	"""
 }
 
@@ -128,13 +128,15 @@ workflow {
 		.fromPath("${projectDir}/*.genome.fa")
 		.set(refgenome_ch)
 
-	index_ch = STAR_INDEX( refgenome_ch )
-	index_ch.view()
-
+	
 	Channel
 	   		.fromFilePairs("${projectDir}/data/*{1,2}_001.fastq.gz", checkIfExists: true)
 	   		.set { read_pairs_ch }
 	read_pairs_ch.view()
+
+	index_ch = STAR_INDEX( refgenome_ch )
+	index_ch.view()
+
 
 	fastqc_ch = FASTQC(read_pairs_ch)
 	fastqc_ch.view()
