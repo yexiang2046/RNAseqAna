@@ -46,7 +46,7 @@ process STAR_INDEX {
 
 	script:
 	"""
-	STAR --runMode genomeGenerate --genomeDir ${star_index} --genomeFastaFiles ${refgenome} --runThreadN ${params.cpus}
+	STAR --runMode genomeGenerate --genomeDir ${$params.starindex} --genomeFastaFiles ${refgenome} --runThreadN ${params.cpus}
 	"""
 }
 
