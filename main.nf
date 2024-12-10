@@ -156,7 +156,7 @@ workflow {
 	   		.set { read_pairs_ch }
 	read_pairs_ch.view()
 
-	index_ch = STAR_INDEX( refgenome_ch, ${params.starindex} )
+	index_ch = STAR_INDEX( refgenome_ch, params.starindex )
 	index_ch.view()
 
 
