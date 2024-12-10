@@ -28,7 +28,7 @@ process FASTQC {
 
 	script:
 	"""
-	mkdir fastqc_${sample_id}_logs
+	mkdir "fastqc_${sample_id}_logs"
 	fastqc -o fastqc_${sample_id}_logs -f fastq -q ${reads}
 	"""
 }
@@ -46,11 +46,11 @@ process STAR_INDEX {
 	path starindex
 
 	output:
-	path 'star_index'
+	path $starindex
 
 	script:
 	"""
-	mkdir $starindex
+	mkdir ${params.starindex}
 	STAR --runMode genomeGenerate --genomeDir ${starindex} --genomeFastaFiles ${refgenome} --runThreadN ${params.cpus}
 	"""
 }
