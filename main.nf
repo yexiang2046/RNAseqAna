@@ -39,6 +39,7 @@ process FASTQC {
  */
 process STAR_INDEX {
 	debug true
+	publishDir	"${params.starindex}", mode: 'copy'
 
 	input:
 	path refgenome
@@ -75,7 +76,7 @@ process ALIGN{
 	debug true
 	tag "STAR on $sample_id"
 
-	publishDir params.aligneddir, mode: 'copy'
+	publishDir "${params.aligneddir}", mode: 'copy'
 
 	input:
 	path star_index
