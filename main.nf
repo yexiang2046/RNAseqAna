@@ -43,14 +43,15 @@ process STAR_INDEX {
 
 	input:
 	path refgenome
+	path starindex
 
 	output:
 	path 'star_index'
 
 	script:
 	"""
-	mkdir star_index
-	STAR --runMode genomeGenerate --genomeDir ${params.starindex} --genomeFastaFiles ${refgenome} --runThreadN ${params.cpus}
+	mkdir $starindex
+	STAR --runMode genomeGenerate --genomeDir ${starindex} --genomeFastaFiles ${refgenome} --runThreadN ${params.cpus}
 	"""
 }
 
@@ -155,7 +156,7 @@ workflow {
 	   		.set { read_pairs_ch }
 	read_pairs_ch.view()
 
-	index_ch = STAR_INDEX( refgenome_ch )
+	index_ch = STAR_INDEX( refgenome_ch, ${params.starindex} )
 	index_ch.view()
 
 
