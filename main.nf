@@ -1,6 +1,6 @@
 #!/usr/bin/env nextflow
 
-params.cpus = 8
+params.cpus = 12 
 params.ram = 60000000000 /* ~60GB */
 
 params.starindex = "$projectDir/star_index"
@@ -90,7 +90,7 @@ process ALIGN{
 	script:
 	"""
 	STAR --genomeDir ${star_index} --readFilesIn ${read1} ${read2} \
-    		--readFilesCommand zcat --runThreadN ${cpus} --genomeLoad NoSharedMemory      \
+    		--readFilesCommand zcat --runThreadN ${params.cpus} --genomeLoad NoSharedMemory      \
     		--outFilterMultimapNmax 20 --alignSJoverhangMin 8 --alignSJDBoverhangMin 1    \
     		--outFilterMismatchNmax 999 --outFilterMismatchNoverReadLmax 0.04              \
     		--alignIntronMin 20 --alignIntronMax 1000000 --alignMatesGapMax 1000000         \
