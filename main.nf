@@ -24,7 +24,7 @@ process FASTQC {
 	tuple val(sample_id), path(reads)
 
 	output:
-	path "fastqc_${sample_id}_logs"
+	path "fastqc_*_logs"
 
 	script:
 	"""
@@ -45,7 +45,7 @@ process STAR_INDEX {
 	path refgenome
 
 	output:
-	path "star_index" into index_cn
+	path "star_index"
 
 	script:
 	"""
@@ -65,7 +65,7 @@ process TRIM{
 	tuple	val(sample_id), path(reads)
 
 	output:
-	tuple	val(sample_id), path("${sample_id}1.fastp.fastq.gz"), path("${sample_id}*2.fastp.fastq.gz")
+	path("${sample_id}{1,2}.fastp.fastq.gz")
  
 	script:
 	"""
@@ -88,7 +88,7 @@ process ALIGN{
 	tuple	val(sample_id), path(read1), path(read2) 
 
 	output:
-	path    "${sample_id}Aligned.sortedByCoord.out.bam" into bamfile_ch
+	path    "*Aligned.sortedByCoord.out.bam"
 
 	script:
 	"""
@@ -148,7 +148,7 @@ process DESEQ2_QC {
 	"""
 }
 
-workflow {
+workflow RNASEQ {
 	refgenome = file("${projectDir}/*.genome.fa")	
 
 	
@@ -157,22 +157,22 @@ workflow {
 	   	.set { read_pairs_ch }
 	read_pairs_ch.view()
 
-	index_ch = STAR_INDEX(refgenome)
-	index_ch.view()
+	STAR_INDEX(refgenome)
+	STAR_INDEX.out.view()
 
 
-	fastqc_ch = FASTQC(read_pairs_ch)
-	fastqc_ch.view()
+	FASTQC(read_pairs_ch)
+	FASTQC.out.view()
 	
-	reads_ch = TRIM(read_pairs_ch)
-	reads_ch.view()
+	TRIM(read_pairs_ch)
+	TRIM.out.view()
 
 	ALIGN(index_ch.collect(), reads_ch)
-	bamfile_ch.view()
-
-    MULTIQC()
+	ALIGN.out.view()
 
 	FEATURECOUNT(bamfile_ch)
 
-	
+	emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | collect	
 }
+
+MULTIQC(RNASEQ.out)
