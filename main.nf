@@ -167,12 +167,13 @@ workflow RNASEQ {
 	TRIM(read_pairs_ch)
 	TRIM.out.view()
 
-	ALIGN(index_ch.collect(), reads_ch)
+	ALIGN(STAR_INDEX.out.collect(), TRIM.out)
 	ALIGN.out.view()
 
-	FEATURECOUNT(bamfile_ch)
+	FEATURECOUNT(ALIGN.out)
 
 	emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | collect	
 }
 
+RNASEQ()
 MULTIQC(RNASEQ.out)
