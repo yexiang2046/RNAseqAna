@@ -43,15 +43,14 @@ process STAR_INDEX {
 
 	input:
 	path refgenome
-	path starindex
 
 	output:
-	path $starindex
+	path "star_index" into index_cn
 
 	script:
 	"""
-	mkdir ${params.starindex}
-	STAR --runMode genomeGenerate --genomeDir ${starindex} --genomeFastaFiles ${refgenome} --runThreadN ${params.cpus}
+	mkdir -p star_index
+	STAR --runMode genomeGenerate --genomeDir star_index --genomeFastaFiles ${refgenome} --runThreadN ${params.cpus}
 	"""
 }
 
@@ -60,12 +59,14 @@ process TRIM{
 	tag "fastp on $sample_id"
 	publishDir	"${params.trimmeddir}", mode: 'copy'
 
+	maxForks 3
+
 	input:
 	tuple	val(sample_id), path(reads)
 
 	output:
 	tuple	val(sample_id), path("${sample_id}1.fastp.fastq.gz"), path("${sample_id}*2.fastp.fastq.gz")
-
+ 
 	script:
 	"""
 	fastp -w 16 -l 20 -i ${reads[0]} -I ${reads[1]} -o ${sample_id}1.fastp.fastq.gz -O ${sample_id}2.fastp.fastq.gz
@@ -80,23 +81,25 @@ process ALIGN{
 
 	publishDir "${params.aligneddir}", mode: 'copy'
 
+	maxForks 3
+
 	input:
 	path star_index
 	tuple	val(sample_id), path(read1), path(read2) 
 
 	output:
-	path	"${sample_id}.bam"
+	path    "${sample_id}Aligned.sortedByCoord.out.bam"
 
 	script:
 	"""
 	STAR --genomeDir ${star_index} --readFilesIn ${read1} ${read2} \
-    		--readFilesCommand zcat --runThreadN ${params.cpus} --genomeLoad NoSharedMemory      \
-    		--outFilterMultimapNmax 20 --alignSJoverhangMin 8 --alignSJDBoverhangMin 1    \
-    		--outFilterMismatchNmax 999 --outFilterMismatchNoverReadLmax 0.04              \
-    		--alignIntronMin 20 --alignIntronMax 1000000 --alignMatesGapMax 1000000         \
-    		--outFilterType BySJout --outSAMattributes NH HI AS NM MD \
-    		--outSAMtype BAM SortedByCoordinate --sjdbScore 1     \
-    		--limitBAMsortRAM ${params.ram} --outFileNamePrefix ${params.aligneddir}/${sample_id}
+    	--readFilesCommand zcat --runThreadN ${params.cpus} --genomeLoad NoSharedMemory      \
+    	--outFilterMultimapNmax 20 --alignSJoverhangMin 8 --alignSJDBoverhangMin 1    \
+    	--outFilterMismatchNmax 999 --outFilterMismatchNoverReadLmax 0.04              \
+    	--alignIntronMin 20 --alignIntronMax 1000000 --alignMatesGapMax 1000000         \
+    	--outFilterType BySJout --outSAMattributes NH HI AS NM MD \
+    	--outSAMtype BAM SortedByCoordinate --sjdbScore 1     \
+		--limitBAMsortRAM ${params.ram} --outFileNamePrefix ${sample_id}
 	"""
 }
 
@@ -146,17 +149,15 @@ process DESEQ2_QC {
 }
 
 workflow {
-	Channel
-		.fromPath("${projectDir}/*.genome.fa")
-		.set{refgenome_ch}
+	refgenome = file("${projectDir}/*.genome.fa")	
 
 	
 	Channel
-	   		.fromFilePairs("${projectDir}/data/*{1,2}_001.fastq.gz", checkIfExists: true)
-	   		.set { read_pairs_ch }
+	   	.fromFilePairs("${projectDir}/data/*{1,2}_001.fastq.gz", checkIfExists: true)
+	   	.set { read_pairs_ch }
 	read_pairs_ch.view()
 
-	index_ch = STAR_INDEX( refgenome_ch, params.starindex )
+	index_ch = STAR_INDEX(refgenome)
 	index_ch.view()
 
 
@@ -166,7 +167,7 @@ workflow {
 	reads_ch = TRIM(read_pairs_ch)
 	reads_ch.view()
 
-	align_ch = ALIGN(index_ch, reads_ch)
+	align_ch = ALIGN(index_ch.collect(), reads_ch)
 	align_ch.view()
 
     MULTIQC(align_ch.mix(fastqc_ch).collect())
