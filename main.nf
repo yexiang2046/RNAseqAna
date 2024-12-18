@@ -175,5 +175,7 @@ workflow RNASEQ {
 	emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | collect	
 }
 
-RNASEQ()
-MULTIQC(RNASEQ.out)
+workflow  {
+	RNASEQ()
+	MULTIQC(RNASEQ.out)
+}
