@@ -88,7 +88,7 @@ process ALIGN{
 	tuple	val(sample_id), path(read1), path(read2) 
 
 	output:
-	path    "${sample_id}Aligned.sortedByCoord.out.bam"
+	path    "${sample_id}Aligned.sortedByCoord.out.bam" into bamfile_ch
 
 	script:
 	"""
@@ -111,7 +111,7 @@ process MULTIQC {
 	path '*'
 
 	output:
-	path 'multiqc_report.html'
+	path 'multiqc_report'
 
 	script:
 	"""
@@ -167,15 +167,10 @@ workflow {
 	reads_ch = TRIM(read_pairs_ch)
 	reads_ch.view()
 
-	align_ch = ALIGN(index_ch.collect(), reads_ch)
-	align_ch.view()
-
-    MULTIQC(align_ch.mix(fastqc_ch).collect())
-
-	
-
-	bamfile_ch = align_ch.filter("*.bam")
+	ALIGN(index_ch.collect(), reads_ch)
 	bamfile_ch.view()
+
+    MULTIQC()
 
 	FEATURECOUNT(bamfile_ch)
 
