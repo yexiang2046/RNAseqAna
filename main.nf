@@ -55,6 +55,7 @@ process STAR_INDEX {
 }
 
 process TRIM{
+	fair true
 	debug true
 	tag "fastp on $sample_id"
 	publishDir	"${params.trimmeddir}", mode: 'copy'
@@ -76,6 +77,7 @@ process TRIM{
 
 
 process ALIGN{
+	fair true
 	debug true
 	tag "STAR on $sample_id"
 
