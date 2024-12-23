@@ -65,7 +65,7 @@ process TRIM{
 	tuple	val(sample_id), path(reads)
 
 	output:
-	path("${sample_id}{1,2}.fastp.fastq.gz")
+	tuple val("$sample_id"),path("*{1,2}.fastp.fastq.gz")
  
 	script:
 	"""
@@ -85,14 +85,14 @@ process ALIGN{
 
 	input:
 	path star_index
-	tuple	val(sample_id), path(read1), path(read2) 
+	tuple   val(sample_id), path(reads)
 
 	output:
-	path    "*Aligned.sortedByCoord.out.bam"
+	path "*Aligned.sortedByCoord.out.bam"
 
 	script:
 	"""
-	STAR --genomeDir ${star_index} --readFilesIn ${read1} ${read2} \
+	STAR --genomeDir ${star_index} --readFilesIn ${reads[0]} ${reads[1]} \
     	--readFilesCommand zcat --runThreadN ${params.cpus} --genomeLoad NoSharedMemory      \
     	--outFilterMultimapNmax 20 --alignSJoverhangMin 8 --alignSJDBoverhangMin 1    \
     	--outFilterMismatchNmax 999 --outFilterMismatchNoverReadLmax 0.04              \
@@ -121,15 +121,18 @@ process MULTIQC {
 
 process FEATURECOUNT {
 	debug true
-	publishDir "$params.projectDir}/featureCounts", mode: 'copy'
+	publishDir "${projectDir}", mode:'copy'
 
 	input:
-	tuple	val(sample_id), path(bamfile)
+	path    gtf
+    path    bamfile
 
+    output:
+    path    "*.txt"
 
 	script:
 	"""
-	featureCounts -T 14 -p -t exon -g gene_id -F GTF -a ${params.gtf} -o ${sample_id}.txt ${bamfile}
+	featureCounts -T 14 -p -t exon -g gene_id -F GTF -a ${gtf} -o counts.txt ${bamfile}
 	"""
 }
 
@@ -170,7 +173,7 @@ workflow RNASEQ {
 	ALIGN(STAR_INDEX.out.collect(), TRIM.out)
 	ALIGN.out.view()
 
-	FEATURECOUNT(ALIGN.out)
+	FEATURECOUNT(params.gtf, ALIGN.out.collect())
 
 	emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | collect	
 }
