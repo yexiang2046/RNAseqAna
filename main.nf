@@ -182,5 +182,4 @@ workflow RNASEQ {
 
 workflow  {
 	RNASEQ()
-	MULTIQC(RNASEQ.out)
 }
