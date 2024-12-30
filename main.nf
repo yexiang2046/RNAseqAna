@@ -177,6 +177,8 @@ workflow RNASEQ {
 
 	FEATURECOUNT(params.gtf, ALIGN.out.collect())
 
+	FEATURECOUNT.out.view()
+
 	DESEQ2_QC( FEATURECOUNT.out.collect() )
 
 	emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | collect	
