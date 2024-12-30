@@ -149,7 +149,7 @@ process DESEQ2_QC {
 
 	script:
 	"""
-		bin/deseq2_qc.r -i ${count_file} -f 7 -r "Aligned.sortedByCoord.out.bam" -o "deseq2_qc_out" -c ${params.cpus}
+		${projectDir}/bin/deseq2_qc.r -i ${count_file} -f 7 -r "Aligned.sortedByCoord.out.bam" -o "deseq2_qc_out" -c ${params.cpus}
 	"""
 }
 
