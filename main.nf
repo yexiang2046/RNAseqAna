@@ -142,7 +142,7 @@ process DESEQ2_QC {
 	debug true
 	publishDir "${projectDir}/deseq2_qc_out"
 	input:
-	path val(count_file) /* output from commandline featureCounts */
+	path count_file /* output from commandline featureCounts */
 
 	output:
 	path "deseq2_qc_out"
@@ -176,6 +176,8 @@ workflow RNASEQ {
 	ALIGN.out.view()
 
 	FEATURECOUNT(params.gtf, ALIGN.out.collect())
+
+	DESEQ2_QC( FEATURECOUNT.out.collect() )
 
 	emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | collect	
 }
