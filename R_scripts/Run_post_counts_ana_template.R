@@ -12,6 +12,7 @@ require(Organism.dplyr)
 require(ggfortify) # for PCA plot
 require(cowplot)
 require(ggrepel)
+require(tidyplots)
 require(tibble)
 require(factoextra)
 require(VennDiagram)
@@ -20,37 +21,51 @@ require(VennDiagram)
 load_all()
 
 
+metaData <- readxl::read_excel(path = "12512-ZB_project_summary.xlsx")
+
+metaData$SampleId <- metaData$Filename
+metaData$group <- rep(c("CTR", "CMV_NSUN2", "NSUN2_KO"), each = 3)
+metaData <- data.frame(metaData)
 
 
-metaData <- data.frame(sampleID = c(paste0(7505, sep = '_', 1:6)),
-                       Treatment = c("NT", "LANAsg_C1", "LANAsg_C2", "NT", "LANAsg_C1", "LANAsg_C2"),
-                       Treatment_agg = c("NT", "LANAsg_KD", "LANAsg_KD", "NT", "LANAsg_KD", "LANAsg_KD"))
-
-
-
-
-step1_get_counts_output <- step1_get_counts(featurecount_file = "BCBL1_dSg_LANA_KD_RNAseq_counts.txt",
+step1_get_counts_output <- step1_get_counts(featurecount_file = "counts_all.txt",
                                             type = "command_line",
                                             col_names = c("Geneid", "Chr", "Start", "End", "Strand", "Length",
-                                                          "NT_A", "LANAsg_C1_A", "LANAsg_C2_A",
-                                                          "NT_B", "LANAsg_C1_B", "LANAsg_C2_B"),
-                                            counts_col = c("NT_A", "LANAsg_C1_A", "LANAsg_C2_A",
-                                                           "NT_B", "LANAsg_C1_B", "LANAsg_C2_B"))
+                                                          "aligned/12512-ZB-1_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                          "aligned/12512-ZB-2_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                          "aligned/12512-ZB-3_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                          "aligned/12512-ZB-4_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                          "aligned/12512-ZB-5_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                          "aligned/12512-ZB-6_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                          "aligned/12512-ZB-7_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                          "aligned/12512-ZB-8_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                          "aligned/12512-ZB-9_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                          "aligned/12512-ZB-NegCTRL_S1_L005_RAligned.sortedByCoord.out.bam"),
+                                            counts_col = c("aligned/12512-ZB-1_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                           "aligned/12512-ZB-2_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                           "aligned/12512-ZB-3_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                           "aligned/12512-ZB-4_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                           "aligned/12512-ZB-5_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                           "aligned/12512-ZB-6_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                           "aligned/12512-ZB-7_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                           "aligned/12512-ZB-8_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                           "aligned/12512-ZB-9_S1_L005_RAligned.sortedByCoord.out.bam"))
 
-group <- factor(metaData[, "Treatment"])
+group <- factor(metaData$group)
 design <- model.matrix(~0+group)
-con1 <- makeContrasts(groupLANAsg_C1 - groupNT, levels = design)
-con2 <- makeContrasts(groupLANAsg_C2 - groupNT, levels = design)
+con1 <- makeContrasts(groupCMV_NSUN2 - groupCTR, levels = design)
+con2 <- makeContrasts(groupNSUN2_KO - groupCTR, levels = design)
+con3 <- makeContrasts(groupNSUN2_KO - groupCMV_NSUN2, levels = design)
 
 # need to be generalized
-con <- list(con1, con2)
+con <- list(con1, con2, con3)
 step2_edgeR_analysis_output <- step2_edgeR_analysis(counts = step1_get_counts_output, meta = metaData,
-                                                    sample_column = "sampleID",
-                                                    groups = "Treatment",
-                                                    edgeR_file = "BCBL1_LANA_KD_edgeR.rds",
-                                                    cpm_file = "BCBL1_LANA_KD_edgeR_cpm.csv",
+                                                    sample_column = "SampleId",
+                                                    groups = "group",
+                                                    edgeR_file = "NSUN2_edgeR.rds",
+                                                    cpm_file = "NSUN2_edgeR_cpm.csv",
                                                     contrast_list = con,
-                                                    logFC = 1.0, padj = 0.01)
+                                                    logFC = 1.0, padj = 0.05)
 
 step3_prep_annotation_output <- step3_prep_annotation(sp = "human",
                                                       IdList = rownames(step2_edgeR_analysis_output[[1]]$table),
