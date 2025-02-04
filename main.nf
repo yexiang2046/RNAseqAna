@@ -8,7 +8,7 @@ params.trimmeddir = "$projectDir/trimmed"
 
 params.aligneddir = "$projectDir/aligned"
 /* params.refgenome = "$projectDir/GRCh38.primary_assembly.genome.fa" */
-params.gtf = "$projectDir/gencode.v47.primary_assembly.annotation.gtf"
+params.gtf = "$projectDir/gencode.vM25.primary_assembly.annotation.gtf"
 
 params.refgenomelink = "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/GRCh38.primary_assembly.genome.fa.gz"
 params.refgtflink = "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/gencode.v47.primary_assembly.annotation.gtf.gz"
