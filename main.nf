@@ -38,7 +38,7 @@ process FASTQC {
  * given the genome file
  */
 process STAR_INDEX {
-	container 'nfcore/rnaseq:1.4.2'
+	container 'biocontainers/rna-star:v2.7.0adfsg-1-deb_cv1'
 	debug true
 	publishDir	"${params.starindex}", mode: 'copy'
 
@@ -80,7 +80,7 @@ process TRIM{
 
 process ALIGN{
 	fair true
-	container 'nfcore/rnaseq:1.4.2'
+	container 'biocontainers/rna-star:v2.7.0adfsg-1-deb_cv1'
 	debug true
 	tag "STAR on $sample_id"
 
