@@ -127,6 +127,7 @@ process MULTIQC {
 
 process FEATURECOUNT {
 	debug true
+	container 'biocontainers/subread:v1.6.3dfsg-1-deb_cv1'
 	publishDir "${projectDir}", mode:'copy'
 
 	input:
