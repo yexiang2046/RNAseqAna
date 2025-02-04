@@ -57,7 +57,7 @@ process STAR_INDEX {
 
 process TRIM{
 	fair true
-	container 'nfcore/rnaseq:1.4.2'
+	container 'biocontainers/fastp:v0.20.1_cv1'
 	debug true
 	tag "fastp on $sample_id"
 	publishDir	"${params.trimmeddir}", mode: 'copy'
