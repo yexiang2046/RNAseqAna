@@ -158,6 +158,23 @@ process DESEQ2_QC {
 	"""
 }
 
+process ASPEAK {
+	debug true
+	container 'biocontainers/aspeak:latest'
+	publishDir "${projectDir}/aspeak_out", mode:'copy'
+
+	input:
+	tuple path(beddir), path(bamfile1), path(bamfile2), path(bamfile3)
+
+	output:
+	path "*.txt"
+
+	script:
+	"""
+	scripts/aspeak.pl -lib ${bamfile1} -lib ${bamfile2} -lib ${bamfile3} -beddir ${beddir} -outdir ${projectDir}/aspeak_out -rnaseq ${bamfile1} -control ${bamfile2}
+	"""
+}
+
 workflow RNASEQ {
 	refgenome = file("${projectDir}/*.genome.fa")	
 
@@ -185,6 +202,8 @@ workflow RNASEQ {
 	FEATURECOUNT.out.view()
 
 	DESEQ2_QC( FEATURECOUNT.out.collect() )
+
+	ASPEAK(params.beddir, ALIGN.out.collect()[0], ALIGN.out.collect()[1], ALIGN.out.collect()[2])
 
 	emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | collect	
 }
