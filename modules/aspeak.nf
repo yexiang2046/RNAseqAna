@@ -3,11 +3,9 @@ process ASPEAK {
     container 'biocontainers/aspeak:v1.0.0'
     publishDir "${projectDir}/aspeak_out", mode:'copy'
 
-    # take rnaseq_bamfile, rip_bamfile, and beddir as input
     input:
     tuple path(rnaseq_bamfile), path(rip_bamfile), path(beddir)
 
-    # output to aspeak_out directory
     output:
     path "*.txt"
 

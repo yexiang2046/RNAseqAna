@@ -21,8 +21,18 @@ params.gtf = "$projectDir/gencode.vM25.primary_assembly.annotation.gtf"
 params.refgenomelink = "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/GRCh38.primary_assembly.genome.fa.gz"
 params.refgtflink = "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/gencode.v47.primary_assembly.annotation.gtf.gz"
 
-# ASPeak annotation files
 params.beddir = "$projectDir/annotation_bedfiles"
+
+// Debugging statements to print parameter values
+println "Project Directory: $projectDir"
+println "CPUs: ${params.cpus}"
+println "RAM: ${params.ram}"
+println "STAR Index: ${params.starindex}"
+println "Trimmed Directory: ${params.trimmeddir}"
+println "Aligned Directory: ${params.aligneddir}"
+println "GTF File: ${params.gtf}"
+println "Reference Genome Link: ${params.refgenomelink}"
+println "Reference GTF Link: ${params.refgtflink}"
 
 
 workflow RNASEQ {
