@@ -1,5 +1,13 @@
 #!/usr/bin/env nextflow
 
+include { STAR_INDEX } from './modules/star_align.nf'
+include { ALIGN } from './modules/star_align.nf'
+include { FASTQC } from './modules/fastqc.nf'
+include { TRIM } from './modules/fastp_trim.nf'
+include { FEATURECOUNT } from './modules/featurecount.nf'
+include { ASPEAK } from './modules/aspeak.nf'
+include { MULTIQC } from './modules/multiqc.nf'
+
 params.cpus = 12 
 params.ram = 60000000000 /* ~60GB */
 
@@ -13,167 +21,9 @@ params.gtf = "$projectDir/gencode.vM25.primary_assembly.annotation.gtf"
 params.refgenomelink = "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/GRCh38.primary_assembly.genome.fa.gz"
 params.refgtflink = "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/gencode.v47.primary_assembly.annotation.gtf.gz"
 
+# ASPeak annotation files
+params.beddir = "$projectDir/annotation_bedfiles"
 
-process FASTQC {
-	debug true
-	tag "FASTQC on $sample_id"
-
-	container 'nfcore/rnaseq:1.4.2'
-
-	input:
-	tuple val(sample_id), path(reads)
-
-	output:
-	path "fastqc_*_logs"
-
-	script:
-	"""
-	mkdir "fastqc_${sample_id}_logs"
-	fastqc -o fastqc_${sample_id}_logs -f fastq -q ${reads}
-	"""
-}
-	
-/*
- * define the STAR_INDEX process that creates a binary index
- * given the genome file
- */
-process STAR_INDEX {
-	container 'biocontainers/rna-star:v2.7.0adfsg-1-deb_cv1'
-	debug true
-	publishDir	"${params.starindex}", mode: 'copy'
-
-	input:
-	path refgenome
-
-	output:
-	path "star_index"
-
-	script:
-	"""
-	mkdir -p star_index
-	STAR --runMode genomeGenerate --genomeDir star_index --genomeFastaFiles ${refgenome} --runThreadN ${params.cpus}
-	"""
-}
-
-process TRIM{
-	fair true
-	container 'biocontainers/fastp:v0.20.1_cv1'
-	debug true
-	tag "fastp on $sample_id"
-	publishDir	"${params.trimmeddir}", mode: 'copy'
-
-	maxForks 3
-
-	input:
-	tuple	val(sample_id), path(reads)
-
-	output:
-	tuple val("$sample_id"),path("*{1,2}.fastp.fastq.gz")
- 
-	script:
-	"""
-	fastp -w 16 -l 20 -i ${reads[0]} -I ${reads[1]} -o ${sample_id}1.fastp.fastq.gz -O ${sample_id}2.fastp.fastq.gz
-	"""
-}
-
-
-
-process ALIGN{
-	fair true
-	container 'biocontainers/rna-star:v2.7.0adfsg-1-deb_cv1'
-	debug true
-	tag "STAR on $sample_id"
-
-	publishDir "${params.aligneddir}", mode: 'copy'
-
-	maxForks 3
-
-	input:
-	path star_index
-	tuple   val(sample_id), path(reads)
-
-	output:
-	path "*Aligned.sortedByCoord.out.bam"
-
-	script:
-	"""
-	STAR --genomeDir ${star_index} --readFilesIn ${reads[0]} ${reads[1]} \
-    	--readFilesCommand zcat --runThreadN ${params.cpus} --genomeLoad NoSharedMemory      \
-    	--outFilterMultimapNmax 20 --alignSJoverhangMin 8 --alignSJDBoverhangMin 1    \
-    	--outFilterMismatchNmax 999 --outFilterMismatchNoverReadLmax 0.04              \
-    	--alignIntronMin 20 --alignIntronMax 1000000 --alignMatesGapMax 1000000         \
-    	--outFilterType BySJout --outSAMattributes NH HI AS NM MD \
-    	--outSAMtype BAM SortedByCoordinate --sjdbScore 1     \
-		--limitBAMsortRAM ${params.ram} --outFileNamePrefix ${sample_id}
-	"""
-}
-
-process MULTIQC {
-	debug true
-	container 'nfcore/rnaseq:1.4.2'
-	publishDir "${params.projectDir}", mode:'copy'
-
-	input:
-	path '*'
-
-	output:
-	path 'multiqc_report'
-
-	script:
-	"""
-	multiqc .
-	"""
-}
-
-process FEATURECOUNT {
-	debug true
-	container 'biocontainers/subread:v1.6.3dfsg-1-deb_cv1'
-	publishDir "${projectDir}", mode:'copy'
-
-	input:
-	path    gtf
-    path    bamfile
-
-    output:
-    path    "*.txt"
-
-	script:
-	"""
-	featureCounts -T 14 -p -t exon -g gene_id -F GTF -a ${gtf} -o counts.txt ${bamfile}
-	"""
-}
-
-process DESEQ2_QC {
-	debug true
-	publishDir "${projectDir}/deseq2_qc_out"
-	input:
-	path count_file /* output from commandline featureCounts */
-
-	output:
-	path "deseq2_qc_out"
-
-	script:
-	"""
-		${projectDir}/bin/deseq2_qc.r -i ${count_file} -f 7 -d Geneid -r "Aligned.sortedByCoord.out.bam" -o "deseq2_qc_out" -c ${params.cpus}
-	"""
-}
-
-process ASPEAK {
-	debug true
-	container 'biocontainers/aspeak:latest'
-	publishDir "${projectDir}/aspeak_out", mode:'copy'
-
-	input:
-	tuple path(beddir), path(bamfile1), path(bamfile2), path(bamfile3)
-
-	output:
-	path "*.txt"
-
-	script:
-	"""
-	scripts/aspeak.pl -lib ${bamfile1} -lib ${bamfile2} -lib ${bamfile3} -beddir ${beddir} -outdir ${projectDir}/aspeak_out -rnaseq ${bamfile1} -control ${bamfile2}
-	"""
-}
 
 workflow RNASEQ {
 	refgenome = file("${projectDir}/*.genome.fa")	
@@ -200,8 +50,6 @@ workflow RNASEQ {
 	FEATURECOUNT(params.gtf, ALIGN.out.collect())
 
 	FEATURECOUNT.out.view()
-
-	DESEQ2_QC( FEATURECOUNT.out.collect() )
 
 	ASPEAK(params.beddir, ALIGN.out.collect()[0], ALIGN.out.collect()[1], ALIGN.out.collect()[2])
 
