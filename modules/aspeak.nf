@@ -1,6 +1,5 @@
 process ASPEAK {
     debug true
-    container 'biocontainers/aspeak:v1.0.0'
     publishDir "${projectDir}/aspeak_out", mode:'copy'
 
     input:

@@ -3,7 +3,6 @@
  * given the genome file
  */
 process STAR_INDEX {
-	container 'biocontainers/rna-star:v2.7.0adfsg-1-deb_cv1'
 	debug true
 	publishDir	"${params.starindex}", mode: 'copy'
 
@@ -23,7 +22,6 @@ process STAR_INDEX {
 
 process ALIGN{
 	fair true
-	container 'biocontainers/rna-star:v2.7.0adfsg-1-deb_cv1'
 	debug true
 	tag "STAR on $sample_id"
 

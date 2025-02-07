@@ -1,6 +1,5 @@
 process TRIM{
 	fair true
-	container 'biocontainers/fastp:v0.20.1_cv1'
 	debug true
 	tag "fastp on $sample_id"
 	publishDir	"${params.trimmeddir}", mode: 'copy'

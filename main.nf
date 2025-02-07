@@ -63,7 +63,10 @@ workflow RNASEQ {
 
 	ASPEAK(params.beddir, ALIGN.out.collect()[0], ALIGN.out.collect()[1], ALIGN.out.collect()[2])
 
-	emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | collect	
+	MULTIQC()
+
+	emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | concat(MULTIQC.out) | collect	
+
 }
 
 workflow  {
