@@ -92,7 +92,7 @@ ENV PATH="/usr/local/samtools-1.9:${PATH}"
 
 # Verify installations
 RUN java -version && \
-    fastqc --version && \
+    /usr/local/bin/FastQC/fastqc --version && \
     multiqc --version && \
     STAR --version && \
     fastp --version && \
