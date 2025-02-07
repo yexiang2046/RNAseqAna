@@ -28,13 +28,15 @@ RUN apt-get update && apt-get install -y \
 RUN cd /usr/local/src && wget https://github.com/samtools/htslib/releases/download/1.9/htslib-1.9.tar.bz2 \
     && tar -vxjf htslib-1.9.tar.bz2 \
     && cd htslib-1.9 \
-    && make
+    && makea \
+    && make install
 
 # Download and build samtools
 RUN cd /usr/local/src && wget https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2 \
     && tar -vxjf samtools-1.9.tar.bz2 \
     && cd samtools-1.9 \
-    && make
+    && make \
+    && make install
 
 # Install MultiQC via pip
 RUN pip3 install multiqc
