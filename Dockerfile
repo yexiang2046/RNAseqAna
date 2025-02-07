@@ -59,14 +59,14 @@ FROM quay.io/biocontainers/perl-math-cdf:0.1--pl5321h7b50bb2_11
 # Set environment variable to suppress interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Java without using apt-get
-RUN wget -O /tmp/openjdk.tar.gz https://download.java.net/openjdk/jdk11/ri/openjdk-11+28_linux-x64_bin.tar.gz \
-    && mkdir -p /usr/local/openjdk-11 \
-    && tar -xzf /tmp/openjdk.tar.gz -C /usr/local/openjdk-11 --strip-components=1 \
-    && rm /tmp/openjdk.tar.gz
+# Install Oracle JRE 1.8.0 without using apt-get
+RUN wget -O /tmp/jre.tar.gz https://javadl.oracle.com/webapps/download/AutoDL?BundleId=244557_d7fc238d0cbf4b0dac67be84580cfb4b \
+    && mkdir -p /usr/local/jre \
+    && tar -xzf /tmp/jre.tar.gz -C /usr/local/jre --strip-components=1 \
+    && rm /tmp/jre.tar.gz
 
 # Set Java environment variables
-ENV JAVA_HOME=/usr/local/openjdk-11
+ENV JAVA_HOME=/usr/local/jre
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 # Copy the necessary libraries from the build stage
