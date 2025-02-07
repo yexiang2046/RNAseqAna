@@ -1,14 +1,27 @@
-# Stage 1: Build stage
-FROM ubuntu:20.04 as build
+FROM ubuntu:20.04
 
 # Set environment variable to suppress interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install necessary packages
-RUN apt-get update && apt-get install -y build-essential wget bzip2 zlib1g-dev libbz2-dev liblzma-dev libncurses5-dev bedtools unzip libisal-dev libdeflate-dev
-
-# Install additional libraries
-RUN apt-get install -y zlib1g libstdc++6
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    wget \
+    bzip2 \
+    zlib1g-dev \
+    libbz2-dev \
+    liblzma-dev \
+    libncurses5-dev \
+    bedtools \
+    unzip \
+    libisal-dev \
+    libdeflate-dev \
+    openjdk-8-jre \
+    zlib1g \
+    libstdc++6 \
+    libbz2-1.0 \
+    liblzma5 \
+    libncurses5
 
 # Download and build htslib
 RUN cd /usr/local/src && wget https://github.com/samtools/htslib/releases/download/1.9/htslib-1.9.tar.bz2 \
@@ -21,7 +34,6 @@ RUN cd /usr/local/src && wget https://github.com/samtools/samtools/releases/down
     && tar -vxjf samtools-1.9.tar.bz2 \
     && cd samtools-1.9 \
     && make
-
 
 # Install MultiQC
 RUN wget -O /usr/local/bin/multiqc.zip https://github.com/ewels/MultiQC/archive/refs/tags/v1.11.zip \
@@ -48,43 +60,11 @@ RUN wget -O /usr/local/bin/subread.tar.gz https://downloads.sourceforge.net/proj
     && tar -xzf /usr/local/bin/subread.tar.gz -C /usr/local/bin/ \
     && ln -s /usr/local/bin/subread-2.0.3-Linux-x86_64/bin/featureCounts /usr/local/bin/featureCounts
 
-# Stage 2: Final stage
-FROM quay.io/biocontainers/perl-math-cdf:0.1--pl5321h7b50bb2_11
-
-# Set environment variable to suppress interactive prompts
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install Oracle JRE 1.8.0 without using apt-get
-RUN wget -O /tmp/jre.tar.gz https://javadl.oracle.com/webapps/download/AutoDL?BundleId=251646_7ed26d28139143f38c58992680c214a5 \
-    && tar -xzf /tmp/jre.tar.gz -C /usr/local/ --strip-components=1 \
-    && rm /tmp/jre.tar.gz
-
 # Install FastQC
 RUN wget -O fastqc.zip https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.12.1.zip \
     && unzip fastqc.zip -d /usr/local/bin/ \
     && chmod +x /usr/local/bin/FastQC/fastqc \
     && ln -s /usr/local/bin/FastQC/fastqc /usr/local/bin/fastqc
-
-# Set Java environment variables
-ENV JAVA_HOME=/usr/local/jre1.8.0_441/bin
-ENV PATH="${JAVA_HOME}/bin:${PATH}"
-
-# Copy the necessary libraries from the build stage
-COPY --from=build /lib/x86_64-linux-gnu/libz.so.1 /lib/x86_64-linux-gnu/libz.so.1
-COPY --from=build /usr/lib/x86_64-linux-gnu/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
-
-# Copy the built binaries from the build stage
-COPY --from=build /usr/local/src/htslib-1.9 /usr/local/htslib-1.9
-COPY --from=build /usr/local/src/samtools-1.9 /usr/local/samtools-1.9
-COPY --from=build /usr/bin/bedtools /usr/bin/bedtools
-COPY --from=build /usr/local/bin/MultiQC-1.11 /usr/local/bin/MultiQC-1.11
-COPY --from=build /usr/local/bin/multiqc /usr/local/bin/multiqc
-COPY --from=build /usr/local/bin/STAR-2.7.9a /usr/local/bin/STAR-2.7.9a
-COPY --from=build /usr/local/bin/STAR /usr/local/bin/STAR
-COPY --from=build /usr/local/bin/fastp-0.23.2 /usr/local/bin/fastp-0.23.2
-COPY --from=build /usr/local/bin/fastp /usr/local/bin/fastp
-COPY --from=build /usr/local/bin/subread-2.0.3-Linux-x86_64 /usr/local/bin/subread-2.0.3-Linux-x86_64
-COPY --from=build /usr/local/bin/featureCounts /usr/local/bin/featureCounts
 
 # Set environment variables
 ENV PATH="/usr/local/htslib-1.9:${PATH}"
@@ -92,7 +72,7 @@ ENV PATH="/usr/local/samtools-1.9:${PATH}"
 
 # Verify installations
 RUN java -version && \
-    /usr/local/bin/FastQC/fastqc --version && \
+    fastqc --version && \
     multiqc --version && \
     STAR --version && \
     fastp --version && \
