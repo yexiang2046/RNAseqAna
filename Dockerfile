@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y \
 RUN cd /usr/local/src && wget https://github.com/samtools/htslib/releases/download/1.9/htslib-1.9.tar.bz2 \
     && tar -vxjf htslib-1.9.tar.bz2 \
     && cd htslib-1.9 \
-    && makea \
+    && make \
     && make install
 
 # Download and build samtools
