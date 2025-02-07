@@ -1,6 +1,9 @@
 # Stage 1: Build stage
 FROM ubuntu:20.04 as build
 
+# Set environment variable to suppress interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Install necessary packages
 RUN apt-get update && apt-get install -y build-essential wget bzip2 zlib1g-dev libbz2-dev liblzma-dev libncurses5-dev bedtools unzip libisal-dev libdeflate-dev openjdk-11-jre-headless
 
