@@ -47,7 +47,7 @@ RUN wget -O /usr/local/bin/fastp.zip https://github.com/OpenGene/fastp/archive/r
 
 # Install subread
 RUN wget -O /usr/local/bin/subread.tar.gz https://downloads.sourceforge.net/project/subread/subread-2.0.3/subread-2.0.3-Linux-x86_64.tar.gz \
-    && tar -xzf /usr/local/bin/subread.tar.gz -C /usr/local/bin/subread-2.0.3-Linux-x86_64 \
+    && tar -xzf /usr/local/bin/subread.tar.gz -C /usr/local/bin/ \
     && ln -s /usr/local/bin/subread-2.0.3-Linux-x86_64/bin/featureCounts /usr/local/bin/featureCounts
 
 # Stage 2: Final stage
