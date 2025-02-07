@@ -61,12 +61,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install Oracle JRE 1.8.0 without using apt-get
 RUN wget -O /tmp/jre.tar.gz https://javadl.oracle.com/webapps/download/AutoDL?BundleId=251646_7ed26d28139143f38c58992680c214a5 \
-    && mkdir -p /usr/local/jre \
-    && tar -xzf /tmp/jre.tar.gz -C /usr/local/jre --strip-components=1 \
+    && tar -xzf /tmp/jre.tar.gz -C /usr/local/ --strip-components=1 \
     && rm /tmp/jre.tar.gz
 
 # Set Java environment variables
-ENV JAVA_HOME=/usr/local/jre
+ENV JAVA_HOME=/usr/local/jre1.8.0_441/bin
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 # Copy the necessary libraries from the build stage
