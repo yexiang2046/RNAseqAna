@@ -61,7 +61,7 @@ RUN wget -O /tmp/jre.tar.gz https://javadl.oracle.com/webapps/download/AutoDL?Bu
 
 # Install FastQC
 RUN wget -O fastqc.zip https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.12.1.zip \
-    && unzip /usr/local/bin/fastqc.zip -d /usr/local/bin/ \
+    && unzip fastqc.zip -d /usr/local/bin/ \
     && chmod +x /usr/local/bin/FastQC/fastqc \
     && ln -s /usr/local/bin/FastQC/fastqc /usr/local/bin/fastqc
 
