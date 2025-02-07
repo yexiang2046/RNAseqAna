@@ -22,11 +22,6 @@ RUN cd /usr/local/src && wget https://github.com/samtools/samtools/releases/down
     && cd samtools-1.9 \
     && make
 
-# Install FastQC
-RUN wget -O /usr/local/bin/fastqc.zip https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.9.zip \
-    && unzip /usr/local/bin/fastqc.zip -d /usr/local/bin/ \
-    && chmod +x /usr/local/bin/FastQC/fastqc \
-    && ln -s /usr/local/bin/FastQC/fastqc /usr/local/bin/fastqc
 
 # Install MultiQC
 RUN wget -O /usr/local/bin/multiqc.zip https://github.com/ewels/MultiQC/archive/refs/tags/v1.11.zip \
@@ -64,6 +59,12 @@ RUN wget -O /tmp/jre.tar.gz https://javadl.oracle.com/webapps/download/AutoDL?Bu
     && tar -xzf /tmp/jre.tar.gz -C /usr/local/ --strip-components=1 \
     && rm /tmp/jre.tar.gz
 
+# Install FastQC
+RUN wget -O fastqc.zip https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.12.1.zip \
+    && unzip /usr/local/bin/fastqc.zip -d /usr/local/bin/ \
+    && chmod +x /usr/local/bin/FastQC/fastqc \
+    && ln -s /usr/local/bin/FastQC/fastqc /usr/local/bin/fastqc
+
 # Set Java environment variables
 ENV JAVA_HOME=/usr/local/jre1.8.0_441/bin
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
@@ -76,8 +77,6 @@ COPY --from=build /usr/lib/x86_64-linux-gnu/libstdc++.so.6 /usr/lib/x86_64-linux
 COPY --from=build /usr/local/src/htslib-1.9 /usr/local/htslib-1.9
 COPY --from=build /usr/local/src/samtools-1.9 /usr/local/samtools-1.9
 COPY --from=build /usr/bin/bedtools /usr/bin/bedtools
-COPY --from=build /usr/local/bin/FastQC /usr/local/bin/FastQC
-COPY --from=build /usr/local/bin/FastQC/fastqc /usr/local/bin/fastqc
 COPY --from=build /usr/local/bin/MultiQC-1.11 /usr/local/bin/MultiQC-1.11
 COPY --from=build /usr/local/bin/multiqc /usr/local/bin/multiqc
 COPY --from=build /usr/local/bin/STAR-2.7.9a /usr/local/bin/STAR-2.7.9a
