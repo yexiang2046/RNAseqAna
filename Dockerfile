@@ -21,26 +21,26 @@ RUN cd /usr/local/src && wget https://github.com/samtools/samtools/releases/down
 
 # Install FastQC
 RUN wget -O /usr/local/bin/fastqc.zip https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.9.zip \
-    && unzip /usr/local/bin/fastqc.zip -d /usr/local/bin/FastQC \
+    && unzip /usr/local/bin/fastqc.zip -d /usr/local/bin/ \
     && chmod +x /usr/local/bin/FastQC/fastqc \
     && ln -s /usr/local/bin/FastQC/fastqc /usr/local/bin/fastqc
 
 # Install MultiQC
 RUN wget -O /usr/local/bin/multiqc.zip https://github.com/ewels/MultiQC/archive/refs/tags/v1.11.zip \
-    && unzip /usr/local/bin/multiqc.zip -d /usr/local/bin/MultiQC-1.11 \
+    && unzip /usr/local/bin/multiqc.zip -d /usr/local/bin/ \
     && chmod +x /usr/local/bin/MultiQC-1.11/multiqc \
     && ln -s /usr/local/bin/MultiQC-1.11/multiqc /usr/local/bin/multiqc
 
 # Install STAR
 RUN wget -O /usr/local/bin/STAR.zip https://github.com/alexdobin/STAR/archive/refs/tags/2.7.9a.zip \
-    && unzip /usr/local/bin/STAR.zip -d /usr/local/bin/STAR-2.7.9a \
+    && unzip /usr/local/bin/STAR.zip -d /usr/local/bin/ \
     && cd /usr/local/bin/STAR-2.7.9a/source \
     && make STAR \
     && ln -s /usr/local/bin/STAR-2.7.9a/bin/Linux_x86_64_static/STAR /usr/local/bin/STAR
 
 # Install fastp
 RUN wget -O /usr/local/bin/fastp.zip https://github.com/OpenGene/fastp/archive/refs/tags/v0.23.2.zip \
-    && unzip /usr/local/bin/fastp.zip -d /usr/local/bin/fastp-0.23.2 \
+    && unzip /usr/local/bin/fastp.zip -d /usr/local/bin/ \
     && cd /usr/local/bin/fastp-0.23.2 \
     && make \
     && ln -s /usr/local/bin/fastp-0.23.2/fastp /usr/local/bin/fastp
