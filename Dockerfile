@@ -48,7 +48,7 @@ RUN wget -O /usr/local/bin/subread.tar.gz https://downloads.sourceforge.net/proj
     && ln -s /usr/local/bin/subread-2.0.3-Linux-x86_64/bin/featureCounts /usr/local/bin/featureCounts
 
 # Stage 2: Final stage
-FROM ubuntu:20.04
+FROM quay.io/biocontainers/perl-math-cdf:0.1--pl5321h7b50bb2_11
 
 # Copy the necessary libraries from the build stage
 COPY --from=build /lib/x86_64-linux-gnu/libz.so.1 /lib/x86_64-linux-gnu/libz.so.1
