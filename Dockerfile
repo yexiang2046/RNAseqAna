@@ -92,7 +92,8 @@ ENV PATH="/usr/local/htslib-1.9:${PATH}"
 ENV PATH="/usr/local/samtools-1.9:${PATH}"
 
 # Verify installations
-RUN fastqc --version && \
+RUN java --version && \
+    fastqc --version && \
     multiqc --version && \
     STAR --version && \
     fastp --version && \
