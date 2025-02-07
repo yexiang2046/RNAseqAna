@@ -21,7 +21,8 @@ RUN apt-get update && apt-get install -y \
     libstdc++6 \
     libbz2-1.0 \
     liblzma5 \
-    libncurses5
+    libncurses5 \
+    python3-pip
 
 # Download and build htslib
 RUN cd /usr/local/src && wget https://github.com/samtools/htslib/releases/download/1.9/htslib-1.9.tar.bz2 \
@@ -35,11 +36,8 @@ RUN cd /usr/local/src && wget https://github.com/samtools/samtools/releases/down
     && cd samtools-1.9 \
     && make
 
-# Install MultiQC
-RUN wget -O /usr/local/bin/multiqc.zip https://github.com/ewels/MultiQC/archive/refs/tags/v1.11.zip \
-    && unzip /usr/local/bin/multiqc.zip -d /usr/local/bin/ \
-    && chmod +x /usr/local/bin/MultiQC-1.11/multiqc \
-    && ln -s /usr/local/bin/MultiQC-1.11/multiqc /usr/local/bin/multiqc
+# Install MultiQC via pip
+RUN pip3 install multiqc
 
 # Install STAR
 RUN wget -O /usr/local/bin/STAR.zip https://github.com/alexdobin/STAR/archive/refs/tags/2.7.9a.zip \
