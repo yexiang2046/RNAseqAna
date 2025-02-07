@@ -5,7 +5,7 @@ FROM ubuntu:20.04 as build
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install necessary packages
-RUN apt-get update && apt-get install -y build-essential wget bzip2 zlib1g-dev libbz2-dev liblzma-dev libncurses5-dev bedtools unzip libisal-dev libdeflate-dev openjdk-11-jre-headless
+RUN apt-get update && apt-get install -y build-essential wget bzip2 zlib1g-dev libbz2-dev liblzma-dev libncurses5-dev bedtools unzip libisal-dev libdeflate-dev
 
 # Install additional libraries
 RUN apt-get install -y zlib1g libstdc++6
@@ -55,6 +55,19 @@ RUN wget -O /usr/local/bin/subread.tar.gz https://downloads.sourceforge.net/proj
 
 # Stage 2: Final stage
 FROM quay.io/biocontainers/perl-math-cdf:0.1--pl5321h7b50bb2_11
+
+# Set environment variable to suppress interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install Java without using apt-get
+RUN wget -O /tmp/openjdk.tar.gz https://download.java.net/openjdk/jdk11/ri/openjdk-11+28_linux-x64_bin.tar.gz \
+    && mkdir -p /usr/local/openjdk-11 \
+    && tar -xzf /tmp/openjdk.tar.gz -C /usr/local/openjdk-11 --strip-components=1 \
+    && rm /tmp/openjdk.tar.gz
+
+# Set Java environment variables
+ENV JAVA_HOME=/usr/local/openjdk-11
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 # Copy the necessary libraries from the build stage
 COPY --from=build /lib/x86_64-linux-gnu/libz.so.1 /lib/x86_64-linux-gnu/libz.so.1
