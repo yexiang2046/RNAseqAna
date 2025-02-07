@@ -59,10 +59,14 @@ workflow RNASEQ {
 
 	FEATURECOUNT.out.view()
 
-	ASPEAK(params.beddir, ALIGN.out.collect()[0], ALIGN.out.collect()[1], ALIGN.out.collect()[2])
+	    // Collect all outputs for MultiQC
+    Channel
+        .from([FASTQC.out, TRIM.out, ALIGN.out, FEATURECOUNT.out, ASPEAK.out])
+        .flatten()
+        .set { multiqc_input }
 
-	MULTIQC()
-	MULTIQC.out.view()
+    MULTIQC(multiqc_input)
+    MULTIQC.out.view()
 
 }
 
