@@ -58,10 +58,14 @@ workflow RNASEQ {
 
 	FEATURECOUNT.out.view()
 
-	
-    MULTIQC(".")
-    MULTIQC.out.view()
+	    // Collect all outputs for MultiQC
+    Channel
+        .from([FASTQC.out, TRIM.out, ALIGN.out, FEATURECOUNT.out])
+        .flatten()
+        .set { multiqc_input }
 
+    MULTIQC(multiqc_input)
+    MULTIQC.out.view()
 }
 
 workflow  {
