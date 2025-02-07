@@ -2,7 +2,7 @@
 FROM ubuntu:20.04 as build
 
 # Install necessary packages
-RUN apt-get update && apt-get install -y build-essential wget bzip2 zlib1g-dev libbz2-dev liblzma-dev libncurses5-dev bedtools unzip libisal-dev libdeflate-dev
+RUN apt-get update && apt-get install -y build-essential wget bzip2 zlib1g-dev libbz2-dev liblzma-dev libncurses5-dev bedtools unzip libisal-dev libdeflate-dev openjdk-11-jre-headless
 
 # Install additional libraries
 RUN apt-get install -y zlib1g libstdc++6
@@ -77,13 +77,7 @@ ENV PATH="/usr/local/htslib-1.9:${PATH}"
 ENV PATH="/usr/local/samtools-1.9:${PATH}"
 
 # Verify installations
-RUN chmod +x /usr/local/bin/FastQC/fastqc && \
-    chmod +x /usr/local/bin/fastqc && \
-    chmod +x /usr/local/bin/multiqc && \
-    chmod +x /usr/local/bin/STAR && \
-    chmod +x /usr/local/bin/fastp && \
-    chmod +x /usr/local/bin/featureCounts && \
-    fastqc --version && \
+RUN fastqc --version && \
     multiqc --version && \
     STAR --version && \
     fastp --version && \
