@@ -60,7 +60,7 @@ FROM quay.io/biocontainers/perl-math-cdf:0.1--pl5321h7b50bb2_11
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install Oracle JRE 1.8.0 without using apt-get
-RUN wget -O /tmp/jre.tar.gz https://javadl.oracle.com/webapps/download/AutoDL?BundleId=244557_d7fc238d0cbf4b0dac67be84580cfb4b \
+RUN wget -O /tmp/jre.tar.gz https://javadl.oracle.com/webapps/download/AutoDL?BundleId=251646_7ed26d28139143f38c58992680c214a5 \
     && mkdir -p /usr/local/jre \
     && tar -xzf /tmp/jre.tar.gz -C /usr/local/jre --strip-components=1 \
     && rm /tmp/jre.tar.gz
