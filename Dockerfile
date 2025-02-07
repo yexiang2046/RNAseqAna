@@ -4,6 +4,9 @@ FROM ubuntu:20.04 as build
 # Install necessary packages
 RUN apt-get update && apt-get install -y build-essential wget bzip2 zlib1g-dev libbz2-dev liblzma-dev libncurses5-dev bedtools unzip libisal-dev libdeflate-dev
 
+# Install additional libraries
+RUN apt-get install -y zlib1g libstdc++6
+
 # Download and build htslib
 RUN cd /usr/local/src && wget https://github.com/samtools/htslib/releases/download/1.9/htslib-1.9.tar.bz2 \
     && tar -vxjf htslib-1.9.tar.bz2 \
