@@ -31,8 +31,6 @@ println "STAR Index: ${params.starindex}"
 println "Trimmed Directory: ${params.trimmeddir}"
 println "Aligned Directory: ${params.aligneddir}"
 println "GTF File: ${params.gtf}"
-println "Reference Genome Link: ${params.refgenomelink}"
-println "Reference GTF Link: ${params.refgtflink}"
 
 
 workflow RNASEQ {
@@ -64,8 +62,7 @@ workflow RNASEQ {
 	ASPEAK(params.beddir, ALIGN.out.collect()[0], ALIGN.out.collect()[1], ALIGN.out.collect()[2])
 
 	MULTIQC()
-
-	emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | concat(MULTIQC.out) | collect	
+	MULTIQC.out.view()
 
 }
 
