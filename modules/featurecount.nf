@@ -4,7 +4,7 @@ process FEATURECOUNT {
 	publishDir "${projectDir}", mode:'copy'
 
 	input:
-	path    gtf
+	val    gtf
     path    bamfile
 
     output:
@@ -12,6 +12,6 @@ process FEATURECOUNT {
 
 	script:
 	"""
-	featureCounts -T 14 -p -t exon -g gene_id -F GTF -a ${gtf} -o counts.txt ${bamfile}
+	featureCounts -T 14 -p -t exon -g gene_id -F GTF -a ${projectDir}/${gtf} -o counts.txt ${bamfile}
 	"""
 }
