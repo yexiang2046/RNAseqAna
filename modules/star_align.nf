@@ -45,6 +45,6 @@ process ALIGN{
     	--alignIntronMin 20 --alignIntronMax 1000000 --alignMatesGapMax 1000000         \
     	--outFilterType BySJout --outSAMattributes NH HI AS NM MD \
     	--outSAMtype BAM SortedByCoordinate --sjdbScore 1     \
-		--limitBAMsortRAM ${params.ram} --outFileNamePrefix ${sample_id}
+	--limitBAMsortRAM 1000409716 --outFileNamePrefix ${sample_id}
 	"""
 }
