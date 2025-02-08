@@ -5,7 +5,7 @@ include { ALIGN } from './modules/star_align.nf'
 include { FASTQC } from './modules/fastqc.nf'
 include { TRIM } from './modules/fastp_trim.nf'
 include { FEATURECOUNT } from './modules/featurecount.nf'
-include { MULTIQC } from './modules/multiqc.nf'
+
 
 params.cpus = 12 
 params.ram = 60000000000 /* ~60GB */
@@ -55,17 +55,8 @@ workflow RNASEQ {
 	ALIGN.out.view()
 
 	FEATURECOUNT(params.gtf, ALIGN.out.collect())
-
 	FEATURECOUNT.out.view()
 
-	    // Collect all outputs for MultiQC
-    Channel
-        .from([FASTQC.out, TRIM.out, ALIGN.out, FEATURECOUNT.out])
-        .flatten()
-        .set { multiqc_input }
-
-    MULTIQC(multiqc_input)
-    MULTIQC.out.view()
 }
 
 workflow  {
