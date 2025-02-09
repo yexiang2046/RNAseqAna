@@ -4,7 +4,7 @@
  */
 process STAR_INDEX {
 	debug true
-	publishDir	"${params.starindex}", mode: 'copy'
+	publishDir	"${params.output}/star_index", mode: 'copy'
 
 	input:
 	path refgenome
@@ -25,7 +25,7 @@ process ALIGN{
 	debug true
 	tag "STAR on $sample_id"
 
-	publishDir "${params.aligneddir}", mode: 'copy'
+	publishDir "${params.output}/aligned", mode: 'copy'
 
 	maxForks 3
 

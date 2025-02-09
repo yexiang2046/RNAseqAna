@@ -1,6 +1,6 @@
 process ASPEAK {
     debug true
-    publishDir "${projectDir}/aspeak_out", mode:'copy'
+    publishDir "${params.output}/aspeak_out", mode:'copy'
 
     input:
     tuple path(rnaseq_bamfile), path(rip_bamfile), path(beddir)
@@ -11,6 +11,6 @@ process ASPEAK {
 
     script:
     """
-    ./ASPeak/scripts/aspeak.pl -lib ${rnaseq_bamfile} -lib ${rip_bamfile} -beddir ${beddir} -outdir ${projectDir}/aspeak_out -rnaseq ${rnaseq_bamfile}
+    ./ASPeak/scripts/aspeak.pl -lib ${rip_bamfile} -lib ${rip_bamfile} -beddir ${beddir} -outdir ${projectDir}/aspeak_out -rnaseq ${rnaseq_bamfile}
     """
 }

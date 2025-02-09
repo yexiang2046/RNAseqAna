@@ -1,6 +1,6 @@
 process MULTIQC {
 	debug true
-	publishDir "${params.projectDir}", mode:'copy'
+	publishDir "${params.output}/multiqc_out", mode:'copy'
 
 	input:
 	path '*'

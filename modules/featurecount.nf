@@ -1,7 +1,7 @@
 
 process FEATURECOUNT {
 	debug true
-	publishDir "${projectDir}", mode:'copy'
+	publishDir "${params.output}", mode:'copy'
 
 	input:
 	val    gtf

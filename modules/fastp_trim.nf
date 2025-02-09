@@ -2,7 +2,7 @@ process TRIM{
 	fair true
 	debug true
 	tag "fastp on $sample_id"
-	publishDir	"${params.trimmeddir}", mode: 'copy'
+	publishDir	"${params.output}/trimmed", mode: 'copy'
 
 	maxForks 3
 
