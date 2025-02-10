@@ -1,0 +1,110 @@
+# Parameter File
+# These parameters are read by the main script and are given
+# as command line arguments  to the other scripts
+#		    
+#             
+# There needs to be a space on both sides of "=" to specify parameters
+#
+# The order of the parameters is important. 
+# So please keep the same order above
+# 
+#
+# PARAMETER LIST:  
+# Main directory
+
+#MainDir  = .
+# Directory containing the perl scripts
+
+ExecDir  = $MainDir/scripts
+# 0: Run Standalone
+# 1: Run in Cluster
+RunInCluster   = 0
+
+Nodes          = 950
+
+# Cluster Queue
+# Default is ANY in which case jobs will be submitted to any available node.
+Queue    = ANY
+
+### To run a step set the corresponing step value to 1 otherwise 0
+StepCheckParams      = 1
+StepGetChroms        = 1
+StepConvert2Bed      = 1
+StepCountMappedReads = 1
+StepRegionSeparation = 1
+StepChromSeparation  = 1
+StepPrepInput        = 1
+StepMakeRPKM         = 1
+StepNBParameters     = 1
+StepPeak             = 1
+StepCombinePeaks     = 1
+StepCalcFDR          = 1
+StepPeaks2Bed        = 1
+StepMakeBedGraph     = 1
+StepWigToBigWig      = 1
+StepSubmitJobs       = 1
+
+#### If you want to silence the explanation when you run the program set Explanations or Debgug to 0
+Explanations         = 1
+Debug                = 1
+
+Strand               = 0
+db                   = hg18
+nornaseq             = 0
+
+#################################################################
+# Input Directories
+#
+#InputDir           = /home/kucukura/scratch/peakCLIP/input
+
+##  Bed directory for region annotations
+BedDir             = $MainDir/bed/hg18
+
+#Input files
+#LibName             = myclip
+#Lib                 = $InputDir/clip.bowout
+#LibFormat          = sam
+#ControlName        = none
+#Control             = $InputDir/control.bowout
+#ControlFormat      = none
+#RNASeqName          = RNASeq
+#RNASeq              = $InputDir/RNASeq_TOTAL.bowout
+#RNASeq             = none
+#RNASeqFormat       = none
+
+#################################################################
+# Output Directories:
+# For each region the peaks will be called separately, if there are more than one
+# region is defined under BedDir directory, the peaks outputs will be written into
+# corresponding directory Outdir/[region].
+# IMPORTANT: [region] will be replaced with corresponding region name from the name 
+# of the file defined under BedDir. Ex: if it is defined BedDir/utr3.bed
+# The output for this region can be found under Outdir/utr3.
+# Please use full path for the output directory!!!
+
+OutDir = out
+
+# Execution summary files are written in this folder
+LogDir = $OutDir/LOGS
+
+
+# No spaces between the commas
+# If no lambda file is specified, then for each position i, the lambdas will be taken
+# around some eps neighborhood, [i-eps,i+eps] by averaging the counts (in the wig  file) on this interval.
+# The possible eps values are given in frameDiameters.
+# For each i, some average values will be computed according to each given eps and the maximum
+# will be  the lambda of i. The possible eps values are given separated by commas
+frameRadii = 1000,5000,10000
+
+
+# In the estimation of the parameters of the Negative Binomial (NB) distribution,
+# the intervals are sorted by their rpkm value.
+# For each interval estimationRadius many intervals above and estimationRadius intervals below the interval are taken.
+# Among these interals the top 5% having the highest average read counts and 
+# the bottom 5% having the lowest average read counts are removed to avoid outlier effects.
+# This parameter is optional. When not given, 500 is taken to be its default value.
+estimationRadius = 500
+
+# Number of tolerated gaps in the peaks
+# There can be at most gapNumber many consecutive insignificant reads in a peak
+gapNumber = 6
