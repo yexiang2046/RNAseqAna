@@ -1,23 +1,46 @@
 # Stage 1: Build stage
-FROM ubuntu:20.04 as build
+FROM ubuntu:20.04 AS build
 
-# Install necessary packages
-RUN apt-get update && apt-get install -y build-essential wget bzip2 zlib1g-dev libbz2-dev liblzma-dev libncurses5-dev bedtools
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    bedtools \
+    libbz2-1.0 \
+    libbz2-dev \
+    liblzma5 \
+    liblzma-dev \
+    libncursesw6 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install ncurses development headers (required for htslib)
-RUN apt-get install -y libncurses-dev
+# Install samtools and htslib
+RUN apt-get update && apt-get install -y \
+    autoconf \
+    automake \
+    build-essential \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libncurses5-dev \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Download and build htslib
-RUN cd /usr/local/src && wget https://github.com/samtools/htslib/releases/download/1.9/htslib-1.9.tar.bz2 \
-    && tar -vxjf htslib-1.9.tar.bz2 \
+# Build htslib
+RUN cd /usr/local/src \
+    && wget https://github.com/samtools/htslib/archive/refs/tags/1.9.tar.gz \
+    && tar -xzf 1.9.tar.gz \
+    && rm 1.9.tar.gz \
     && cd htslib-1.9 \
-    && make
+    && make \
+    && make install
 
-# Download and build samtools
-RUN cd /usr/local/src && wget https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2 \
-    && tar -vxjf samtools-1.9.tar.bz2 \
+# Build samtools
+RUN cd /usr/local/src \
+    && wget https://github.com/samtools/samtools/archive/refs/tags/1.9.tar.gz \
+    && tar -xzf 1.9.tar.gz \
+    && rm 1.9.tar.gz \
     && cd samtools-1.9 \
-    && make
+    && ln -s /usr/local/src/htslib-1.9 htslib \
+    && make \
+    && make install
 
 # Stage 2: Final stage
 FROM quay.io/biocontainers/perl-math-cdf:0.1--pl5321h7b50bb2_11
@@ -41,6 +64,7 @@ ENV PATH="/usr/local/htslib-1.9:${PATH}"
 ENV PATH="/usr/local/samtools-1.9:${PATH}"
 ENV PATH="/usr/bin:${PATH}"
 
+# Copy the ASPeak source code
 COPY . /usr/src/ASPEAK
 WORKDIR /usr/src/ASPEAK
 
