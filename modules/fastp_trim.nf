@@ -2,6 +2,9 @@ process TRIM{
 	fair true
 	debug true
 	tag "fastp on $sample_id"
+	memory '16 GB'  
+    	cpus 4 
+	containerOptions '-shm-size 10gb'
 	publishDir	"${params.output}/trimmed", mode: 'copy'
 
 	maxForks 3

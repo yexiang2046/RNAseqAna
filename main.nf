@@ -14,7 +14,7 @@ params.starindex = "$projectDir/star_index"
 params.trimmeddir = "$projectDir/trimmed"
 
 params.aligneddir = "$projectDir/aligned"
-/* params.refgenome = "$projectDir/GRCh38.primary_assembly.genome.fa" */
+params.refgenome = "$projectDir/GRCh38_VACV.genome.fa"
 params.gtf = "$projectDir/gencode.v38.primary_assembly.annotation.gtf"
 
 params.refgenomelink = "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_47/GRCh38.primary_assembly.genome.fa.gz"
@@ -33,15 +33,12 @@ println "GTF File: ${params.gtf}"
 
 
 workflow RNASEQ {
-	refgenome = file("${projectDir}/*.genome.fa")	
-
-	
 	Channel
 	   	.fromFilePairs("${projectDir}/data/*{1,2}_001.fastq.gz", checkIfExists: true)
 	   	.set { read_pairs_ch }
 	read_pairs_ch.view()
 
-	STAR_INDEX(refgenome)
+	STAR_INDEX(params.refgenome)
 	STAR_INDEX.out.view()
 
 

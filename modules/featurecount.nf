@@ -2,6 +2,7 @@
 process FEATURECOUNT {
 	debug true
 	publishDir "${params.output}", mode:'copy'
+	containerOptions '-shm-size 10gb'
 
 	input:
 	val    gtf

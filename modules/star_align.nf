@@ -5,6 +5,9 @@
 process STAR_INDEX {
 	debug true
 	publishDir	"${params.output}/star_index", mode: 'copy'
+	memory '32 GB'
+	cpus 4
+	containerOptions '-shm-size 32gb'
 
 	input:
 	path refgenome
@@ -24,10 +27,13 @@ process ALIGN{
 	fair true
 	debug true
 	tag "STAR on $sample_id"
+	memory '32 GB'
+	cpus 4
+	containerOptions '-shm-size 32gb'
 
 	publishDir "${params.output}/aligned", mode: 'copy'
 
-	maxForks 3
+	maxForks 1
 
 	input:
 	path star_index
