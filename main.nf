@@ -31,6 +31,8 @@ params.aligneddir = "$projectDir/aligned"
  * given the project directory
  */
 
+
+
 workflow RNASEQ {
 	refgenome = file("${projectDir}/*.genome.fa")	
 
@@ -60,10 +62,13 @@ workflow RNASEQ {
 	// Define input channels
     Channel.fromPath('counts.txt').set { counts_ch }
     Channel.fromPath('metadata.txt').set { metadata_ch }
-    Channel.fromPath('de_results').set { output_ch }
+    Channel.fromPath('de_results/*_DEG_*.csv').set { de_results_ch }
 
     // Run DE analysis
-    DE_ANALYSIS(counts_ch, metadata_ch, output_ch)
+    DE_ANALYSIS(counts_ch, metadata_ch, de_results_ch)
+
+    // Run Functional Analysis
+    FUNCTIONAL_ANALYSIS(de_results_ch)
 
 	emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | collect	
 }
