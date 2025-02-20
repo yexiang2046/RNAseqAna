@@ -3,14 +3,13 @@
 /*
  * import the modules
  */
-include {
-	modules.fastqc
-	modules.fastp_trim
-	modules.star_align
-	modules.featurecount
-	modules.de_analysis
-	modules.multiqc
-}
+include { FASTQC } from './modules/fastqc.nf'
+include { STAR_INDEX; ALIGN } from './modules/star_align.nf'
+include { TRIM } from './modules/fastp_trim.nf'
+include { FEATURECOUNT } from './modules/featurecount.nf'
+include { MULTIQC } from './modules/multiqc.nf'
+include { DE_ANALYSIS } from './modules/de_analysis.nf'
+include { FUNCTIONAL_ANALYSIS } from './modules/functional_analysis.nf'
 
 /*
  * define the parameters
@@ -23,7 +22,10 @@ params.projectDir = "/home/xiang/Projects/RNAseqAna"
 params.starindex = "$projectDir/star_index"
 params.trimmeddir = "$projectDir/trimmed"
 params.aligneddir = "$projectDir/aligned"
+params.gtf = "$projectDir/gencode.v47.primary_assembly.basic.annotation.gtf"
 
+
+params.metadata = "$projectDir/metadata.txt"
 
 
 /*
@@ -52,25 +54,21 @@ workflow RNASEQ {
 	TRIM(read_pairs_ch)
 	TRIM.out.view()
 
-	ALIGN(STAR_INDEX.out.collect(), TRIM.out)
+	ALIGN(STAR_INDEX.out, TRIM.out)
 	ALIGN.out.view()
 
 	FEATURECOUNT(params.gtf, ALIGN.out.collect())
 
 	FEATURECOUNT.out.view()
 
-	// Define input channels
-    Channel.fromPath('counts.txt').set { counts_ch }
-    Channel.fromPath('metadata.txt').set { metadata_ch }
-    Channel.fromPath('de_results/*_DEG_*.csv').set { de_results_ch }
 
     // Run DE analysis
-    DE_ANALYSIS(counts_ch, metadata_ch, de_results_ch)
+    DE_ANALYSIS(FEATURECOUNT.out, params.metadata)
 
     // Run Functional Analysis
-    FUNCTIONAL_ANALYSIS(de_results_ch)
+    // FUNCTIONAL_ANALYSIS(de_results_ch)
 
-	emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | collect	
+	// emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | collect	
 }
 
 workflow  {

@@ -4,8 +4,8 @@
  */
 process MULTIQC {
 	debug true
-	container 'nfcore/rnaseq:1.4.2'
-	publishDir "${params.projectDir}", mode:'copy'
+	container 'xiang2019/rnaseq_cmd:v1.0.0'
+	publishDir "${params.projectDir}/multiqc_report", mode:'copy'
 
 	input:
 	path '*'

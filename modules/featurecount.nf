@@ -4,8 +4,8 @@
  */
 process FEATURECOUNT {
 	debug true
-	container 'biocontainers/subread:v1.6.3dfsg-1-deb_cv1'
-	publishDir "${projectDir}", mode:'copy'
+	container 'xiang2019/rnaseq_cmd:v1.0.0'
+	publishDir "${projectDir}/feature_counts", mode:'copy'
 
 	input:
 	path    gtf

@@ -4,8 +4,8 @@
  */
 process DE_ANALYSIS {
     debug true
-    container 'xiang2019/rnaseq_renv:v1.0.0'
-	publishDir "${projectDir}/de_results", mode:'copy'
+    container 'xiang2019/rnaseq_renv:v1.0.1'
+	publishDir "${projectDir}", mode:'copy'
     input:
     path counts_file
     path metadata_file
@@ -17,6 +17,6 @@ process DE_ANALYSIS {
 
     script:
     """
-    Rscript path/to/differential_expression_analysis.R --counts $counts_file --metadata $metadata_file --output "de_results"
+    edger.r --counts $counts_file --metadata $metadata_file --output "de_results"
     """
 }

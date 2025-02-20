@@ -18,6 +18,7 @@ opt <- parse_args(OptionParser(option_list = option_list))
 
 # Load count data and metadata
 counts <- read.table(opt$counts, header = TRUE, row.names = 1)
+counts <- counts[ , 7:dim(counts)[2]]
 metaData <- read.table(opt$metadata, header = TRUE)
 
 # Create DGEList object

@@ -4,12 +4,12 @@
  */
 process TRIM{
 	fair true
-	container 'biocontainers/fastp:v0.20.1_cv1'
+	container 'xiang2019/rnaseq_cmd:v1.0.0'
 	debug true
 	tag "fastp on $sample_id"
-	publishDir	"${params.trimmeddir}", mode: 'copy'
+	publishDir	"${projectDir}/trimmed", mode: 'copy'
 
-	maxForks 3
+	maxForks 1
 
 	input:
 	tuple	val(sample_id), path(reads)

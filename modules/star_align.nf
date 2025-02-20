@@ -4,9 +4,9 @@
  * given the genome file
  */
 process STAR_INDEX {
-	container 'biocontainers/rna-star:v2.7.0adfsg-1-deb_cv1'
+	container 'xiang2019/rnaseq_cmd:v1.0.0'
 	debug true
-	publishDir	"${params.starindex}", mode: 'copy'
+	publishDir	"${projectDir}", mode: 'copy'
 
 	input:
 	path refgenome
@@ -30,13 +30,13 @@ process STAR_INDEX {
 
 process ALIGN{
 	fair true
-	container 'biocontainers/rna-star:v2.7.0adfsg-1-deb_cv1'
+	container 'xiang2019/rnaseq_cmd:v1.0.0'
 	debug true
 	tag "STAR on $sample_id"
 
-	publishDir "${params.aligneddir}", mode: 'copy'
+	publishDir "${projectDir}/aligned", mode: 'copy'
 
-	maxForks 3
+	maxForks 1
 
 	input:
 	path star_index
