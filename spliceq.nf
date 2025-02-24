@@ -6,7 +6,7 @@ workflow SPLICE_Q {
     Channel.fromPath('*.gtf').set { annotation }
 
     // Read BAM files into a channel
-    Channel.fromPath('*.bam').set { bamfile }
+    Channel.fromPath('aligned/*.bam').set { bamfile }
 
     // Use the same GTF file for all BAM files
     SPLICEQ(bamfile, annotation)
