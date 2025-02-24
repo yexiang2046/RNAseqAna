@@ -18,12 +18,15 @@ opt <- parse_args(OptionParser(option_list = option_list))
 
 # Load count data and metadata
 counts <- read.table(opt$counts, header = TRUE, row.names = 1)
-counts <- counts[ , 7:dim(counts)[2]]
+# Extract gene expression counts (columns 7 onwards) 
+counts_matrix <- counts[,7:ncol(counts)]
+# Keep annotation columns separately if needed
+gene_annotations <- counts[,1:6]
 metaData <- read.table(opt$metadata, header = TRUE)
 
 # Create DGEList object
 group <- factor(metaData$group)
-y <- DGEList(counts = counts, group = group)
+y <- DGEList(counts = counts_matrix, group = group)
 
 # Filter lowly expressed genes
 keep <- filterByExpr(y)

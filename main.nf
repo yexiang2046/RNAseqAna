@@ -11,6 +11,7 @@ include { MULTIQC } from './modules/multiqc.nf'
 include { DE_ANALYSIS } from './modules/de_analysis.nf'
 include { FUNCTIONAL_ANALYSIS } from './modules/functional_analysis.nf'
 
+
 /*
  * define the parameters
  */
@@ -40,7 +41,7 @@ workflow RNASEQ {
 
 	
 	Channel
-	   	.fromFilePairs("${projectDir}/data/*{1,2}_001.fastq.gz", checkIfExists: true)
+	   	.fromFilePairs("${projectDir}/data/*{1,2}*.fastq.gz", checkIfExists: true)
 	   	.set { read_pairs_ch }
 	read_pairs_ch.view()
 
@@ -48,8 +49,8 @@ workflow RNASEQ {
 	STAR_INDEX.out.view()
 
 
-	FASTQC(read_pairs_ch)
-	FASTQC.out.view()
+	// FASTQC(read_pairs_ch)
+	// FASTQC.out.view()
 	
 	TRIM(read_pairs_ch)
 	TRIM.out.view()
@@ -61,13 +62,19 @@ workflow RNASEQ {
 
 	FEATURECOUNT.out.view()
 
+	// Define input channels
+    Channel.fromPath('counts.txt').set { counts_ch }
+    Channel.fromPath('metadata.txt').set { metadata_ch }
 
     // Run DE analysis
     DE_ANALYSIS(FEATURECOUNT.out, params.metadata)
+    // DE_ANALYSIS(counts_ch, metadata_ch)
 
     // Run Functional Analysis
     // FUNCTIONAL_ANALYSIS(de_results_ch)
+    // FUNCTIONAL_ANALYSIS(DE_ANALYSIS.out)
 
+	// emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | collect	
 	// emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | collect	
 }
 

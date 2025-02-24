@@ -9,7 +9,7 @@ process DE_ANALYSIS {
     input:
     path counts_file
     path metadata_file
-
+    
     output:
     path "*.csv"
     path "PCA_plot.png"
