@@ -11,7 +11,7 @@ process SPLICEQ {
 
 	script:
 	"""
-	bash bin/spliceq.sh $bamfile $annotation
+	bash spliceq.sh $bamfile $annotation
 	"""
 	
 }
