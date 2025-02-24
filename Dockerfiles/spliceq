@@ -1,8 +1,7 @@
 FROM python:3.10-slim
-#xiang2019/spliceq:v1.0.0
+# xiang2019/spliceq:v1.0.0
 
-RUN pip install SPLICE-q
+# Install Python packages
+RUN pip install SPLICE-q pysam interlap numpy rich
 
 RUN SPLICE-q.py --help
-
-
