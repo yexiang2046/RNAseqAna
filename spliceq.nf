@@ -5,10 +5,10 @@ params.gtf = "$projectDir/gencode.v38.primary_assembly.annotation.gtf"
 
 workflow SPLICE_Q {
     // Read BAM files into a channel
-    Channel.fromPath('aligned/*.bam').set { bamfile }
+    Channel.fromPath('aligned/*.bam').set { bamfile, bamfileName }
 
     // Use the same GTF file for all BAM files
-    SPLICEQ(bamfile, params.gtf, bamfile.name.replace('.bam', ''))
+    SPLICEQ(bamfile, params.gtf, bamfileName.replace('.bam', ''))
 }
 
 workflow {
