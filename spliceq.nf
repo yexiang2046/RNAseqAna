@@ -1,5 +1,6 @@
 include { SPLICEQ } from './modules/spliceq.nf'
-workflow SPLICE_Q {
+
+workflow {
 
     // Read the GTF file into a single channel
     Channel.fromPath('*.gtf').set { annotation }
@@ -8,11 +9,7 @@ workflow SPLICE_Q {
     Channel.fromPath('*.bam').set { bamfile }
 
     // Use the same GTF file for all BAM files
-    bamfile
-        .combine(annotation)
-        .set { bamfile_with_annotation }
-
-    SPLICEQ(bamfile_with_annotation)
+    SPLICEQ(bamfile, annotation)
 }
 
 workflow {
