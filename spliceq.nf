@@ -9,7 +9,7 @@ workflow SPLICE_Q {
         .fromPath('aligned/*.bam')
         .map { file -> 
         def name = file.getName().replace('.bam', '')
-        return [file, name]
+        tuple(file, name)
         }
         .set { bamfile, bamfileName }
 
