@@ -1,4 +1,3 @@
-
 include { SPLICEQ } from './modules/spliceq.nf'
 workflow SPLICE_Q {
 
