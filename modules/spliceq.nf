@@ -4,7 +4,7 @@ process SPLICEQ {
 	publishDir "${params.projectDir/spliceq_out}", mode:'copy'
 	
 	input:
-	path bamfile
+	tuple val(sample_id), path(bamfile)
 	path annotation
 
 	output:
@@ -12,7 +12,7 @@ process SPLICEQ {
 
 	script:
 	"""
-	bash spliceq.sh $bamfile $annotation
+	bash spliceq.sh $bamfile $annotation $sample_id
 	"""
 	
 }
