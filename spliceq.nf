@@ -1,6 +1,6 @@
 
 include { SPLICEQ } from './modules/spliceq.nf'
-workflow SPLICEQ {
+workflow SPLICE_Q {
 
     // Read the GTF file into a single channel
     Channel.fromPath('*.gtf').set { annotation }
@@ -17,5 +17,5 @@ workflow SPLICEQ {
 }
 
 workflow {
-    SPLICEQ()
+    SPLICE_Q()
 }
