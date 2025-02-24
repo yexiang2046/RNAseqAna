@@ -4,8 +4,9 @@ process SPLICEQ {
 	publishDir "${params.projectDir/spliceq_out}", mode:'copy'
 	
 	input:
-	tuple val(sample_id), path(bamfile)
+	path(bamfile)
 	path annotation
+	val(sample_id)
 
 	output:
 	path "*.tsv"

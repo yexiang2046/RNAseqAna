@@ -8,7 +8,7 @@ workflow SPLICE_Q {
     Channel.fromPath('aligned/*.bam').set { bamfile }
 
     // Use the same GTF file for all BAM files
-    SPLICEQ(bamfile, params.gtf)
+    SPLICEQ(bamfile, params.gtf, bamfile.name.replace('.bam', ''))
 }
 
 workflow {
