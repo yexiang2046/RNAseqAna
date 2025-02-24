@@ -11,10 +11,10 @@ workflow SPLICE_Q {
         def name = file.getName().replace('.bam', '')
         tuple(file, name)
         }
-        .set { bamfile, bamfileName }
+        .set { bam_ch }
 
     // Use the same GTF file for all BAM files
-    SPLICEQ(bamfile, params.gtf, bamfileName)
+    SPLICEQ(bam_ch, params.gtf)
 }
 
 workflow {
