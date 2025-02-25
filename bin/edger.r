@@ -17,12 +17,20 @@ option_list <- list(
 opt <- parse_args(OptionParser(option_list = option_list))
 
 # Load count data and metadata
-counts <- read.table(opt$counts, header = TRUE, row.names = 1)
+counts <- read.delim(opt$counts, header = TRUE, skip = 1)
+colnames(counts) <- sapply(colnames(counts), function(x){strsplit(x, "_")}[[1]][1])
+colnames(counts) <- gsub("\\.", "-", colnames(counts))
+colnames(counts) <- gsub("^X", "", colnames(counts))
 # Extract gene expression counts (columns 7 onwards) 
 counts_matrix <- counts[,7:ncol(counts)]
 # Keep annotation columns separately if needed
 gene_annotations <- counts[,1:6]
 metaData <- read.table(opt$metadata, header = TRUE)
+
+# order counts_matrix to metaData sample order with SampleId
+counts_matrix <- counts_matrix[, metaData$SampleId]
+
+
 
 # Create DGEList object
 group <- factor(metaData$group)
@@ -62,19 +70,32 @@ for (i in 1:(length(group_levels) - 1)) {
 
 # Plot PCA
 pca_data <- prcomp(t(cpm(y, log = TRUE)), scale. = TRUE)
-pca_plot <- fviz_pca_ind(pca_data, label = "none", habillage = group, addEllipses = TRUE) +
+pca_plot <- fviz_pca_ind(pca_data, 
+                         label = "none", 
+                         habillage = group, 
+                         addEllipses = FALSE) +
   ggtitle("PCA of Samples") +
-  theme_minimal()
+  theme_classic()
 ggsave(filename = file.path(opt$output, "PCA_plot.png"), plot = pca_plot)
 
 # Bar graph of differentially expressed genes for each comparison
 for (contrast_name in names(comparison_results)) {
   de_genes <- comparison_results[[contrast_name]]$table
-  de_genes$threshold <- as.factor(ifelse(de_genes$FDR < 0.05 & abs(de_genes$logFC) > 1, "Significant", "Not Significant"))
+  de_genes$threshold <- as.factor(
+    ifelse(de_genes$FDR < 0.05 & abs(de_genes$logFC) > 1,
+           "Significant", 
+           "Not Significant")
+  )
   de_counts <- table(de_genes$threshold)
-  bar_plot <- ggplot(as.data.frame(de_counts), aes(x = Var1, y = Freq, fill = Var1)) +
+  bar_plot <- ggplot(as.data.frame(de_counts), 
+                     aes(x = Var1, y = Freq, fill = Var1)) +
     geom_bar(stat = "identity") +
     theme_minimal() +
-    labs(title = paste("Number of Differentially Expressed Genes:", contrast_name), x = "Significance", y = "Count")
-  ggsave(filename = file.path(opt$output, paste0("DEG_barplot_", contrast_name, ".png")), plot = bar_plot)
+    labs(title = paste("Number of Differentially Expressed Genes:", 
+                      contrast_name),
+         x = "Group",
+         y = "Count")
+  ggsave(filename = file.path(opt$output, 
+                             paste0("DEG_barplot_", contrast_name, ".png")),
+         plot = bar_plot)
 }
