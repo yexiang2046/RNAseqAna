@@ -17,6 +17,7 @@ process DE_ANALYSIS {
 
     script:
     """
+    mkdir -p de_results
     edger.r --counts $counts_file --metadata $metadata_file --output "de_results"
     """
 }
