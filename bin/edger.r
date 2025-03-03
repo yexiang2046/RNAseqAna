@@ -5,6 +5,7 @@ library(edgeR)
 library(optparse)
 library(ggplot2)
 library(factoextra)
+library(pheatmap)
 
 # Define command-line options
 option_list <- list(
@@ -109,8 +110,11 @@ for (i in 1:(length(group_levels) - 1)) {
     contrast <- makeContrasts(contrasts = paste(group_levels[i], "-", group_levels[j]), levels = design)
     qlf <- glmQLFTest(fit, contrast = contrast)
     results <- topTags(qlf, n = Inf)
+    # add annotation to results
+    results$table$gene_id <- rownames(results$table)
+    results$table$gene_name <- filtered_gene_annotations$gene_name[match(results$table$gene_id, filtered_gene_annotations$gene_id)]
     comparison_results[[contrast_name]] <- results
-    write.csv(results, file = file.path(opt$output, paste0("DEG_", contrast_name, ".csv")))
+    write.csv(results, file = file.path(opt$output, paste0("DEG_", contrast_name, ".csv")), row.names = FALSE)
   }
 }
 
@@ -145,3 +149,43 @@ for (contrast_name in names(comparison_results)) {
                              paste0("DEG_barplot_", contrast_name, ".png")),
          plot = bar_plot)
 }
+
+# Create a heatmap of the differentially expressed genes
+# Get all the differentially expressed genes by FDR < 0.05
+all_de_genes <- do.call(rbind, lapply(comparison_results, function(x) {
+  x$table[x$table$FDR < 0.05 & abs(x$table$logFC) > 1, ]
+}))
+
+# remove duplicates
+all_de_genes <- all_de_genes[!duplicated(all_de_genes$gene_id), ]$gene_id
+
+# get the normalized counts for the differentially expressed genes
+de_counts <- normalized_counts_with_annotations[all_de_genes, ]
+
+# create a heatmap of the differentially expressed genes
+heatmap_data <- de_counts[, -c(1:2)]
+heatmap_data <- as.matrix(heatmap_data)
+# scale the data by row
+heatmap_data <- t(scale(t(heatmap_data)))
+
+# annotation column
+annotation_col <- data.frame(
+  cell_type = metaData$Celltype,
+  temperature = metaData$Temp,
+  genotype = metaData$genotype
+)
+rownames(annotation_col) <- metaData$SampleId
+
+# create a heatmap of the differentially expressed genes
+heatmap_plot <- pheatmap(heatmap_data, 
+                        #color = colorRampPalette(c("blue", "white", "red"))(100),
+                        annotation_col = annotation_col,
+                        show_rownames = FALSE,
+                        cluster_rows = TRUE,
+                        cluster_cols = TRUE)
+ggsave(filename = file.path(opt$output, "DEG_heatmap.png"), plot = heatmap_plot)
+
+
+
+
+
