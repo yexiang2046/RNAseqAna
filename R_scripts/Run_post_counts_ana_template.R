@@ -21,39 +21,108 @@ require(VennDiagram)
 load_all()
 
 
-metaData <- readxl::read_excel(path = "12512-ZB_project_summary.xlsx")
+metaData <- readxl::read_excel(path = "SAMPLE_SHEET/12630-RS_project_summary.xlsx")
+metaData$group <- paste0(metaData$Celltype, "_", metaData$genotype, "_", metaData$Temp)
 
 metaData$SampleId <- metaData$Filename
-metaData$group <- rep(c("CTR", "CMV_NSUN2", "NSUN2_KO"), each = 3)
 metaData <- data.frame(metaData)
 
+metaData %>% write.table("metaData_12630-RS.txt", sep = "\t", row.names = FALSE)
 
-step1_get_counts_output <- step1_get_counts(featurecount_file = "counts_all.txt",
+counts <- read.delim(file = "counts.txt", header = TRUE, skip = 1)
+
+step1_get_counts_output <- step1_get_counts(featurecount_file = "counts.txt",
                                             type = "command_line",
                                             col_names = c("Geneid", "Chr", "Start", "End", "Strand", "Length",
-                                                          "aligned/12512-ZB-1_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                          "aligned/12512-ZB-2_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                          "aligned/12512-ZB-3_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                          "aligned/12512-ZB-4_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                          "aligned/12512-ZB-5_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                          "aligned/12512-ZB-6_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                          "aligned/12512-ZB-7_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                          "aligned/12512-ZB-8_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                          "aligned/12512-ZB-9_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                          "aligned/12512-ZB-NegCTRL_S1_L005_RAligned.sortedByCoord.out.bam"),
-                                            counts_col = c("aligned/12512-ZB-1_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                           "aligned/12512-ZB-2_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                           "aligned/12512-ZB-3_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                           "aligned/12512-ZB-4_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                           "aligned/12512-ZB-5_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                           "aligned/12512-ZB-6_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                           "aligned/12512-ZB-7_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                           "aligned/12512-ZB-8_S1_L005_RAligned.sortedByCoord.out.bam",
-                                                           "aligned/12512-ZB-9_S1_L005_RAligned.sortedByCoord.out.bam"))
+                                                        "12630.RS.019_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.023_S1_L005_RAligned.sortedByCoord.out.bam", 
+                                                        "12630.RS.029_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.010_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.017_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.011_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.020_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.028_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.024_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.001_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.009_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.002_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.006_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.004_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.027_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.033_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.032_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.012_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.015_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.031_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.022_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.039_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.025_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.030_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.013_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.005_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.026_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.003_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.038_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.008_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.014_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.035_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.021_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.034_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.036_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.037_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.040_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.016_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.007_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.018_S1_L005_RAligned.sortedByCoord.out.bam"),
+                                            counts_col = c("12630.RS.019_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.023_S1_L005_RAligned.sortedByCoord.out.bam", 
+                                                        "12630.RS.029_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.010_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.017_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.011_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.020_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.028_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.024_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.001_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.009_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.002_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.006_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.004_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.027_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.033_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.032_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.012_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.015_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.031_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.022_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.039_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.025_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.030_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.013_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.005_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.026_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.003_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.038_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.008_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.014_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.035_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.021_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.034_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.036_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.037_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.040_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.016_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.007_S1_L005_RAligned.sortedByCoord.out.bam",
+                                                        "12630.RS.018_S1_L005_RAligned.sortedByCoord.out.bam"))
 
-group <- factor(metaData$group)
-design <- model.matrix(~0+group)
-con1 <- makeContrasts(groupCMV_NSUN2 - groupCTR, levels = design)
+Group <- factor(metaData$Group)
+design <- model.matrix(~0 + Group)
+colnames(design) <- make.names(levels(Group))
+pairwise_contrasts <- combn(levels(Group), 2, function(x) {
+  makeContrasts(paste0(make.names(x[1]), " - ", make.names(x[2])), levels = design)
+}, simplify = FALSE)
+
+con1 <- makeContrasts(GroupiTreg_cGASko_37 - GroupiTreg_cGASko_39, levels = design)
 con2 <- makeContrasts(groupNSUN2_KO - groupCTR, levels = design)
 con3 <- makeContrasts(groupNSUN2_KO - groupCMV_NSUN2, levels = design)
 
