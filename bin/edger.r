@@ -1,189 +1,226 @@
 #!/usr/bin/env Rscript
 
-# Load necessary libraries
-library(edgeR)
-library(optparse)
-library(ggplot2)
-library(factoextra)
-library(pheatmap)
+# Load required libraries
+suppressPackageStartupMessages({
+    library(edgeR)
+    library(tximport)
+    library(tidyverse)
+    library(jsonlite)
+})
 
-# Define command-line options
-option_list <- list(
-  make_option(c("-c", "--counts"), type = "character", help = "Path to counts file"),
-  make_option(c("-m", "--metadata"), type = "character", help = "Path to metadata file"),
-  make_option(c("-o", "--output"), type = "character", help = "Output directory for results"),
-  make_option(c("-g", "--gtf"), type = "character", help = "Path to GTF annotation file")
-)
-
-# Parse command-line options
-opt <- parse_args(OptionParser(option_list = option_list))
-
-# Function to extract gene information from GTF
-extract_gene_info <- function(gtf_file) {
-  # Read GTF file
-  gtf_lines <- readLines(gtf_file)
-  # Filter for gene entries
-  gene_lines <- gtf_lines[grep('gene_id', gtf_lines) & grep('\tgene\t', gtf_lines)]
-  
-  # Extract gene_id and gene_name
-  gene_ids <- gsub('.*gene_id "(.*?)".*', '\\1', gene_lines)
-  gene_names <- gsub('.*gene_name "(.*?)".*', '\\1', gene_lines)
-  
-  # Create data frame
-  gene_info <- data.frame(
-    gene_id = gene_ids,
-    gene_name = gene_names,
-    stringsAsFactors = FALSE
-  )
-  
-  return(gene_info)
+# Function to check if input is from Salmon
+is_salmon_input <- function(input_dir) {
+    return(dir.exists(input_dir) && any(grepl("quant.sf$", list.files(input_dir, recursive=TRUE))))
 }
 
-# Load count data and metadata
-counts <- read.delim(opt$counts, header = TRUE, skip = 1)
-colnames(counts) <- sapply(colnames(counts), function(x){strsplit(x, "_")}[[1]][1])
-colnames(counts) <- gsub("\\.", "-", colnames(counts))
-colnames(counts) <- gsub("^X", "", colnames(counts))
-# Extract gene expression counts (columns 7 onwards) 
-counts_matrix <- counts[,7:ncol(counts)]
+# Function to read Salmon quantification data
+read_salmon_data <- function(input_dir) {
+    # Get all quant.sf files
+    quant_files <- list.files(input_dir, pattern="quant.sf$", recursive=TRUE, full.names=TRUE)
+    names(quant_files) <- basename(dirname(quant_files))
+    
+    # Import with tximport
+    txi <- tximport(quant_files, type="salmon", txOut=FALSE)
+    
+    # Create DGEList object
+    counts <- txi$counts
+    y <- DGEList(counts=counts)
+    
+    # Add gene names if available
+    if (!is.null(rownames(counts))) {
+        y$genes <- data.frame(GeneID=rownames(counts))
+    }
+    
+    return(y)
+}
 
-# Get gene annotations from GTF
-gene_info <- extract_gene_info(opt$gtf)
-# Match gene IDs from counts with GTF annotations
-row.names(counts_matrix) <- counts$Geneid  # Assuming Geneid is the column with Ensembl IDs
-gene_annotations <- data.frame(
-  gene_id = counts$Geneid,
-  gene_name = gene_info$gene_name[match(counts$Geneid, gene_info$gene_id)]
-)
+# Function to read featureCounts data
+read_featurecounts_data <- function(counts_file) {
+    # Read counts data
+    counts_data <- read.delim(counts_file, row.names=1)
+    
+    # Remove length and other non-count columns if present
+    count_cols <- !grepl("Length|Chr|Start|End|Strand", colnames(counts_data))
+    counts <- counts_data[, count_cols]
+    
+    # Create DGEList object
+    y <- DGEList(counts=counts)
+    y$genes <- data.frame(GeneID=rownames(counts))
+    
+    return(y)
+}
 
-metaData <- read.table(opt$metadata, header = TRUE)
+# Parse command line arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 2) {
+    stop("Usage: edger.r <input_path> <metadata_file> [contrasts_file]")
+}
 
-# order counts_matrix to metaData sample order with SampleId
-counts_matrix <- counts_matrix[, metaData$SampleId]
+input_path <- args[1]
+metadata_file <- args[2]
+contrasts_file <- if(length(args) >= 3) args[3] else NULL
 
+# Read metadata
+metadata <- read.csv(metadata_file, row.names=1)
 
+# Read count data based on input type
+if (is_salmon_input(input_path)) {
+    y <- read_salmon_data(input_path)
+} else {
+    y <- read_featurecounts_data(input_path)
+}
 
-# Create DGEList object
-group <- factor(metaData$group)
-y <- DGEList(counts = counts_matrix, group = group)
+# Ensure sample names match between counts and metadata
+common_samples <- intersect(colnames(y), rownames(metadata))
+y <- y[, common_samples]
+metadata <- metadata[common_samples, ]
 
-# Filter lowly expressed genes
-keep <- filterByExpr(y)
-y <- y[keep, , keep.lib.sizes=FALSE]
+# Create output directory
+dir.create("de_results", showWarnings=FALSE)
 
-# Normalize the data
+# Filter low count genes
+keep <- filterByExpr(y, group=metadata$condition)
+y <- y[keep, ]
+
+# Calculate normalization factors
 y <- calcNormFactors(y)
 
-# Export normalized counts (CPM)
-normalized_counts <- cpm(y)
-# Add gene annotations back to the normalized counts
-filtered_gene_annotations <- gene_annotations[keep, ]
-# Ensure gene IDs match by setting row names
-row.names(normalized_counts) <- row.names(y)
-row.names(filtered_gene_annotations) <- filtered_gene_annotations$gene_id
-# Verify and combine in correct order
-normalized_counts_with_annotations <- cbind(
-  filtered_gene_annotations[row.names(normalized_counts), ],
-  normalized_counts
-)
-write.csv(normalized_counts_with_annotations, 
-          file = file.path(opt$output, "normalized_counts_CPM.csv"),
-          row.names = FALSE)
-
 # Create design matrix
-design <- model.matrix(~0 + group)
-colnames(design) <- levels(group)
+design <- model.matrix(~0 + condition, data=metadata)
+colnames(design) <- levels(factor(metadata$condition))
 
 # Estimate dispersion
 y <- estimateDisp(y, design)
 
-# Fit the model
+# Fit model
 fit <- glmQLFit(y, design)
 
-# Perform pairwise comparisons
-group_levels <- levels(group)
-comparison_results <- list()
-
-for (i in 1:(length(group_levels) - 1)) {
-  for (j in (i + 1):length(group_levels)) {
-    contrast_name <- paste(group_levels[i], "vs", group_levels[j], sep = "_")
-    contrast <- makeContrasts(contrasts = paste(group_levels[i], "-", group_levels[j]), levels = design)
-    qlf <- glmQLFTest(fit, contrast = contrast)
-    results <- topTags(qlf, n = Inf)
-    # add annotation to results
-    results$table$gene_id <- rownames(results$table)
-    results$table$gene_name <- filtered_gene_annotations$gene_name[match(results$table$gene_id, filtered_gene_annotations$gene_id)]
-    comparison_results[[contrast_name]] <- results
-    write.csv(results, file = file.path(opt$output, paste0("DEG_", contrast_name, ".csv")), row.names = FALSE)
-  }
+# Function to perform DE analysis for a contrast
+run_de_analysis <- function(contrast_name, condition1, condition2) {
+    # Create contrast
+    contrast <- makeContrasts(
+        contrasts=paste0(condition1, "-", condition2),
+        levels=design
+    )
+    
+    # Perform test
+    qlf <- glmQLFTest(fit, contrast=contrast)
+    
+    # Get results
+    res <- topTags(qlf, n=Inf)
+    res_df <- as.data.frame(res)
+    
+    # Add gene names if available
+    if (!is.null(y$genes)) {
+        res_df <- cbind(GeneID=rownames(res_df), res_df)
+    }
+    
+    # Save results
+    write.csv(res_df, 
+              file=file.path("de_results", paste0(contrast_name, "_edgeR_results.csv")),
+              row.names=FALSE)
+    
+    # Create MA plot
+    pdf(file.path("de_results", paste0(contrast_name, "_MA_plot.pdf")))
+    plotMD(qlf, main=paste("MA Plot -", contrast_name))
+    abline(h=c(-1,1), col="blue")
+    dev.off()
+    
+    # Create Volcano plot
+    pdf(file.path("de_results", paste0(contrast_name, "_volcano_plot.pdf")))
+    with(res_df, plot(logFC, -log10(PValue),
+         pch=20, main=paste("Volcano Plot -", contrast_name)))
+    with(subset(res_df, FDR < 0.05 & abs(logFC) > 1),
+         points(logFC, -log10(PValue), pch=20, col="red"))
+    dev.off()
+    
+    return(res_df)
 }
 
-# Plot PCA
-pca_data <- prcomp(t(cpm(y, log = TRUE)), scale. = TRUE)
-pca_plot <- fviz_pca_ind(pca_data, 
-                         label = "none", 
-                         habillage = group, 
-                         addEllipses = FALSE) +
-  ggtitle("PCA of Samples") +
-  theme_classic()
-ggsave(filename = file.path(opt$output, "PCA_plot.png"), plot = pca_plot)
-
-# Bar graph of differentially expressed genes for each comparison
-for (contrast_name in names(comparison_results)) {
-  de_genes <- comparison_results[[contrast_name]]$table
-  de_genes$threshold <- as.factor(
-    ifelse(de_genes$FDR < 0.05 & abs(de_genes$logFC) > 1,
-           "Significant", 
-           "Not Significant")
-  )
-  de_counts <- table(de_genes$threshold)
-  bar_plot <- ggplot(as.data.frame(de_counts), 
-                     aes(x = Var1, y = Freq, fill = Var1)) +
-    geom_bar(stat = "identity") +
-    theme_minimal() +
-    labs(title = paste("Number of Differentially Expressed Genes:", 
-                      contrast_name),
-         x = "Group",
-         y = "Count")
-  ggsave(filename = file.path(opt$output, 
-                             paste0("DEG_barplot_", contrast_name, ".png")),
-         plot = bar_plot)
+# Process contrasts
+if (!is.null(contrasts_file)) {
+    contrasts <- read.csv(contrasts_file)
+    for(i in 1:nrow(contrasts)) {
+        run_de_analysis(
+            contrasts$name[i],
+            contrasts$treatment[i],
+            contrasts$control[i]
+        )
+    }
+} else {
+    # Default comparison if no contrasts file provided
+    conditions <- levels(factor(metadata$condition))
+    if (length(conditions) >= 2) {
+        run_de_analysis(
+            "default_contrast",
+            conditions[1],
+            conditions[2]
+        )
+    }
 }
 
-# Create a heatmap of the differentially expressed genes
-# Get all the differentially expressed genes by FDR < 0.05
-all_de_genes <- do.call(rbind, lapply(comparison_results, function(x) {
-  x$table[x$table$FDR < 0.05 & abs(x$table$logFC) > 1, ]
-}))
+# Generate summary report
+writeLines('
+---
+title: "EdgeR Differential Expression Analysis Report"
+output: html_document
+---
 
-# remove duplicates
-all_de_genes <- all_de_genes[!duplicated(all_de_genes$gene_id), ]$gene_id
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-# get the normalized counts for the differentially expressed genes
-de_counts <- normalized_counts_with_annotations[all_de_genes, ]
+## Analysis Overview
 
-# create a heatmap of the differentially expressed genes
-heatmap_data <- de_counts[, -c(1:2)]
-heatmap_data <- as.matrix(heatmap_data)
-# scale the data by row
-heatmap_data <- t(scale(t(heatmap_data)))
+- Input type: ', if(is_salmon_input(input_path)) "Salmon quantification" else "featureCounts",
+'
+- Number of samples analyzed: ', ncol(y), '
+- Number of genes analyzed: ', nrow(y), '
+- Conditions compared: ', paste(levels(factor(metadata$condition)), collapse=", "), '
 
-# annotation column
-annotation_col <- data.frame(
-  cell_type = metaData$Celltype,
-  temperature = metaData$Temp,
-  genotype = metaData$genotype
-)
-rownames(annotation_col) <- metaData$SampleId
+## Quality Control
 
-# create a heatmap of the differentially expressed genes
-heatmap_plot <- pheatmap(heatmap_data, 
-                        #color = colorRampPalette(c("blue", "white", "red"))(100),
-                        annotation_col = annotation_col,
-                        show_rownames = FALSE,
-                        cluster_rows = TRUE,
-                        cluster_cols = TRUE)
-ggsave(filename = file.path(opt$output, "DEG_heatmap.png"), plot = heatmap_plot)
+```{r qc_plots, echo=FALSE}
+# MDS plot
+plotMDS(y)
+
+# BCV plot
+plotBCV(y)
+```
+
+## Results Summary
+
+```{r results_summary, echo=FALSE}
+if (!is.null(contrasts_file)) {
+    contrasts <- read.csv("', contrasts_file, '")
+    for(i in 1:nrow(contrasts)) {
+        results <- read.csv(file.path("de_results", 
+                          paste0(contrasts$name[i], "_edgeR_results.csv")))
+        
+        cat("### ", contrasts$name[i], "\n\n")
+        
+        cat("- Total DE genes (FDR < 0.05):", sum(results$FDR < 0.05), "\n")
+        cat("- Up-regulated:", sum(results$FDR < 0.05 & results$logFC > 0), "\n")
+        cat("- Down-regulated:", sum(results$FDR < 0.05 & results$logFC < 0), "\n\n")
+        
+        cat("Top 10 differentially expressed genes:\n\n")
+        print(knitr::kable(head(results, 10)))
+        cat("\n\n")
+        
+        cat("MA Plot:\n\n")
+        cat(sprintf("![MA Plot](%s)\n\n", 
+            file.path("de_results", paste0(contrasts$name[i], "_MA_plot.pdf"))))
+        
+        cat("Volcano Plot:\n\n")
+        cat(sprintf("![Volcano Plot](%s)\n\n", 
+            file.path("de_results", paste0(contrasts$name[i], "_volcano_plot.pdf"))))
+    }
+}
+```
+', "report.Rmd")
+
+# Render the report
+rmarkdown::render("report.Rmd", output_file="EdgeR_analysis_report.html")
 
 
 
