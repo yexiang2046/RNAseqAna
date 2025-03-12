@@ -10,6 +10,7 @@ include { FEATURECOUNT } from './modules/featurecount.nf'
 include { MULTIQC } from './modules/multiqc.nf'
 include { DE_ANALYSIS } from './modules/de_analysis.nf'
 include { FUNCTIONAL_ANALYSIS } from './modules/functional_analysis.nf'
+include { PIRANHA_PEAK_CALLING } from './modules/piranha_peak_calling.nf'
 
 
 /*
@@ -58,6 +59,10 @@ workflow RNASEQ {
 	ALIGN(STAR_INDEX.out, TRIM.out)
 	ALIGN.out.view()
 
+	// Run Piranha peak calling on aligned BAM files
+	PIRANHA_PEAK_CALLING(ALIGN.out)
+	PIRANHA_PEAK_CALLING.out.peaks.view()
+
 	FEATURECOUNT(params.gtf, ALIGN.out.collect())
 
 	FEATURECOUNT.out.view()
@@ -80,4 +85,32 @@ workflow RNASEQ {
 
 workflow  {
 	RNASEQ()
+}
+
+// Process to run Piranha peak calling
+process PIRANHA_PEAK_CALLING {
+    publishDir "${params.outdir}/piranha_output/\${bam.simpleName}", mode: 'copy'
+    
+    input:
+    path bam
+    
+    output:
+    tuple val(bam.simpleName), path("*_peaks.bed"), emit: peaks
+    path "*_converted.bed", emit: converted_bed
+    
+    script:
+    def piranha_opts = params.piranha_params ? params.piranha_params : ''
+    """
+    # Convert BAM to BED
+    bedtools bamtobed -i $bam > ${bam.simpleName}_converted.bed
+    
+    # Sort the BED file
+    sort -k1,1 -k2,2n ${bam.simpleName}_converted.bed > ${bam.simpleName}_sorted.bed
+    
+    # Run Piranha on the sorted BED file
+    piranha $piranha_opts ${bam.simpleName}_sorted.bed > ${bam.simpleName}_peaks.bed
+    
+    # Clean up intermediate files
+    rm ${bam.simpleName}_sorted.bed
+    """
 }
