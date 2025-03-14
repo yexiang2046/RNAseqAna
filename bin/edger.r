@@ -16,20 +16,31 @@ is_salmon_input <- function(input_dir) {
 # Function to read Salmon quantification data
 read_salmon_data <- function(input_dir) {
     # Get all quant.sf files
-    quant_files <- list.files(input_dir, pattern="quant.sf$", recursive=TRUE, full.names=TRUE)
+    quant_files <- list.files(input_dir, pattern="quant.sf$", recursive=TRUE, 
+                             full.names=TRUE)
     names(quant_files) <- basename(dirname(quant_files))
     
-    # Import with tximport
-    txi <- tximport(quant_files, type="salmon", txOut=FALSE)
+    # Read first quant file to get transcript info
+    first_file <- read.table(quant_files[1], header=TRUE)
+    tx_ids <- first_file$Name
+    
+    # Create tx2gene mapping (assuming transcript IDs contain gene IDs before .)
+    # This handles common formats like ENST00000123.4 -> ENSG00000123
+    tx2gene <- data.frame(
+        TXNAME = tx_ids,
+        GENEID = sub("\\.[0-9]+$", "", # Remove version numbers
+                     sub("^([^.]+).*", "\\1", tx_ids)) # Get part before first dot
+    )
+    
+    # Import with tximport using tx2gene mapping
+    txi <- tximport(quant_files, type="salmon", tx2gene=tx2gene, txOut=FALSE)
     
     # Create DGEList object
     counts <- txi$counts
     y <- DGEList(counts=counts)
     
-    # Add gene names if available
-    if (!is.null(rownames(counts))) {
-        y$genes <- data.frame(GeneID=rownames(counts))
-    }
+    # Add gene names
+    y$genes <- data.frame(GeneID=rownames(counts))
     
     return(y)
 }
