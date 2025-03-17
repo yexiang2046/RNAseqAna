@@ -47,7 +47,7 @@ echo "Processing features using bedtools..."
 
 # First, extract protein-coding transcripts with transcript IDs
 echo "Extracting protein-coding transcripts..."
-awk -F'\t' '$3=="transcript" {
+awk -F'\t' '$1 ~ /^(chr)?([1-9]|1[0-9]|2[0-2]|X|Y|M|MT)$/ && $3=="transcript" {
     split($9, attrs, "; ")
     is_coding = 0
     transcript_id = ""
@@ -68,19 +68,19 @@ awk -F'\t' '$3=="transcript" {
     }
     
     if (is_coding && transcript_id != "") {
-        # Remove quotes from IDs
         gsub(/"/, "", transcript_id)
         gsub(/"/, "", gene_name)
         print $1"\t"($4-1)"\t"$5"\t"transcript_id"\t"$6"\t"$7"\t"gene_name
     }
 }' "$INPUT" > "$OUTPUT_DIR/temp_protein_coding_transcripts.bed"
 
-# Extract CDS regions with transcript IDs
+# Extract CDS regions with transcript IDs and gene names (with duplicate removal)
 echo "Extracting CDS regions..."
-awk -F'\t' '$3=="CDS" {
+awk -F'\t' '$1 ~ /^(chr)?([1-9]|1[0-9]|2[0-2]|X|Y|M|MT)$/ && $3=="CDS" {
     split($9, attrs, "; ")
     transcript_id = ""
     gene_name = ""
+    gene_id = ""
     
     for (i in attrs) {
         if (attrs[i] ~ /transcript_id/) {
@@ -91,28 +91,96 @@ awk -F'\t' '$3=="CDS" {
             split(attrs[i], gname, " ")
             gene_name = gname[2]
         }
+        if (attrs[i] ~ /gene_id/) {
+            split(attrs[i], gid, " ")
+            gene_id = gid[2]
+        }
     }
     
     if (transcript_id != "") {
-        # Remove quotes from IDs
         gsub(/"/, "", transcript_id)
         gsub(/"/, "", gene_name)
-        print $1"\t"($4-1)"\t"$5"\t"transcript_id"\t"$6"\t"$7"\t"gene_name
+        gsub(/"/, "", gene_id)
+        print $1"\t"($4-1)"\t"$5"\t"transcript_id"\t"$6"\t"$7"\t"gene_name"\t"gene_id
     }
-}' "$INPUT" | sort -k1,1 -k2,2n > "$OUTPUT_DIR/temp_cds.bed"
+}' "$INPUT" | sort -k1,1 -k2,2n -k3,3n -k4,4 -k7,7 | uniq > "$OUTPUT_DIR/cds.bed"
 
-# Process UTRs based on strand
+# Extract exons with gene names (with duplicate removal)
+echo "Extracting exons..."
+awk -F'\t' '$1 ~ /^(chr)?([1-9]|1[0-9]|2[0-2]|X|Y|M|MT)$/ && $3=="exon" {
+    split($9, attrs, "; ")
+    transcript_id = ""
+    gene_name = ""
+    gene_id = ""
+    
+    for (i in attrs) {
+        if (attrs[i] ~ /transcript_id/) {
+            split(attrs[i], tid, " ")
+            transcript_id = tid[2]
+        }
+        if (attrs[i] ~ /gene_name/) {
+            split(attrs[i], gname, " ")
+            gene_name = gname[2]
+        }
+        if (attrs[i] ~ /gene_id/) {
+            split(attrs[i], gid, " ")
+            gene_id = gid[2]
+        }
+    }
+    
+    if (transcript_id != "") {
+        gsub(/"/, "", transcript_id)
+        gsub(/"/, "", gene_name)
+        gsub(/"/, "", gene_id)
+        print $1"\t"($4-1)"\t"$5"\t"transcript_id"\t"$6"\t"$7"\t"gene_name"\t"gene_id
+    }
+}' "$INPUT" | sort -k1,1 -k2,2n -k3,3n -k4,4 -k7,7 | uniq > "$OUTPUT_DIR/exons.bed"
+
+# Extract genes with gene names (with duplicate removal)
+echo "Extracting genes..."
+awk -F'\t' '$1 ~ /^(chr)?([1-9]|1[0-9]|2[0-2]|X|Y|M|MT)$/ && $3=="gene" {
+    split($9, attrs, "; ")
+    gene_id = ""
+    gene_name = ""
+    gene_type = ""
+    
+    for (i in attrs) {
+        if (attrs[i] ~ /gene_id/) {
+            split(attrs[i], gid, " ")
+            gene_id = gid[2]
+        }
+        if (attrs[i] ~ /gene_name/) {
+            split(attrs[i], gname, " ")
+            gene_name = gname[2]
+        }
+        if (attrs[i] ~ /gene_type/) {
+            split(attrs[i], gtype, " ")
+            gene_type = gtype[2]
+        }
+    }
+    
+    if (gene_id != "") {
+        gsub(/"/, "", gene_id)
+        gsub(/"/, "", gene_name)
+        gsub(/"/, "", gene_type)
+        print $1"\t"($4-1)"\t"$5"\t"gene_id"\t"$6"\t"$7"\t"gene_name"\t"gene_type
+    }
+}' "$INPUT" | sort -k1,1 -k2,2n -k3,3n -k4,4 -k7,7 | uniq > "$OUTPUT_DIR/genes.bed"
+
+# Process UTRs with gene names
 echo "Processing UTRs..."
 awk -F'\t' 'BEGIN {OFS="\t"}
     # First pass: store CDS boundaries for each transcript
     NR==FNR {
         transcript_id = $4
-        # Store first and last CDS positions for each transcript
+        gene_name = $7
+        gene_id = $8
         if (!(transcript_id in cds_start) || $2 < cds_start[transcript_id]) {
             cds_start[transcript_id] = $2
             cds_chr[transcript_id] = $1
             cds_strand[transcript_id] = $6
-            cds_gene[transcript_id] = $7
+            cds_gene_name[transcript_id] = gene_name
+            cds_gene_id[transcript_id] = gene_id
         }
         if (!(transcript_id in cds_end) || $3 > cds_end[transcript_id]) {
             cds_end[transcript_id] = $3
@@ -122,40 +190,44 @@ awk -F'\t' 'BEGIN {OFS="\t"}
     # Second pass: process transcripts and output UTRs
     {
         transcript_id = $4
-        if (transcript_id in cds_start) {  # Only process transcripts with CDS
+        if (transcript_id in cds_start) {
             if ($6 == "+") {
-                # 5UTR: region upstream of first CDS
+                # 5UTR
                 if ($2 < cds_start[transcript_id]) {
                     print $1, $2, cds_start[transcript_id], \
                           transcript_id"_5UTR", ".", $6, \
-                          $7 > "'"$OUTPUT_DIR"'/five_prime_utr.bed"
+                          cds_gene_name[transcript_id], \
+                          cds_gene_id[transcript_id] > "'"$OUTPUT_DIR"'/five_prime_utr.bed"
                 }
-                # 3UTR: region downstream of last CDS
+                # 3UTR
                 if ($3 > cds_end[transcript_id]) {
                     print $1, cds_end[transcript_id], $3, \
                           transcript_id"_3UTR", ".", $6, \
-                          $7 > "'"$OUTPUT_DIR"'/three_prime_utr.bed"
+                          cds_gene_name[transcript_id], \
+                          cds_gene_id[transcript_id] > "'"$OUTPUT_DIR"'/three_prime_utr.bed"
                 }
             } else if ($6 == "-") {
-                # 5UTR: region downstream of last CDS
+                # 5UTR
                 if ($3 > cds_end[transcript_id]) {
                     print $1, cds_end[transcript_id], $3, \
                           transcript_id"_5UTR", ".", $6, \
-                          $7 > "'"$OUTPUT_DIR"'/five_prime_utr.bed"
+                          cds_gene_name[transcript_id], \
+                          cds_gene_id[transcript_id] > "'"$OUTPUT_DIR"'/five_prime_utr.bed"
                 }
-                # 3UTR: region upstream of first CDS
+                # 3UTR
                 if ($2 < cds_start[transcript_id]) {
                     print $1, $2, cds_start[transcript_id], \
                           transcript_id"_3UTR", ".", $6, \
-                          $7 > "'"$OUTPUT_DIR"'/three_prime_utr.bed"
+                          cds_gene_name[transcript_id], \
+                          cds_gene_id[transcript_id] > "'"$OUTPUT_DIR"'/three_prime_utr.bed"
                 }
             }
         }
-    }' "$OUTPUT_DIR/temp_cds.bed" "$OUTPUT_DIR/temp_protein_coding_transcripts.bed"
+    }' "$OUTPUT_DIR/cds.bed" "$OUTPUT_DIR/temp_protein_coding_transcripts.bed"
 
-# Sort the UTR files
-sort -k1,1 -k2,2n -o "$OUTPUT_DIR/five_prime_utr.bed" "$OUTPUT_DIR/five_prime_utr.bed"
-sort -k1,1 -k2,2n -o "$OUTPUT_DIR/three_prime_utr.bed" "$OUTPUT_DIR/three_prime_utr.bed"
+# Sort and remove duplicates from UTR files
+sort -u -k1,1 -k2,2n -k3,3n -k4,4 -k7,7 -o "$OUTPUT_DIR/five_prime_utr.bed" "$OUTPUT_DIR/five_prime_utr.bed" 
+sort -u -k1,1 -k2,2n -k3,3n -k4,4 -k7,7 -o "$OUTPUT_DIR/three_prime_utr.bed" "$OUTPUT_DIR/three_prime_utr.bed"
 
 # Clean up temporary files
 rm "$OUTPUT_DIR/temp_"*.bed
@@ -163,7 +235,7 @@ rm "$OUTPUT_DIR/temp_"*.bed
 # Print statistics
 echo -e "\nFeature counts:"
 echo "Protein-coding transcripts: $(wc -l < "$OUTPUT_DIR/temp_protein_coding_transcripts.bed") transcripts"
-echo "CDS regions: $(wc -l < "$OUTPUT_DIR/temp_cds.bed") regions"
+echo "CDS regions: $(wc -l < "$OUTPUT_DIR/cds.bed") regions"
 echo "5' UTRs: $(wc -l < "$OUTPUT_DIR/five_prime_utr.bed") regions"
 echo "3' UTRs: $(wc -l < "$OUTPUT_DIR/three_prime_utr.bed") regions"
 

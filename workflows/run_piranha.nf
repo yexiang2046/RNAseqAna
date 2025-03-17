@@ -6,7 +6,7 @@ include PIRANHA_PEAK_CALLING from '../modules/piranha_peak_calling.nf'
 
 
 // Parameters
-params.gtf = null
+params.gtf = 'gencode.v38.primary_assembly.annotation.gtf'
 params.bam_dir = null
 params.rmsk = null
 params.outdir = 'results'

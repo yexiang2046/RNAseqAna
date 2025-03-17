@@ -71,21 +71,40 @@ for feature in "${FEATURES[@]}"; do
     FEATURE_FILES="$FEATURE_FILES $FEATURES_DIR/${feature}.bed"
 done
 
-# First, get gene annotations using bedtools intersect
-echo "Getting gene annotations..."
+# Modify the annotation section to include gene names and specific features
+echo "Getting gene and feature annotations..."
+# First get gene names and features in separate temp files
 bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/genes.bed" -wao | \
     awk 'BEGIN{OFS="\t"} {
         # Store gene info for each peak
         peak=$1"_"$2"_"$3;
-        if($13!=".") {
-            ensids[peak]=ensids[peak]?ensids[peak]";"$4:$4;  # ensembl id
+        if($13!=".") {  # $13 should be gene name column in genes.bed
+            genes[peak]=genes[peak]?genes[peak]";"$13:$13;  # gene name
+            ensids[peak]=ensids[peak]?ensids[peak]";"$10:$10;  # ensembl id
         }
     } END{
         # Print gene info mapping
-        for(peak in ensids) {
-            print peak, ensids[peak]
+        for(peak in genes) {
+            print peak, ensids[peak], genes[peak];
         }
     }' > "$OUTPUT_DIR/temp_gene_info.txt"
+
+# Get specific feature overlaps for each peak
+for feature in "${FEATURES[@]}"; do
+    if [ "$feature" != "genes" ]; then  # Skip genes as we already processed them
+        bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/${feature}.bed" -wao | \
+            awk -v feat="$feature" 'BEGIN{OFS="\t"} {
+                peak=$1"_"$2"_"$3;
+                if($14!=".") {  # If there is an overlap
+                    features[peak]=features[peak]?features[peak]";"feat:feat;
+                }
+            } END{
+                for(peak in features) {
+                    print peak, features[peak];
+                }
+            }' >> "$OUTPUT_DIR/temp_features_info.txt"
+    fi
+done
 
 # Run annotateBed for feature counting
 echo "Running annotateBed for feature counting..."
@@ -94,21 +113,38 @@ bedtools annotate -counts \
     -files $FEATURE_FILES \
     > "$OUTPUT_DIR/temp_feature_counts.bed"
 
-# Combine feature counts with gene information
+# Combine all annotations
 echo "Combining annotations..."
 awk -v OFS='\t' '
     # Read gene info into arrays
     FILENAME == ARGV[1] {
         split($1, coords, "_");
         ens_info[coords[1],coords[2],coords[3]]=$2;
+        gene_names[coords[1],coords[2],coords[3]]=$3;
         next;
     }
-    # Process feature counts and add gene info
+    # Read feature info into arrays
+    FILENAME == ARGV[2] {
+        split($1, coords, "_");
+        feat_info[coords[1],coords[2],coords[3]]=$2;
+        next;
+    }
+    # Process feature counts and add gene and feature info
     {
         ens_ids = ens_info[$1,$2,$3];
         if (!ens_ids) ens_ids = ".";
-        print $0, ens_ids;
-    }' "$OUTPUT_DIR/temp_gene_info.txt" "$OUTPUT_DIR/temp_feature_counts.bed" \
+        
+        gene_name = gene_names[$1,$2,$3];
+        if (!gene_name) gene_name = ".";
+        
+        features = feat_info[$1,$2,$3];
+        if (!features) features = ".";
+        
+        # Print original columns plus gene names and features
+        print $0, ens_ids, gene_name, features;
+    }' "$OUTPUT_DIR/temp_gene_info.txt" \
+       "$OUTPUT_DIR/temp_features_info.txt" \
+       "$OUTPUT_DIR/temp_feature_counts.bed" \
     > "$OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks.bed"
 
 # Create R script for analysis
@@ -134,7 +170,7 @@ feature_names <- c("CDS", "Exons", "5'UTR", "Genes", "Introns", "3'UTR", "Transc
 
 # Rename columns
 names(data) <- c("chr", "start", "end", "name", "score", "strand", 
-                paste0(feature_names, "_count"), "ensembl_ids")
+                paste0(feature_names, "_count"), "ensembl_ids", "gene_names", "overlapping_features")
 
 # Calculate summary statistics
 summary_stats <- data %>%
@@ -207,7 +243,7 @@ Rscript "$OUTPUT_DIR/analyze_features.R" \
     "$SAMPLE_ID"
 
 # Clean up temporary files
-rm "$OUTPUT_DIR/temp_gene_info.txt" "$OUTPUT_DIR/temp_feature_counts.bed"
+rm "$OUTPUT_DIR/temp_gene_info.txt" "$OUTPUT_DIR/temp_features_info.txt" "$OUTPUT_DIR/temp_feature_counts.bed"
 
 # Print results
 echo -e "\nAnnotation complete!"
