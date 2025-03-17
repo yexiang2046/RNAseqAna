@@ -2,7 +2,7 @@
 
 nextflow.enable.dsl=2
 
-include PIRANHA_PEAK_CALLING from '../modules/piranha_peak_calling.nf'
+include { PIRANHA_PEAK_CALLING } from '../modules/piranha_peak_calling.nf'
 
 
 // Parameters
