@@ -6,13 +6,16 @@ library(optparse)
 library(ggplot2)
 library(factoextra)
 library(pheatmap)
+library(clusterProfiler)
 
 # Define command-line options
 option_list <- list(
   make_option(c("-c", "--counts"), type = "character", help = "Path to counts file"),
   make_option(c("-m", "--metadata"), type = "character", help = "Path to metadata file"),
   make_option(c("-o", "--output"), type = "character", help = "Output directory for results"),
-  make_option(c("-g", "--gtf"), type = "character", help = "Path to GTF annotation file")
+  make_option(c("-g", "--gtf"), type = "character", help = "Path to GTF annotation file"),
+  make_option(c("-s", "--species"), type = "character", default = "human", 
+             help = "Species for GO analysis (human or mouse)")
 )
 
 # Parse command-line options
@@ -184,6 +187,206 @@ heatmap_plot <- pheatmap(heatmap_data,
                         cluster_rows = TRUE,
                         cluster_cols = TRUE)
 ggsave(filename = file.path(opt$output, "DEG_heatmap.png"), plot = heatmap_plot)
+
+# After the heatmap code, add k-means clustering analysis
+
+# Function to perform k-means clustering and create plots
+perform_kmeans_analysis <- function(data, n_clusters, label, output_dir) {
+    # Scale the data
+    scaled_data <- t(scale(t(data)))
+    
+    # Determine optimal number of clusters using elbow method
+    wss <- sapply(1:15, function(k) {
+        kmeans(scaled_data, centers=k, nstart=25)$tot.withinss
+    })
+    
+    # Plot elbow curve
+    elbow_plot <- ggplot(data.frame(k=1:15, wss=wss), aes(x=k, y=wss)) +
+        geom_line() +
+        geom_point() +
+        theme_minimal() +
+        labs(title=paste("Elbow Method for", label),
+             x="Number of Clusters (k)",
+             y="Total Within Sum of Squares")
+    ggsave(filename=file.path(output_dir, paste0("kmeans_elbow_", label, ".png")), 
+           plot=elbow_plot)
+    
+    # Perform k-means clustering
+    set.seed(42)
+    km <- kmeans(scaled_data, centers=n_clusters, nstart=25)
+    
+    # Add cluster information to the data
+    clustered_data <- data.frame(
+        gene_id = rownames(data),
+        cluster = km$cluster
+    )
+    
+    # Create heatmap with cluster annotation
+    annotation_row <- data.frame(
+        Cluster = factor(km$cluster)
+    )
+    rownames(annotation_row) <- rownames(data)
+    
+    # Generate heatmap with clusters
+    cluster_heatmap <- pheatmap(scaled_data,
+                               annotation_col = annotation_col,
+                               annotation_row = annotation_row,
+                               show_rownames = FALSE,
+                               cluster_rows = TRUE,
+                               cluster_cols = TRUE,
+                               main = paste("K-means Clustering (k=", n_clusters, ")", label))
+    
+    ggsave(filename=file.path(output_dir, paste0("kmeans_heatmap_", label, ".png")), 
+           plot=cluster_heatmap)
+    
+    # Export cluster assignments
+    write.csv(clustered_data, 
+              file=file.path(output_dir, paste0("kmeans_clusters_", label, ".csv")),
+              row.names=FALSE)
+    
+    # Create cluster profile plots
+    cluster_means <- aggregate(scaled_data, 
+                             by=list(Cluster=km$cluster), 
+                             FUN=mean)
+    
+    # Melt the data for plotting
+    cluster_means_long <- reshape2::melt(cluster_means, 
+                                       id.vars="Cluster",
+                                       variable.name="Sample",
+                                       value.name="Expression")
+    
+    # Create profile plot
+    profile_plot <- ggplot(cluster_means_long, 
+                          aes(x=Sample, y=Expression, group=Cluster, color=factor(Cluster))) +
+        geom_line() +
+        theme_minimal() +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+        labs(title=paste("Cluster Profiles -", label),
+             x="Samples",
+             y="Scaled Expression",
+             color="Cluster")
+    
+    ggsave(filename=file.path(output_dir, paste0("kmeans_profiles_", label, ".png")), 
+           plot=profile_plot)
+    
+    return(km)
+}
+
+# Create directory for clustering results
+clustering_dir <- file.path(opt$output, "clustering")
+dir.create(clustering_dir, showWarnings = FALSE)
+
+# Perform k-means clustering on all genes
+all_genes_data <- normalized_counts_with_annotations[, -c(1:2)]
+kmeans_all <- perform_kmeans_analysis(all_genes_data, 
+                                    n_clusters=6, 
+                                    label="all_genes",
+                                    clustering_dir)
+
+# Perform k-means clustering on DEGs only
+deg_data <- normalized_counts_with_annotations[all_de_genes, -c(1:2)]
+kmeans_deg <- perform_kmeans_analysis(deg_data, 
+                                    n_clusters=4, 
+                                    label="DEGs",
+                                    clustering_dir)
+
+# Modify the GO analysis section to include gene names and trim Ensembl IDs
+if (requireNamespace("clusterProfiler", quietly = TRUE)) {
+    # Load appropriate organism package based on species
+    if (opt$species == "human") {
+        library(org.Hs.eg.db)
+        org_db <- org.Hs.eg.db
+    } else if (opt$species == "mouse") {
+        library(org.Mm.eg.db)
+        org_db <- org.Mm.eg.db
+    } else {
+        stop("Unsupported species. Please use 'human' or 'mouse'")
+    }
+    
+    # Create directory for GO analysis
+    go_dir <- file.path(clustering_dir, "GO_analysis")
+    dir.create(go_dir, showWarnings = FALSE)
+    
+    # Function to trim Ensembl ID version numbers
+    trim_ensembl <- function(ids) {
+        gsub("\\.[0-9]+$", "", ids)
+    }
+    
+    # Function to perform GO analysis for clusters
+    perform_go_analysis <- function(kmeans_result, gene_data, label) {
+        for (i in 1:max(kmeans_result$cluster)) {
+            # Get genes in current cluster
+            cluster_genes <- rownames(gene_data)[kmeans_result$cluster == i]
+            
+            # Get gene symbols and descriptions for the cluster
+            gene_symbols <- gene_annotations$gene_name[match(cluster_genes, gene_annotations$gene_id)]
+            
+            # Create and export annotated cluster gene list with expression values
+            cluster_df <- data.frame(
+                gene_id = cluster_genes,
+                gene_name = gene_symbols,
+                cluster = i,
+                # Add expression values for each sample
+                gene_data[cluster_genes, ]
+            )
+            
+            # Export detailed cluster gene list
+            write.csv(cluster_df,
+                     file = file.path(go_dir, 
+                                    paste0("cluster_", i, "_genes_", label, "_with_expression.csv")),
+                     row.names = FALSE)
+            
+            # Trim Ensembl IDs for GO analysis
+            trimmed_genes <- trim_ensembl(cluster_genes)
+            
+            # Perform GO analysis with trimmed IDs
+            ego <- enrichGO(gene = trimmed_genes,
+                          OrgDb = org_db,
+                          keyType = "ENSEMBL",
+                          ont = "BP",
+                          pAdjustMethod = "BH",
+                          pvalueCutoff = 0.05)
+            
+            # Save results
+            if (nrow(ego) > 0) {
+                # Add gene symbols to GO results
+                ego_df <- as.data.frame(ego)
+                genes_in_terms <- strsplit(ego_df$geneID, "/")
+                ego_df$gene_symbols <- sapply(genes_in_terms, function(x) {
+                    symbols <- gene_annotations$gene_name[match(x, trim_ensembl(gene_annotations$gene_id))]
+                    paste(na.omit(symbols), collapse = "/")
+                })
+                
+                write.csv(ego_df, 
+                         file = file.path(go_dir, 
+                                        paste0("GO_enrichment_", 
+                                              label, "_cluster", i, ".csv")),
+                         row.names = FALSE)
+                
+                # Create dot plot
+                dot_plot <- dotplot(ego, showCategory = 20) +
+                    ggtitle(paste("GO Enrichment -", label, "Cluster", i))
+                ggsave(filename = file.path(go_dir, 
+                                          paste0("GO_dotplot_", 
+                                                label, "_cluster", i, ".png")),
+                       plot = dot_plot)
+            }
+            
+            # Create a simplified gene list with just IDs and symbols
+            write.csv(data.frame(
+                gene_id = cluster_genes,
+                gene_name = gene_symbols,
+                cluster = i
+            ), file = file.path(go_dir, 
+                              paste0("cluster_", i, "_genes_", label, "_simple.csv")),
+            row.names = FALSE)
+        }
+    }
+    
+    # Perform GO analysis for both clustering results
+    perform_go_analysis(kmeans_all, all_genes_data, "all_genes")
+    perform_go_analysis(kmeans_deg, deg_data, "DEGs")
+}
 
 
 
