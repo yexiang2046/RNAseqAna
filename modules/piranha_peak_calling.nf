@@ -6,6 +6,7 @@ process PIRANHA_PEAK_CALLING {
         mode: 'copy',
         saveAs: { filename ->
             if (filename.endsWith("_peaks.bed")) "peaks/$filename"
+            else if (filename.endsWith("_peaks.tsv")) "peaks/$filename"
             else if (filename.endsWith("_converted.bed")) "bed/$filename"
             else null
         }
