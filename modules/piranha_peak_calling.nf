@@ -16,21 +16,26 @@ process PIRANHA_PEAK_CALLING {
     
     output:
     tuple val(bam.simpleName), path("*_peaks.tsv"), emit: peaks
-    path "*_unique.bed", emit: unique_bed
     
     script:
-    def piranha_opts = params.piranha_params ?: '-s -b 20 -d ZeroTruncatedNegativeBinomial -p 0.00001 -u 100'
+    def piranha_opts = params.piranha_params ?: '-s -b 20 -d ZeroTruncatedNegativeBinomial -p 0.01 -u 100'
     """
-    # Convert BAM to BED
-    bedtools bamtobed -i $bam > ${bam.simpleName}_converted.bed
+    # Sort bam file by coordinates
+    samtools sort -@ 8 -o ${bam.simpleName}_sorted.bam ${bam}
     
-    # Filter out reads not uniquely mapped (using single quotes for awk)
-    awk '\$5 == "255" {print \$0}' ${bam.simpleName}_converted.bed > ${bam.simpleName}_unique.bed
+    # Filter for uniquely mapped reads (MAPQ >= 20)
+    samtools view -@ 8 -b -q 20 ${bam.simpleName}_sorted.bam > ${bam.simpleName}_unique.bam
     
-    # Run Piranha on the sorted BED file
-    Piranha $piranha_opts ${bam.simpleName}_unique.bed > ${bam.simpleName}_peaks.tsv
+    # Mark and remove duplicates
+    samtools markdup -@ 8 -r ${bam.simpleName}_unique.bam ${bam.simpleName}_filtered.bam
+    
+    # Index the filtered BAM
+    samtools index ${bam.simpleName}_filtered.bam
+    
+    # Run Piranha on the filtered BAM file
+    Piranha $piranha_opts ${bam.simpleName}_filtered.bam > ${bam.simpleName}_peaks.tsv
     
     # Clean up intermediate files
-    rm ${bam.simpleName}_converted.bed
+    rm ${bam.simpleName}_sorted.bam ${bam.simpleName}_unique.bam ${bam.simpleName}_filtered.bam ${bam.simpleName}_filtered.bam.bai
     """
 } 
