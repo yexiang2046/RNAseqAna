@@ -26,8 +26,8 @@ process PIRANHA_PEAK_CALLING {
     # Filter for uniquely mapped reads (MAPQ >= 20)
     samtools view -@ 8 -b -q 20 ${bam.simpleName}_sorted.bam > ${bam.simpleName}_unique.bam
     
-    # Mark and remove duplicates using Picard
-    java -jar \$PICARD_HOME/picard.jar MarkDuplicates \
+    # Mark and remove duplicates using Picard with full path
+    java -jar /opt/picard/picard.jar MarkDuplicates \
         I=${bam.simpleName}_unique.bam \
         O=${bam.simpleName}_dedup.bam \
         M=${bam.simpleName}_dup_metrics.txt \
