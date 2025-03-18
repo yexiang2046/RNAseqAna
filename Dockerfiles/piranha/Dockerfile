@@ -45,14 +45,14 @@ RUN wget https://github.com/samtools/htslib/releases/download/1.21/htslib-1.21.t
     rm -rf htslib-1.21*
 
 # Install samtools
-RUN wget https://github.com/samtools/samtools/releases/download/1.21/samtools-1.21.tar.bz2 && \
-    tar -xjf samtools-1.21.tar.bz2 && \
-    cd samtools-1.21 && \
+RUN wget https://github.com/samtools/samtools/releases/download/1.20/samtools-1.20.tar.bz2 && \
+    tar -xjf samtools-1.20.tar.bz2 && \
+    cd samtools-1.20 && \
     ./configure && \
     make && \
     make install && \
     cd .. && \
-    rm -rf samtools-1.21*
+    rm -rf samtools-1.20*
 
 # Install BAMTools for BAM file support
 RUN git clone https://github.com/pezmaster31/bamtools.git \
