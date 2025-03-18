@@ -27,12 +27,13 @@ process PIRANHA_PEAK_CALLING {
     samtools view -@ 8 -b -q 20 ${bam.simpleName}_sorted.bam > ${bam.simpleName}_unique.bam
     
     # Mark and remove duplicates using Picard with full path
-    java -jar /opt/picard/picard.jar MarkDuplicates \
+    java -Xmx4g -jar /opt/picard/picard.jar MarkDuplicates \
         I=${bam.simpleName}_unique.bam \
         O=${bam.simpleName}_dedup.bam \
         M=${bam.simpleName}_dup_metrics.txt \
         REMOVE_DUPLICATES=true \
-        VALIDATION_STRINGENCY=LENIENT
+        VALIDATION_STRINGENCY=LENIENT \
+        TMP_DIR=.
     
     # Index the filtered BAM
     samtools index ${bam.simpleName}_dedup.bam
