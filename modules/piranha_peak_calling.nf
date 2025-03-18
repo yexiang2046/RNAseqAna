@@ -19,16 +19,14 @@ process PIRANHA_PEAK_CALLING {
     path "*_converted.bed", emit: converted_bed
     
     script:
-    def piranha_opts = params.piranha_params ?: '-b 20 -d ZeroTruncatedNegativeBinomial -p 0.00001 -u 100'
+    def piranha_opts = params.piranha_params ?: '-s -b 20 -d ZeroTruncatedNegativeBinomial -p 0.00001 -u 100'
     """
     # Convert BAM to BED
     bedtools bamtobed -i $bam > ${bam.simpleName}_converted.bed
     
-    # Sort the BED file
-    sort -k1,1 -k2,2n ${bam.simpleName}_converted.bed > ${bam.simpleName}_sorted.bed
     
     # Run Piranha on the sorted BED file
-    piranha $piranha_opts ${bam.simpleName}_sorted.bed > ${bam.simpleName}_peaks.tsv
+    Piranha $piranha_opts ${bam.simpleName}_sorted.bed > ${bam.simpleName}_peaks.tsv
     
     # Clean up intermediate files
     rm ${bam.simpleName}_sorted.bed
