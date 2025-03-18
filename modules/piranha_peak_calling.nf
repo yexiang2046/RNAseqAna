@@ -1,6 +1,7 @@
 process PIRANHA_PEAK_CALLING {
     tag "$bam.simpleName"
     label 'process_high'
+    container 'xiang2019/piranha:v1.0.0'
     publishDir "${params.outdir}/piranha_output/${bam.simpleName}", 
         mode: 'copy',
         saveAs: { filename ->

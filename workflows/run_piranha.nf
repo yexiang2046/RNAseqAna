@@ -44,7 +44,7 @@ process EXTRACT_FEATURES {
     
     script:
     """
-    gtf_features_bedtools.sh -i $gtf -o .
+    ${baseDir}/../bin/gtf_features_bedtools.sh -i $gtf -o .
     """
 }
 
