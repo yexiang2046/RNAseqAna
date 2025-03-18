@@ -63,8 +63,12 @@ process ANNOTATE_FEATURES {
     
     script:
     """
-    # Run script with absolute path
-    ${workflow.projectDir}/../bin/annotate_peaks.sh \\
+    # Make script executable and copy it to current directory
+    cp ${projectDir}/../bin/annotate_peaks.sh .
+    chmod +x annotate_peaks.sh
+    
+    # Run script from current directory
+    ./annotate_peaks.sh \\
         -p $peaks \\
         -f $feature_dir \\
         -o .
@@ -73,7 +77,7 @@ process ANNOTATE_FEATURES {
 
 // Process to annotate peaks with repeat elements
 process ANNOTATE_REPEATS {
-    publishDir "${params.outdir}/repeat_annotations/\${sample_id}", mode: 'copy'
+    publishDir "${params.outdir}/repeat_annotations/${sample_id}", mode: 'copy'
     
     input:
     tuple val(sample_id), path(peaks)
@@ -84,7 +88,12 @@ process ANNOTATE_REPEATS {
     
     script:
     """
-    ${workflow.projectDir}/../bin/annotate_peaks_rmsk.sh \\
+    # Make script executable and copy it to current directory
+    cp ${projectDir}/bin/annotate_peaks_rmsk.sh .
+    chmod +x annotate_peaks_rmsk.sh
+    
+    # Run script from current directory
+    ./annotate_peaks_rmsk.sh \\
         -p $peaks \\
         -r $rmsk \\
         -o .
@@ -279,27 +288,27 @@ workflow {
     bam_files = Channel.fromPath("${params.bam_dir}/*.bam")
     
     // Extract features from GTF
-    EXTRACT_FEATURES(gtf_file)
+    // EXTRACT_FEATURES(gtf_file)
     
     // Run Piranha on each BAM file
     PIRANHA_PEAK_CALLING(bam_files)
     
     // Annotate peaks with features
-    ANNOTATE_FEATURES(
-        PIRANHA_PEAK_CALLING.out.peaks,
-        EXTRACT_FEATURES.out.feature_beds.collect()
-    )
+    // ANNOTATE_FEATURES(
+    //     PIRANHA_PEAK_CALLING.out.peaks,
+    //     EXTRACT_FEATURES.out.feature_beds.collect()
+    // )
     
     // Annotate peaks with repeats
-    ANNOTATE_REPEATS(
-        PIRANHA_PEAK_CALLING.out.peaks,
-        rmsk_file
-    )
+    // ANNOTATE_REPEATS(
+    //     PIRANHA_PEAK_CALLING.out.peaks,
+    //     rmsk_file
+    // )
     
     // Generate final report
-    GENERATE_REPORT(
-        ANNOTATE_FEATURES.out.collect()
-            .mix(ANNOTATE_REPEATS.out.collect())
-            .collect()
-    )
+    // GENERATE_REPORT(
+    //     ANNOTATE_FEATURES.out.collect()
+    //         .mix(ANNOTATE_REPEATS.out.collect())
+    //         .collect()
+    // )
 }
