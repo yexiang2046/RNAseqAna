@@ -23,6 +23,9 @@ RUN apt-get update && apt-get install -y \
     libbz2-dev \
     liblzma-dev \
     libcurl4-openssl-dev \
+    default-jre \
+    default-jdk \
+    gradle \
     && rm -rf /var/lib/apt/lists/*
 
 # install pandas, matplotlib, seaborn for generating reports
@@ -54,6 +57,16 @@ RUN wget https://github.com/samtools/samtools/releases/download/1.20/samtools-1.
     cd .. && \
     rm -rf samtools-1.20*
 
+# Install Picard tools from source
+RUN mkdir -p /opt/picard && \
+    wget https://github.com/broadinstitute/picard/archive/refs/tags/3.3.0.tar.gz && \
+    tar -xzf 3.3.0.tar.gz && \
+    cd picard-3.3.0 && \
+    ./gradlew shadowJar && \
+    cp build/libs/picard.jar /opt/picard/ && \
+    cd .. && \
+    rm -rf picard-3.3.0 3.3.0.tar.gz
+
 # Install BAMTools for BAM file support
 RUN git clone https://github.com/pezmaster31/bamtools.git \
     && cd bamtools \
@@ -72,5 +85,6 @@ RUN wget https://smithlabresearch.org/downloads/piranha-1.2.1.tar.gz \
     && make all \
     && make install
 
-# Add Piranha to PATH
+# Add Piranha and Picard to PATH and set PICARD_HOME
 ENV PATH="/opt/piranha-1.2.1/bin:${PATH}"
+ENV PICARD_HOME="/opt/picard"

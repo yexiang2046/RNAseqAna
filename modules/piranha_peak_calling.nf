@@ -26,16 +26,21 @@ process PIRANHA_PEAK_CALLING {
     # Filter for uniquely mapped reads (MAPQ >= 20)
     samtools view -@ 8 -b -q 20 ${bam.simpleName}_sorted.bam > ${bam.simpleName}_unique.bam
     
-    # Mark and remove duplicates
-    samtools markdup -@ 8 -r ${bam.simpleName}_unique.bam ${bam.simpleName}_filtered.bam
+    # Mark and remove duplicates using Picard
+    java -jar \$PICARD_HOME/picard.jar MarkDuplicates \
+        I=${bam.simpleName}_unique.bam \
+        O=${bam.simpleName}_dedup.bam \
+        M=${bam.simpleName}_dup_metrics.txt \
+        REMOVE_DUPLICATES=true \
+        VALIDATION_STRINGENCY=LENIENT
     
     # Index the filtered BAM
-    samtools index ${bam.simpleName}_filtered.bam
+    samtools index ${bam.simpleName}_dedup.bam
     
     # Run Piranha on the filtered BAM file
-    Piranha $piranha_opts ${bam.simpleName}_filtered.bam > ${bam.simpleName}_peaks.tsv
+    Piranha $piranha_opts ${bam.simpleName}_dedup.bam > ${bam.simpleName}_peaks.tsv
     
     # Clean up intermediate files
-    rm ${bam.simpleName}_sorted.bam ${bam.simpleName}_unique.bam ${bam.simpleName}_filtered.bam ${bam.simpleName}_filtered.bam.bai
+    rm ${bam.simpleName}_sorted.bam ${bam.simpleName}_unique.bam ${bam.simpleName}_dedup.bam ${bam.simpleName}_dedup.bam.bai
     """
 } 
