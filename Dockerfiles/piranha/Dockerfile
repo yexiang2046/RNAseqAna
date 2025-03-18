@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install additional dependencies required for OpenJDK build
 RUN apt-get update && apt-get install -y \
+    autoconf \
     libx11-dev \
     libxext-dev \
     libxrender-dev \
