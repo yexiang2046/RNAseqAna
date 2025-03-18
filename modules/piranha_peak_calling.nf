@@ -16,19 +16,20 @@ process PIRANHA_PEAK_CALLING {
     
     output:
     tuple val(bam.simpleName), path("*_peaks.tsv"), emit: peaks
-    path "*_converted.bed", emit: converted_bed
+    path "*_unique.bed", emit: unique_bed
     
     script:
     def piranha_opts = params.piranha_params ?: '-s -b 20 -d ZeroTruncatedNegativeBinomial -p 0.00001 -u 100'
     """
     # Convert BAM to BED
     bedtools bamtobed -i $bam > ${bam.simpleName}_converted.bed
-    
+    # filter out reads not uniquely mapped
+    awk '$6 == "255" {print $0}' ${bam.simpleName}_converted.bed > ${bam.simpleName}_unique.bed
     
     # Run Piranha on the sorted BED file
-    Piranha $piranha_opts ${bam.simpleName}_sorted.bed > ${bam.simpleName}_peaks.tsv
+    Piranha $piranha_opts ${bam.simpleName}_unique.bed > ${bam.simpleName}_peaks.tsv
     
     # Clean up intermediate files
-    rm ${bam.simpleName}_sorted.bed
+    rm ${bam.simpleName}_converted.bed
     """
 } 
