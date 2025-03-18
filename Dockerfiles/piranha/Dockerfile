@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     bedtools \
     wget \
     tar \
+    unzip \
     libgsl-dev \
     python3 \
     python-is-python3 \
@@ -28,6 +29,8 @@ RUN apt-get update && apt-get install -y \
 # Install additional dependencies required for OpenJDK build
 RUN apt-get update && apt-get install -y \
     autoconf \
+    zip \
+    unzip \
     libx11-dev \
     libxext-dev \
     libxrender-dev \
