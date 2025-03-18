@@ -63,11 +63,8 @@ process ANNOTATE_FEATURES {
     
     script:
     """
-    # Make script executable
-    chmod +x ${workflow.projectDir}/bin/annotate_peaks.sh
-    
     # Run script with absolute path
-    ${workflow.projectDir}/bin/annotate_peaks.sh \\
+    ${workflow.projectDir}/../bin/annotate_peaks.sh \\
         -p $peaks \\
         -f $feature_dir \\
         -o .
@@ -87,7 +84,7 @@ process ANNOTATE_REPEATS {
     
     script:
     """
-    annotate_peaks_rmsk.sh \\
+    ${workflow.projectDir}/../bin/annotate_peaks_rmsk.sh \\
         -p $peaks \\
         -r $rmsk \\
         -o .
