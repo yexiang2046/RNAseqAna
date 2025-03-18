@@ -23,8 +23,9 @@ process PIRANHA_PEAK_CALLING {
     """
     # Convert BAM to BED
     bedtools bamtobed -i $bam > ${bam.simpleName}_converted.bed
-    # filter out reads not uniquely mapped
-    awk '$5 == "255" {print $0}' ${bam.simpleName}_converted.bed > ${bam.simpleName}_unique.bed
+    
+    # Filter out reads not uniquely mapped (using single quotes for awk)
+    awk '\$5 == "255" {print \$0}' ${bam.simpleName}_converted.bed > ${bam.simpleName}_unique.bed
     
     # Run Piranha on the sorted BED file
     Piranha $piranha_opts ${bam.simpleName}_unique.bed > ${bam.simpleName}_peaks.tsv
