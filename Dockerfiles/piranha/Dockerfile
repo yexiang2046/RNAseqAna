@@ -4,7 +4,7 @@ FROM ubuntu:20.04
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install required packages
+# Install required packages (excluding Java packages)
 RUN apt-get update && apt-get install -y \
     build-essential \
     bedtools \
@@ -23,14 +23,45 @@ RUN apt-get update && apt-get install -y \
     libbz2-dev \
     liblzma-dev \
     libcurl4-openssl-dev \
-    default-jre \
-    default-jdk \
-    gradle \
     && rm -rf /var/lib/apt/lists/*
 
-# Set JAVA_HOME
-ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+# Install additional dependencies required for OpenJDK build
+RUN apt-get update && apt-get install -y \
+    libx11-dev \
+    libxext-dev \
+    libxrender-dev \
+    libxrandr-dev \
+    libxtst-dev \
+    libxt-dev \
+    libcups2-dev \
+    libfontconfig1-dev \
+    libasound2-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install OpenJDK from source
+WORKDIR /opt
+RUN wget https://github.com/openjdk/jdk/archive/refs/tags/jdk-25+14.tar.gz && \
+    tar xzf jdk-25+14.tar.gz && \
+    cd jdk-jdk-25-14 && \
+    bash configure --enable-debug --with-jvm-variants=server && \
+    make images && \
+    mkdir -p /usr/lib/jvm && \
+    mv build/linux-x86_64-server-release/images/jdk /usr/lib/jvm/java-25-openjdk && \
+    cd .. && \
+    rm -rf jdk-jdk-25-14 jdk-25+14.tar.gz
+
+# Set JAVA_HOME and add Java to PATH
+ENV JAVA_HOME=/usr/lib/jvm/java-25-openjdk
 ENV PATH=$JAVA_HOME/bin:$PATH
+
+# Install Gradle manually since we're not using apt
+RUN wget https://services.gradle.org/distributions/gradle-7.6.1-bin.zip && \
+    mkdir /opt/gradle && \
+    unzip -d /opt/gradle gradle-7.6.1-bin.zip && \
+    rm gradle-7.6.1-bin.zip
+
+# Add Gradle to PATH
+ENV PATH=/opt/gradle/gradle-7.6.1/bin:$PATH
 
 # install pandas, matplotlib, seaborn for generating reports
 RUN pip3 install --no-cache-dir \
