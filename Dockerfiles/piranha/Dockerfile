@@ -64,7 +64,7 @@ RUN wget https://smithlabresearch.org/downloads/piranha-1.2.1.tar.gz \
     && rm -rf piranha-1.2.1.tar.gz
 
 # Add Piranha to PATH
-ENV PATH="/usr/local/bin:${PATH}"
+ENV PATH="/opt/piranha-1.2.1/bin:${PATH}"
 
 # Install samtools
 RUN wget https://github.com/samtools/samtools/releases/download/1.21/samtools-1.21.tar.bz2 \
