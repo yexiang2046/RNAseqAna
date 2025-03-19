@@ -27,7 +27,7 @@ process BAM_PREPROCESSING {
     script:
     """
     # Sort BAM file using Picard
-    picard -Xmx4g SortSam \
+    java -Xmx4g -jar /usr/picard/picard.jar SortSam \
         -I ${bam} \
         -O ${bam.simpleName}_sorted.bam \
         -SO coordinate \
@@ -36,7 +36,7 @@ process BAM_PREPROCESSING {
         -TMP_DIR .
 
     # Filter BAM for mapping quality using Picard
-    picard -Xmx4g FilterSamReads \
+    java -Xmx4g -jar /usr/picard/picard.jar FilterSamReads \
         -I ${bam.simpleName}_sorted.bam \
         -O ${bam.simpleName}_filtered.bam \
         --FILTER includeAligned \
@@ -46,7 +46,7 @@ process BAM_PREPROCESSING {
         -TMP_DIR .
 
     # Mark and remove duplicates using Picard
-    picard -Xmx4g MarkDuplicates \
+    java -Xmx4g -jar /usr/picard/picard.jar MarkDuplicates \
         -I ${bam.simpleName}_filtered.bam \
         -O ${bam.simpleName}_final.bam \
         -M ${bam.simpleName}_metrics.txt \
@@ -56,14 +56,14 @@ process BAM_PREPROCESSING {
         -TMP_DIR .
 
     # Collect quality metrics
-    picard -Xmx4g QualityScoreDistribution \
+    java -Xmx4g -jar /usr/picard/picard.jar QualityScoreDistribution \
         -I ${bam.simpleName}_final.bam \
         -O ${bam.simpleName}_quality_metrics.txt \
         -CHART ${bam.simpleName}_quality_metrics.pdf \
         -VALIDATION_STRINGENCY LENIENT
 
     # Collect insert size metrics (if paired-end)
-    picard -Xmx4g CollectInsertSizeMetrics \
+    java -Xmx4g -jar /usr/picard/picard.jar CollectInsertSizeMetrics \
         -I ${bam.simpleName}_final.bam \
         -O ${bam.simpleName}_insert_metrics.txt \
         -H ${bam.simpleName}_insert_metrics.pdf \
@@ -71,14 +71,14 @@ process BAM_PREPROCESSING {
         -ASSUME_SORTED true
 
     # Collect alignment metrics
-    picard -Xmx4g CollectAlignmentSummaryMetrics \
+    java -Xmx4g -jar /usr/picard/picard.jar CollectAlignmentSummaryMetrics \
         -R ${genome_fasta} \
         -I ${bam.simpleName}_final.bam \
         -O ${bam.simpleName}_alignment_metrics.txt \
         -VALIDATION_STRINGENCY LENIENT
 
     # Collect GC bias metrics
-    picard -Xmx4g CollectGcBiasMetrics \
+    java -Xmx4g -jar /usr/picard/picard.jar CollectGcBiasMetrics \
         -I ${bam.simpleName}_final.bam \
         -O ${bam.simpleName}_gc_metrics.txt \
         -CHART ${bam.simpleName}_gc_metrics.pdf \
