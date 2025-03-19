@@ -1,7 +1,6 @@
 process BAM_PREPROCESSING {
     tag "$bam.simpleName"
     label 'process_medium'
-    container 'biocontainers/picard-tools:v2.18.25dfsg-2-deb_cv1'
     publishDir "${params.outdir}/bam_preprocessing/${bam.simpleName}", 
         mode: 'copy',
         saveAs: { filename ->
