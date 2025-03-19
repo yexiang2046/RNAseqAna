@@ -287,10 +287,10 @@ process GENERATE_REPORT {
 workflow {
     // Input channel for BAM files
     bam_ch = Channel.fromPath("${params.bam_dir}/*.bam")
-    genome_fasta = Channel.fromPath(params.genome_fasta)
+    // genome_fasta = Channel.fromPath(params.genome_fasta)
 
     // Run the workflow
-    BAM_PREPROCESSING(bam_ch, genome_fasta)
+    BAM_PREPROCESSING(bam_ch)
     PIRANHA_PEAK_CALLING(BAM_PREPROCESSING.out.processed_bam)
     
     // Extract features from GTF
