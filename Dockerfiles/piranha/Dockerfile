@@ -84,7 +84,7 @@ RUN if [ -f /usr/local/bin/piranha ]; then \
     fi
 
 # Verify installations and BAM support
-RUN piranha --help | grep -i "bam" || echo "BAM support not found"
+RUN Piranha --help | grep -i "bam" || echo "BAM support not found"
 
 # Set default working directory
 WORKDIR /data
