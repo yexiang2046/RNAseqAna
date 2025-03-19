@@ -1,7 +1,6 @@
 process BAM_PREPROCESSING {
     tag "$bam.simpleName"
     label 'process_medium'
-    container 'mgibio/samtools:1.9'
     publishDir "${params.outdir}/bam_preprocessing/${bam.simpleName}", 
         mode: 'copy',
         saveAs: { filename ->
