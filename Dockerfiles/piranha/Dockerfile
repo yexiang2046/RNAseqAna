@@ -58,8 +58,8 @@ ENV LDFLAGS="-L${BAMTOOLS_ROOT}/lib -Wl,-rpath,${BAMTOOLS_ROOT}/lib"
 RUN wget https://smithlabresearch.org/downloads/piranha-1.2.1.tar.gz \
     && tar -xf piranha-1.2.1.tar.gz \
     && cd piranha-1.2.1 \
-    && ./configure --with-bam_tools_headers=/usr/local/include/bamtools \
-                  --with-bam_tools_library=/usr/local/lib \
+    && ./configure --with-bam_tools_headers="/usr/local/include/bamtools" \
+                  --with-bam_tools_library="/usr/local/lib" \
     && make \
     && make install \
     && cd .. \
