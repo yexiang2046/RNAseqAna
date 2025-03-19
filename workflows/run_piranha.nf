@@ -2,7 +2,8 @@
 
 nextflow.enable.dsl=2
 
-include { PIRANHA_PEAK_CALLING } from '../modules/piranha_peak_calling.nf'
+include { BAM_PREPROCESSING } from '../modules/bam_preprocessing'
+include { PIRANHA_PEAK_CALLING } from '../modules/piranha_peak_calling'
 
 
 // Parameters
@@ -11,19 +12,21 @@ params.bam_dir = null
 params.rmsk = null
 params.outdir = 'results'
 params.piranha_params = ''
+params.genome_fasta = null
 
 // Print usage message if required parameters are missing
-if (!params.gtf || !params.bam_dir || !params.rmsk) {
+if (!params.gtf || !params.bam_dir || !params.rmsk || !params.genome_fasta) {
     log.error """
     Required parameters missing!
     
     Usage:
-    nextflow run main.nf --gtf GTF_FILE --bam_dir BAM_DIR --rmsk RMSK_BED [options]
+    nextflow run main.nf --gtf GTF_FILE --bam_dir BAM_DIR --rmsk RMSK_BED --genome_fasta FASTA [options]
     
     Required arguments:
-      --gtf         GTF file (e.g., gencode.v43.annotation.gtf)
-      --bam_dir     Directory containing BAM files
-      --rmsk        RepeatMasker BED file from UCSC
+      --gtf          GTF file (e.g., gencode.v43.annotation.gtf)
+      --bam_dir      Directory containing BAM files
+      --rmsk         RepeatMasker BED file from UCSC
+      --genome_fasta Reference genome FASTA file
     
     Optional arguments:
       --outdir            Output directory (default: 'results')
@@ -282,16 +285,16 @@ process GENERATE_REPORT {
 
 // Main workflow
 workflow {
-    // Get input files
-    gtf_file = file(params.gtf)
-    rmsk_file = file(params.rmsk)
-    bam_files = Channel.fromPath("${params.bam_dir}/*.bam")
+    // Input channel for BAM files
+    bam_ch = Channel.fromPath("${params.bam_dir}/*.bam")
+    genome_fasta = Channel.fromPath(params.genome_fasta)
+
+    // Run the workflow
+    BAM_PREPROCESSING(bam_ch, genome_fasta)
+    PIRANHA_PEAK_CALLING(BAM_PREPROCESSING.out.processed_bam)
     
     // Extract features from GTF
     // EXTRACT_FEATURES(gtf_file)
-    
-    // Run Piranha on each BAM file
-    PIRANHA_PEAK_CALLING(bam_files)
     
     // Annotate peaks with features
     // ANNOTATE_FEATURES(
