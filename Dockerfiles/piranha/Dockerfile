@@ -58,7 +58,8 @@ ENV LDFLAGS="-L${BAMTOOLS_ROOT}/lib -Wl,-rpath,${BAMTOOLS_ROOT}/lib"
 RUN wget https://smithlabresearch.org/downloads/piranha-1.2.1.tar.gz \
     && tar -xf piranha-1.2.1.tar.gz \
     && cd piranha-1.2.1 \
-    && ./configure \
+    && ./configure --with-bam_tools_headers=/usr/local/include/bamtools \
+                  --with-bam_tools_library=/usr/local/lib \
     && make \
     && make install \
     && cd .. \
@@ -71,8 +72,7 @@ ENV PATH="/opt/piranha-1.2.1/bin:${PATH}"
 RUN wget https://github.com/samtools/samtools/releases/download/1.21/samtools-1.21.tar.bz2 \
     && tar -xjf samtools-1.21.tar.bz2 \
     && cd samtools-1.21 \
-    && ./configure --with-bam_tools_headers=/usr/local/include/bamtools \
-                  --with-bam_tools_library=/usr/local/lib \
+    && ./configure 
     && make \
     && make install \
     && cd .. \
