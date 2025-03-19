@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y \
     liblzma-dev \
     libcurl4-openssl-dev \
     procps \
+    autoconf \
     && rm -rf /var/lib/apt/lists/*
 
 # install pandas, matplotlib, seaborn for generating reports
@@ -70,7 +71,8 @@ ENV PATH="/opt/piranha-1.2.1/bin:${PATH}"
 RUN wget https://github.com/samtools/samtools/releases/download/1.21/samtools-1.21.tar.bz2 \
     && tar -xjf samtools-1.21.tar.bz2 \
     && cd samtools-1.21 \
-    && ./configure \
+    && ./configure --with-bam_tools_headers=/usr/local/include/bamtools \
+                  --with-bam_tools_library=/usr/local/lib \
     && make \
     && make install \
     && cd .. \
@@ -81,9 +83,8 @@ RUN if [ -f /usr/local/bin/piranha ]; then \
         ln -sf /usr/local/bin/piranha /usr/local/bin/Piranha; \
     fi
 
-# Verify installations
-RUN which piranha || echo "piranha not found" && \
-    which samtools || echo "samtools not found"
+# Verify installations and BAM support
+RUN piranha --help | grep -i "bam" || echo "BAM support not found"
 
 # Set default working directory
 WORKDIR /data
