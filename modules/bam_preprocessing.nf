@@ -1,92 +1,53 @@
 process BAM_PREPROCESSING {
     tag "$bam.simpleName"
     label 'process_medium'
-    container 'biocontainers/picard:2.27.5'
+    container 'mgibio/samtools:v1.21-noble'
     publishDir "${params.outdir}/bam_preprocessing/${bam.simpleName}", 
         mode: 'copy',
         saveAs: { filename ->
             if (filename.endsWith("_final.bam")) "bam/$filename"
             else if (filename.endsWith(".txt")) "metrics/$filename"
-            else if (filename.endsWith(".pdf")) "metrics/$filename"
             else null
         }
 
     input:
     path bam
-    path genome_fasta
 
     output:
     tuple val(bam.simpleName), path("*_final.bam"), emit: processed_bam
-    path "*_metrics.txt", emit: metrics
-    path "*_quality_metrics.txt", emit: quality_metrics
-    path "*_insert_metrics.txt", emit: insert_metrics
-    path "*_alignment_metrics.txt", emit: alignment_metrics
-    path "*_gc_metrics.txt", emit: gc_metrics
-    path "*.pdf", emit: plots
+    path "*_stats.txt", emit: stats
+    path "*_flagstat.txt", emit: flagstat
+    path "*_idxstats.txt", emit: idxstats
 
     script:
     """
-    # Sort BAM file using Picard
-    java -Xmx4g -jar /usr/picard/picard.jar SortSam \
-        -I ${bam} \
-        -O ${bam.simpleName}_sorted.bam \
-        -SORT_ORDER coordinate \
-        -CREATE_INDEX true \
-        -VALIDATION_STRINGENCY LENIENT \
-        -TMP_DIR .
+    # Sort BAM file
+    samtools sort -@ 8 -m 4G \
+        -o ${bam.simpleName}_sorted.bam \
+        ${bam}
 
-    # Filter BAM for mapping quality using Picard
-    java -Xmx4g -jar /usr/picard/picard.jar FilterSamReads \
-        -I ${bam} \
-        -O ${bam.simpleName}_filtered.bam \
-        --FILTER includeAligned \
-        -MINIMUM_MAPPING_QUALITY 20 \
-        -CREATE_INDEX true \
-        -VALIDATION_STRINGENCY LENIENT \
-        -TMP_DIR .
+    # Index sorted BAM
+    samtools index ${bam.simpleName}_sorted.bam
 
-    # Mark and remove duplicates using Picard
-    java -Xmx4g -jar /usr/picard/picard.jar MarkDuplicates \
-        -I ${bam.simpleName}_filtered.bam \
-        -O ${bam.simpleName}_final.bam \
-        -M ${bam.simpleName}_metrics.txt \
-        -REMOVE_DUPLICATES true \
-        -CREATE_INDEX true \
-        -VALIDATION_STRINGENCY LENIENT \
-        -TMP_DIR .
+    # Filter for mapping quality and proper pairs
+    samtools view -@ 8 -b -q 255 -F 0x4 \
+        ${bam.simpleName}_sorted.bam \
+        > ${bam.simpleName}_filtered.bam
 
-    # Collect quality metrics
-    java -Xmx4g -jar /usr/picard/picard.jar QualityScoreDistribution \
-        -I ${bam.simpleName}_final.bam \
-        -O ${bam.simpleName}_quality_metrics.txt \
-        -CHART ${bam.simpleName}_quality_metrics.pdf \
-        -VALIDATION_STRINGENCY LENIENT
+    # Mark and remove duplicates
+    samtools markdup -@ 8 -r \
+        ${bam.simpleName}_filtered.bam \
+        ${bam.simpleName}_final.bam
 
-    # Collect insert size metrics (if paired-end)
-    java -Xmx4g -jar /usr/picard/picard.jar CollectInsertSizeMetrics \
-        -I ${bam.simpleName}_final.bam \
-        -O ${bam.simpleName}_insert_metrics.txt \
-        -H ${bam.simpleName}_insert_metrics.pdf \
-        -VALIDATION_STRINGENCY LENIENT \
-        -ASSUME_SORTED true
+    # Index final BAM
+    samtools index ${bam.simpleName}_final.bam
 
-    # Collect alignment metrics
-    java -Xmx4g -jar /usr/picard/picard.jar CollectAlignmentSummaryMetrics \
-        -R ${genome_fasta} \
-        -I ${bam.simpleName}_final.bam \
-        -O ${bam.simpleName}_alignment_metrics.txt \
-        -VALIDATION_STRINGENCY LENIENT
-
-    # Collect GC bias metrics
-    java -Xmx4g -jar /usr/picard/picard.jar CollectGcBiasMetrics \
-        -I ${bam.simpleName}_final.bam \
-        -O ${bam.simpleName}_gc_metrics.txt \
-        -CHART ${bam.simpleName}_gc_metrics.pdf \
-        -S ${bam.simpleName}_gc_summary.txt \
-        -R ${genome_fasta} \
-        -VALIDATION_STRINGENCY LENIENT
+    # Collect various statistics
+    samtools stats ${bam.simpleName}_final.bam > ${bam.simpleName}_stats.txt
+    samtools flagstat ${bam.simpleName}_final.bam > ${bam.simpleName}_flagstat.txt
+    samtools idxstats ${bam.simpleName}_final.bam > ${bam.simpleName}_idxstats.txt
 
     # Clean up intermediate files
-    rm ${bam.simpleName}_sorted.bam ${bam.simpleName}_filtered.bam
+    rm ${bam.simpleName}_sorted.bam ${bam.simpleName}_sorted.bam.bai ${bam.simpleName}_filtered.bam
     """
 } 
