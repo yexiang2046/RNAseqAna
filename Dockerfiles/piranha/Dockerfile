@@ -48,12 +48,16 @@ RUN git clone https://github.com/pezmaster31/bamtools.git \
     && cd ../.. \
     && rm -rf bamtools
 
+# Set environment variables for BAMTools
+ENV BAMTOOLS_ROOT=/usr/local
+ENV CPPFLAGS="-I${BAMTOOLS_ROOT}/include/bamtools"
+ENV LDFLAGS="-L${BAMTOOLS_ROOT}/lib -Wl,-rpath,${BAMTOOLS_ROOT}/lib"
+
 # Download and install Piranha with BAMTools support
 RUN wget https://smithlabresearch.org/downloads/piranha-1.2.1.tar.gz \
     && tar -xf piranha-1.2.1.tar.gz \
     && cd piranha-1.2.1 \
-    && ./configure --with-bam_tools_headers=/usr/local/include/bamtools \
-                  --with-bam_tools_library=/usr/local/lib \
+    && ./configure \
     && make \
     && make install \
     && cd .. \
