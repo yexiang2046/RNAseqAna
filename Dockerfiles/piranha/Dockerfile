@@ -36,12 +36,15 @@ RUN git clone https://github.com/pezmaster31/bamtools.git && \
     cmake .. && \
     make && \
     make install && \
+    # Create symlinks for headers
+    ln -s /usr/local/include/bamtools/api /usr/local/include/api && \
     cd ../.. && \
     rm -rf bamtools
 
 # Set environment variables for BAMTools
 ENV BAMTOOLS_ROOT=/usr/local
 ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+ENV CPATH=/usr/local/include/bamtools:$CPATH
 
 # Download and install Piranha
 RUN wget https://smithlabresearch.org/downloads/piranha-1.2.1.tar.gz && \
@@ -51,17 +54,17 @@ RUN wget https://smithlabresearch.org/downloads/piranha-1.2.1.tar.gz && \
     autoreconf -i && \
     # Configure with BAMTools support
     ./configure \
-        CPPFLAGS="-I/usr/local/include/bamtools" \
+        CPPFLAGS="-I/usr/local/include/bamtools -I/usr/local/include" \
         LDFLAGS="-L/usr/local/lib" \
-        LIBS="-lbamtools" && \
+        LIBS="-lbamtools -lz" && \
     # Build and install
-    make && \
+    make CPPFLAGS="-I/usr/local/include/bamtools -I/usr/local/include" && \
     make install && \
     # Cleanup
     cd .. && \
     rm -rf piranha-1.2.1*
 
-# Verify installations and BAM support
+# Verify installation and BAM support
 RUN Piranha --help | grep -i "bam" || echo "BAM support not found"
 
 # Set working directory for data
