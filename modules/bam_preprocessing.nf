@@ -39,7 +39,7 @@ process BAM_PREPROCESSING {
     java -Xmx4g -jar /usr/picard/picard.jar FilterSamReads \
         -I ${bam} \
         -O ${bam.simpleName}_filtered.bam \
-        -FILTER includeAligned \
+        --FILTER includeAligned \
         -MINIMUM_MAPPING_QUALITY 20 \
         -CREATE_INDEX true \
         -VALIDATION_STRINGENCY LENIENT \
