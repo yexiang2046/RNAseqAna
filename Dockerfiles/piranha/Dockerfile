@@ -79,10 +79,6 @@ RUN wget https://github.com/samtools/samtools/releases/download/1.21/samtools-1.
     && cd .. \
     && rm -rf samtools-1.21*
 
-# Create symlink after installation
-RUN if [ -f /usr/local/bin/piranha ]; then \
-        ln -sf /usr/local/bin/piranha /usr/local/bin/Piranha; \
-    fi
 
 # Verify installations and BAM support
 RUN Piranha --help | grep -i "bam" || echo "BAM support not found"
