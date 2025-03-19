@@ -20,10 +20,20 @@ process BAM_PREPROCESSING {
 
     script:
     """
-    # Sort BAM file
+    # Sort by name for fixmate
+    samtools sort -@ 8 -m 4G -n \
+        -o ${bam.simpleName}_namesort.bam \
+        ${bam}
+
+    # Fix mate information
+    samtools fixmate -@ 8 -m \
+        ${bam.simpleName}_namesort.bam \
+        ${bam.simpleName}_fixmate.bam
+
+    # Sort by coordinate for markdup
     samtools sort -@ 8 -m 4G \
         -o ${bam.simpleName}_sorted.bam \
-        ${bam}
+        ${bam.simpleName}_fixmate.bam
 
     # Index sorted BAM
     samtools index ${bam.simpleName}_sorted.bam
@@ -47,6 +57,10 @@ process BAM_PREPROCESSING {
     samtools idxstats ${bam.simpleName}_final.bam > ${bam.simpleName}_idxstats.txt
 
     # Clean up intermediate files
-    rm ${bam.simpleName}_sorted.bam ${bam.simpleName}_sorted.bam.bai ${bam.simpleName}_filtered.bam
+    rm ${bam.simpleName}_namesort.bam \
+       ${bam.simpleName}_fixmate.bam \
+       ${bam.simpleName}_sorted.bam \
+       ${bam.simpleName}_sorted.bam.bai \
+       ${bam.simpleName}_filtered.bam
     """
 } 
