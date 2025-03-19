@@ -32,7 +32,6 @@ RUN pip3 install --no-cache-dir \
      pandas \
      matplotlib \
      seaborn
-     
 
 # Set working directory
 WORKDIR /opt
@@ -57,11 +56,12 @@ RUN wget https://smithlabresearch.org/downloads/piranha-1.2.1.tar.gz \
                   --with-bam_tools_library=/usr/local/lib \
     && make all \
     && make install \
-    && cd .. \
-    && rm -rf piranha-1.2.1*
 
-# Add Piranha to PATH
-ENV PATH="/usr/local/bin:${PATH}"
+# Add Piranha binary directory to PATH
+ENV PATH="/usr/local/bin:/opt/piranha-1.2.1/bin:${PATH}"
+
+# Create symlink to ensure Piranha is accessible
+RUN ln -sf /usr/local/bin/piranha /usr/local/bin/Piranha
 
 # Install samtools
 RUN wget https://github.com/samtools/samtools/releases/download/1.21/samtools-1.21.tar.bz2 \
@@ -72,3 +72,11 @@ RUN wget https://github.com/samtools/samtools/releases/download/1.21/samtools-1.
     && make install \
     && cd .. \
     && rm -rf samtools-1.21*
+
+# Verify installations
+RUN which Piranha && \
+    which samtools && \
+    Piranha --help
+
+# Set default working directory
+WORKDIR /data
