@@ -51,22 +51,23 @@ RUN git clone https://github.com/pezmaster31/bamtools.git \
 
 # Set environment variables for BAMTools
 ENV BAMTOOLS_ROOT=/usr/local
-ENV CPPFLAGS="-I${BAMTOOLS_ROOT}/include/bamtools"
-ENV LDFLAGS="-L${BAMTOOLS_ROOT}/lib -Wl,-rpath,${BAMTOOLS_ROOT}/lib"
+ENV CPPFLAGS="-I/usr/local/include/bamtools"
+ENV LDFLAGS="-L/usr/local/lib -lbamtools"
+ENV LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}"
 
 # Download and install Piranha with BAMTools support
 RUN wget https://smithlabresearch.org/downloads/piranha-1.2.1.tar.gz \
     && tar -xf piranha-1.2.1.tar.gz \
     && cd piranha-1.2.1 \
-    && ./configure --with-bam_tools_headers="/usr/local/include/bamtools" \
-                  --with-bam_tools_library="/usr/local/lib" \
-    && make \
+    && autoreconf -i \
+    && ./configure \
+    && make CPPFLAGS="-I/usr/local/include/bamtools" LDFLAGS="-L/usr/local/lib -lbamtools" \
     && make install \
     && cd .. \
     && rm -rf piranha-1.2.1.tar.gz
 
 # Add Piranha to PATH
-ENV PATH="/opt/piranha-1.2.1/bin:${PATH}"
+ENV PATH="/usr/local/bin:${PATH}"
 
 # Install samtools
 RUN wget https://github.com/samtools/samtools/releases/download/1.21/samtools-1.21.tar.bz2 \
