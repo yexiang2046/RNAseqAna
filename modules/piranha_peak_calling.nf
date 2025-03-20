@@ -46,21 +46,24 @@ process PIRANHA_PEAK_CALLING {
     echo "Parameters used: $piranha_opts" >> ${bam_meta}_piranha_metrics.txt
     echo "" >> ${bam_meta}_piranha_metrics.txt
     echo "Peak Score Distribution:" >> ${bam_meta}_piranha_metrics.txt
-    awk '{print \$5}' ${bam_meta}_peaks.bed | sort -n | \
-        awk '
-            BEGIN {print "Min\tQ1\tMedian\tQ3\tMax"}
-            {
-                count++
-                scores[count]=\$1
+    awk '
+        BEGIN {print "Min\tQ1\tMedian\tQ3\tMax"}
+        {
+            print \$1
+        }
+        END {
+            # Use sort command to get sorted values
+            cmd = "sort -n"
+            while ((cmd | getline line) > 0) {
+                scores[++n] = line
             }
-            END {
-                n=asort(scores)
-                print scores[1] "\t" \
-                      scores[int(n*0.25)] "\t" \
-                      scores[int(n*0.5)] "\t" \
-                      scores[int(n*0.75)] "\t" \
-                      scores[n]
-            }
-        ' >> ${bam_meta}_piranha_metrics.txt
+            close(cmd)
+            print scores[1] "\t" \
+                  scores[int(n*0.25)] "\t" \
+                  scores[int(n*0.5)] "\t" \
+                  scores[int(n*0.75)] "\t" \
+                  scores[n]
+        }
+    ' ${bam_meta}_peaks.bed >> ${bam_meta}_piranha_metrics.txt
     """
 } 
