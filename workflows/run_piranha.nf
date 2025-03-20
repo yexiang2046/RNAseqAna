@@ -7,7 +7,7 @@ include { PIRANHA_PEAK_CALLING } from '../modules/piranha_peak_calling'
 
 
 // Parameters
-params.gtf = file('gencode.v38.primary_assembly.annotation.gtf')
+params.gtf = 'gencode.v38.primary_assembly.annotation.gtf'
 params.bam_dir = null
 params.rmsk = null
 params.outdir = 'results'
@@ -287,6 +287,8 @@ process GENERATE_REPORT {
 workflow {
     // Input channel for BAM files
     bam_ch = Channel.fromPath("${params.bam_dir}/*.bam")
+    rmsk_ch = Channel.fromPath(params.rmsk)
+    gtf_ch = Channel.fromPath(params.gtf)
     // genome_fasta = Channel.fromPath(params.genome_fasta)
 
     // Run the workflow
@@ -294,7 +296,7 @@ workflow {
     PIRANHA_PEAK_CALLING(BAM_PREPROCESSING.out.processed_bam)
     
     // Extract features from GTF
-    EXTRACT_FEATURES(params.gtf)
+    EXTRACT_FEATURES(gtf_ch)
     
     // Annotate peaks with features
     ANNOTATE_FEATURES(
@@ -305,7 +307,7 @@ workflow {
     // Annotate peaks with repeats
     ANNOTATE_REPEATS(
         PIRANHA_PEAK_CALLING.out.peaks,
-        params.rmsk
+        rmsk_ch
     )
     
     // Generate final report
