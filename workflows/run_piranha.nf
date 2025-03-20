@@ -300,13 +300,13 @@ workflow {
     
     // Annotate peaks with features
     ANNOTATE_FEATURES(
-        PIRANHA_PEAK_CALLING.out.peaks,
+        PIRANHA_PEAK_CALLING.out.peaks_bed,
         EXTRACT_FEATURES.out.feature_beds.collect()
     )
     
     // Annotate peaks with repeats
     ANNOTATE_REPEATS(
-        PIRANHA_PEAK_CALLING.out.peaks,
+        PIRANHA_PEAK_CALLING.out.peaks_bed,
         rmsk_ch
     )
     

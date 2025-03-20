@@ -30,14 +30,14 @@ if [ -z "$PEAKS" ] || [ -z "$RMSK" ] || [ -z "$OUTPUT_DIR" ]; then
     usage
 fi
 
-# Check if input files exist
-if [ ! -f "$PEAKS" ]; then
-    echo "Error: Peaks file does not exist: $PEAKS"
+# Check if input files exist by checking if the files are not empty and ".bed" extension
+if [ ! -s "$PEAKS" ] || [ "${PEAKS##*.}" != "bed" ]; then
+    echo "Error: Peaks file does not exist or is not a BED file: $PEAKS"
     exit 1
 fi
 
-if [ ! -f "$RMSK" ]; then
-    echo "Error: RepeatMasker file does not exist: $RMSK"
+if [ ! -s "$RMSK" ] || [ "${RMSK##*.}" != "bed" ]; then
+    echo "Error: RepeatMasker file does not exist or is not a BED file: $RMSK"
     exit 1
 fi
 
