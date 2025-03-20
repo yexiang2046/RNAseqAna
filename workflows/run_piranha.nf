@@ -305,7 +305,7 @@ workflow {
     // Annotate peaks with repeats
     ANNOTATE_REPEATS(
         PIRANHA_PEAK_CALLING.out.peaks,
-        rmsk_file
+        params.rmsk
     )
     
     // Generate final report
