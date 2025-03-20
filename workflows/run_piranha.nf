@@ -294,7 +294,7 @@ workflow {
     PIRANHA_PEAK_CALLING(BAM_PREPROCESSING.out.processed_bam)
     
     // Extract features from GTF
-    EXTRACT_FEATURES(gtf_file)
+    EXTRACT_FEATURES(params.gtf)
     
     // Annotate peaks with features
     ANNOTATE_FEATURES(
