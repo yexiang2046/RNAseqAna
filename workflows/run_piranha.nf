@@ -294,24 +294,24 @@ workflow {
     PIRANHA_PEAK_CALLING(BAM_PREPROCESSING.out.processed_bam)
     
     // Extract features from GTF
-    // EXTRACT_FEATURES(gtf_file)
+    EXTRACT_FEATURES(gtf_file)
     
     // Annotate peaks with features
-    // ANNOTATE_FEATURES(
-    //     PIRANHA_PEAK_CALLING.out.peaks,
-    //     EXTRACT_FEATURES.out.feature_beds.collect()
-    // )
+    ANNOTATE_FEATURES(
+        PIRANHA_PEAK_CALLING.out.peaks,
+        EXTRACT_FEATURES.out.feature_beds.collect()
+    )
     
     // Annotate peaks with repeats
-    // ANNOTATE_REPEATS(
-    //     PIRANHA_PEAK_CALLING.out.peaks,
-    //     rmsk_file
-    // )
+    ANNOTATE_REPEATS(
+        PIRANHA_PEAK_CALLING.out.peaks,
+        rmsk_file
+    )
     
     // Generate final report
-    // GENERATE_REPORT(
-    //     ANNOTATE_FEATURES.out.collect()
-    //         .mix(ANNOTATE_REPEATS.out.collect())
-    //         .collect()
-    // )
+    GENERATE_REPORT(
+        ANNOTATE_FEATURES.out.collect()
+            .mix(ANNOTATE_REPEATS.out.collect())
+            .collect()
+    )
 }
