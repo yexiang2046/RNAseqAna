@@ -47,7 +47,9 @@ process EXTRACT_FEATURES {
     
     script:
     """
-    ${baseDir}/../bin/gtf_features_bedtools.sh -i $gtf -o .
+    cp ${baseDir}/../bin/gtf_features_bedtools.sh .
+    chmod +x gtf_features_bedtools.sh
+    ./gtf_features_bedtools.sh -i $gtf -o .
     """
 }
 
@@ -66,11 +68,8 @@ process ANNOTATE_FEATURES {
     
     script:
     """
-    # Make script executable and copy it to current directory
     cp ${baseDir}/../bin/annotate_peaks.sh .
     chmod +x annotate_peaks.sh
-    
-    # Run script from current directory
     ./annotate_peaks.sh \\
         -p $peaks \\
         -f $feature_dir \\
@@ -91,11 +90,8 @@ process ANNOTATE_REPEATS {
     
     script:
     """
-    # Make script executable and copy it to current directory
     cp ${baseDir}/../bin/annotate_peaks_rmsk.sh .
     chmod +x annotate_peaks_rmsk.sh
-    
-    # Run script from current directory
     ./annotate_peaks_rmsk.sh \\
         -p $peaks \\
         -r $rmsk \\
