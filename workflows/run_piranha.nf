@@ -92,7 +92,7 @@ process ANNOTATE_REPEATS {
     script:
     """
     # Make script executable and copy it to current directory
-    cp ${projectDir}/bin/annotate_peaks_rmsk.sh .
+    cp ${projectDir}/../bin/annotate_peaks_rmsk.sh .
     chmod +x annotate_peaks_rmsk.sh
     
     # Run script from current directory
