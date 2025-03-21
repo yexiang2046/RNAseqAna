@@ -62,7 +62,7 @@ process EXTRACT_FEATURES {
 
 // Process to annotate peaks with genomic features
 process ANNOTATE_FEATURES {
-    publishDir "${params.outdir}/peak_annotations/${sample_id}", mode: 'copy'
+    publishDir "${params.outdir}/peak_annotations", mode: 'copy'
     
     input:
     tuple val(sample_id), path(peaks)
@@ -73,6 +73,7 @@ process ANNOTATE_FEATURES {
     
     script:
     """
+    mkdir -p "${params.outdir}/peak_annotations/${sample_id}"
     # Create feature list file
     find $feature_dir -name "*.bed" > feature_list.txt
     
@@ -85,7 +86,7 @@ process ANNOTATE_FEATURES {
     ./annotate_peaks.sh \\
         -p $peaks \\
         -f feature_list.txt \\
-        -o .
+        -o "${params.outdir}/peak_annotations/${sample_id}"
     """
 }
 
