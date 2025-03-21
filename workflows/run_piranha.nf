@@ -49,33 +49,25 @@ process EXTRACT_FEATURES {
     
     script:
     """
-    # Extract protein coding genes
     gtftools -g genes.bed $gtf
     
-    # Extract exons
     gtftools -m exons.bed $gtf
 
-    # Extract introns
     gtftools -d introns.bed $gtf
     
-    # Extract CDS
     gtftools -o cds.bed $gtf
 
-    # Extract splice sites
     gtftools -q splice_regions.bed $gtf
     
-    # Extract UTRs
     gtftools -u utrs.bed $gtf
     
-    # Split UTRs into 5' and 3'
     awk '\$6=="5UTR" {print > "five_prime_utr.bed"} \$6=="3UTR" {print > "three_prime_utr.bed"}' utrs.bed
     rm utrs.bed
     
-    # Add headers to BED files
     for bed in *.bed; do
-        echo -e "chr\\tstart\\tend\\tname\\tscore\\tstrand\\tgene_name\\tgene_id" > tmp_$bed
-        cat $bed >> tmp_$bed
-        mv tmp_$bed $bed
+        echo -e "chr\\tstart\\tend\\tname\\tscore\\tstrand\\tgene_name\\tgene_id" > tmp_\$bed
+        cat \$bed >> tmp_\$bed
+        mv tmp_\$bed $bed
     done
     """
 }
