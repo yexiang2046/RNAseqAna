@@ -77,9 +77,9 @@ bedtools intersect -a "$PEAKS" -b "${FEATURE_FILES[0]}" -wao | \
     awk 'BEGIN{OFS="\t"} {
         # Store gene info for each peak
         peak=$1"_"$2"_"$3;
-        if($13!=".") {  # $13 should be gene name column in genes.bed
+        if($13!=".") {  # $13 is gene_name column
             genes[peak]=genes[peak]?genes[peak]";"$13:$13;  # gene name
-            ensids[peak]=ensids[peak]?ensids[peak]";"$10:$10;  # ensembl id
+            ensids[peak]=ensids[peak]?ensids[peak]";"$8:$8;  # gene_id
         }
     } END{
         # Print gene info mapping
