@@ -91,7 +91,7 @@ process ANNOTATE_FEATURES {
 
 // Process to annotate peaks with repeat elements
 process ANNOTATE_REPEATS {
-    publishDir "${params.outdir}/repeat_annotations/${sample_id}", mode: 'copy'
+    publishDir "${params.outdir}/repeat_annotations", mode: 'copy'
     
     input:
     tuple val(sample_id), path(peaks), path(rmsk)
@@ -101,6 +101,7 @@ process ANNOTATE_REPEATS {
     
     script:
     """
+    mkdir -p "${params.outdir}/repeat_annotations/${sample_id}"
     echo "Current directory: \$(pwd)"
     echo "baseDir: ${baseDir}"
     echo "Looking for script at: ${baseDir}/../bin/annotate_peaks_rmsk.sh"
@@ -110,7 +111,7 @@ process ANNOTATE_REPEATS {
     ./annotate_peaks_rmsk.sh \\
         -p $peaks \\
         -r $rmsk \\
-        -o .
+        -o "${params.outdir}/repeat_annotations/${sample_id}"
     """
 }
 
