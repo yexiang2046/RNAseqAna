@@ -70,10 +70,20 @@ for file in "${FEATURE_FILES[@]}"; do
     FEATURE_NAMES+=("$(basename "$file" .bed)")
 done
 
+# Preprocess BED files to ensure proper tab-delimiting
+echo "Preprocessing BED files..."
+# Process peaks file
+awk 'BEGIN{OFS="\t"} {print $1, $2, $3, $4, $5, $6}' "$PEAKS" > "$OUTPUT_DIR/peaks_processed.bed"
+
+# Process feature files
+for i in "${!FEATURE_FILES[@]}"; do
+    awk 'BEGIN{OFS="\t"} {print $1, $2, $3, $4, $5, $6, $7, $8}' "${FEATURE_FILES[$i]}" > "$OUTPUT_DIR/feature_${i}_processed.bed"
+done
+
 # Modify the annotation section to include gene names and specific features
 echo "Getting gene and feature annotations..."
 # First get gene names and features in separate temp files
-bedtools intersect -a "$PEAKS" -b "${FEATURE_FILES[0]}" -wao | \
+bedtools intersect -a "$OUTPUT_DIR/peaks_processed.bed" -b "$OUTPUT_DIR/feature_0_processed.bed" -wao | \
     awk 'BEGIN{OFS="\t"} {
         # Store gene info for each peak
         peak=$1"_"$2"_"$3;
@@ -91,7 +101,7 @@ bedtools intersect -a "$PEAKS" -b "${FEATURE_FILES[0]}" -wao | \
 # Get specific feature overlaps for each peak
 for i in "${!FEATURE_FILES[@]}"; do
     if [ $i -ne 0 ]; then  # Skip first file (genes) as we already processed it
-        bedtools intersect -a "$PEAKS" -b "${FEATURE_FILES[$i]}" -wao | \
+        bedtools intersect -a "$OUTPUT_DIR/peaks_processed.bed" -b "$OUTPUT_DIR/feature_${i}_processed.bed" -wao | \
             awk -v feat="${FEATURE_NAMES[$i]}" 'BEGIN{OFS="\t"} {
                 peak=$1"_"$2"_"$3;
                 if($14!=".") {  # If there is an overlap
@@ -108,8 +118,8 @@ done
 # Run annotateBed for feature counting
 echo "Running annotateBed for feature counting..."
 bedtools annotate -counts \
-    -i "$PEAKS" \
-    -files "${FEATURE_FILES[@]}" \
+    -i "$OUTPUT_DIR/peaks_processed.bed" \
+    -files "$OUTPUT_DIR/feature_"*"_processed.bed" \
     > "$OUTPUT_DIR/temp_feature_counts.bed"
 
 # Combine all annotations
@@ -242,7 +252,8 @@ Rscript "$OUTPUT_DIR/analyze_features.R" \
     "$SAMPLE_ID"
 
 # Clean up temporary files
-rm "$OUTPUT_DIR/temp_gene_info.txt" "$OUTPUT_DIR/temp_features_info.txt" "$OUTPUT_DIR/temp_feature_counts.bed"
+rm "$OUTPUT_DIR/temp_gene_info.txt" "$OUTPUT_DIR/temp_features_info.txt" "$OUTPUT_DIR/temp_feature_counts.bed" \
+   "$OUTPUT_DIR/peaks_processed.bed" "$OUTPUT_DIR/feature_"*"_processed.bed"
 
 # Print results
 echo -e "\nAnnotation complete!"
