@@ -72,12 +72,23 @@ done
 
 # Preprocess BED files to ensure proper tab-delimiting
 echo "Preprocessing BED files..."
-# Process peaks file
-awk 'BEGIN{OFS="\t"} {print $1, $2, $3, $4, $5, $6}' "$PEAKS" > "$OUTPUT_DIR/peaks_processed.bed"
+# Process peaks file - ensure chr prefix and correct column order
+awk 'BEGIN{OFS="\t"} {
+    # Add chr prefix if not present
+    chr = $1
+    if (chr !~ /^chr/) chr = "chr" chr
+    print chr, $2, $3, $4, $5, $6
+}' "$PEAKS" > "$OUTPUT_DIR/peaks_processed.bed"
 
-# Process feature files
+# Process feature files - ensure chr prefix and correct column order
 for i in "${!FEATURE_FILES[@]}"; do
-    awk 'BEGIN{OFS="\t"} {print $1, $2, $3, $4, $5, $6, $7, $8}' "${FEATURE_FILES[$i]}" > "$OUTPUT_DIR/feature_${i}_processed.bed"
+    awk 'BEGIN{OFS="\t"} {
+        # Add chr prefix if not present
+        chr = $1
+        if (chr !~ /^chr/) chr = "chr" chr
+        # Reorder columns to match: chr start end name score strand gene_name gene_id
+        print chr, $2, $3, $4, $5, $6, $7, $8
+    }' "${FEATURE_FILES[$i]}" > "$OUTPUT_DIR/feature_${i}_processed.bed"
 done
 
 # Modify the annotation section to include gene names and specific features
