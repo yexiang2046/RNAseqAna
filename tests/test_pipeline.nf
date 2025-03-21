@@ -2,6 +2,9 @@
 
 nextflow.enable.dsl=2
 
+// Import main workflow
+include { run_piranha } from '../workflows/run_piranha'
+
 // Test parameters
 params.test_data_dir = "$baseDir/data"
 params.outdir = "test_results"

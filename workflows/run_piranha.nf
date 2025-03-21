@@ -5,34 +5,78 @@ nextflow.enable.dsl=2
 include { BAM_PREPROCESSING } from '../modules/bam_preprocessing'
 include { PIRANHA_PEAK_CALLING } from '../modules/piranha_peak_calling'
 
+// Export the workflow
+workflow run_piranha {
+    // Parameters
+    params.gtf = 'gencode.v38.primary_assembly.annotation.gtf'
+    params.bam_dir = null
+    params.rmsk = null
+    params.outdir = 'results'
+    params.piranha_params = ''
+    params.genome_fasta = null
 
-// Parameters
-params.gtf = 'gencode.v38.primary_assembly.annotation.gtf'
-params.bam_dir = null
-params.rmsk = null
-params.outdir = 'results'
-params.piranha_params = ''
-params.genome_fasta = null
+    // Print usage message if required parameters are missing
+    if (!params.gtf || !params.bam_dir || !params.rmsk || !params.genome_fasta) {
+        log.error """
+        Required parameters missing!
+        
+        Usage:
+        nextflow run main.nf --gtf GTF_FILE --bam_dir BAM_DIR --rmsk RMSK_BED --genome_fasta FASTA [options]
+        
+        Required arguments:
+          --gtf          GTF file (e.g., gencode.v43.annotation.gtf)
+          --bam_dir      Directory containing BAM files
+          --rmsk         RepeatMasker BED file from UCSC
+          --genome_fasta Reference genome FASTA file
+        
+        Optional arguments:
+          --outdir            Output directory (default: 'results')
+          --piranha_params    Additional parameters for Piranha
+        """
+        exit 1
+    }
 
-// Print usage message if required parameters are missing
-if (!params.gtf || !params.bam_dir || !params.rmsk || !params.genome_fasta) {
-    log.error """
-    Required parameters missing!
+    // Input channel for BAM files
+    bam_ch = Channel.fromPath("${params.bam_dir}/*.bam")
+    rmsk_ch = Channel.fromPath(params.rmsk)
+    gtf_ch = Channel.fromPath(params.gtf)
+
+    // Run the workflow
+    BAM_PREPROCESSING(bam_ch)
+    PIRANHA_PEAK_CALLING(BAM_PREPROCESSING.out.processed_bam)
     
-    Usage:
-    nextflow run main.nf --gtf GTF_FILE --bam_dir BAM_DIR --rmsk RMSK_BED --genome_fasta FASTA [options]
+    // Extract features from GTF
+    EXTRACT_FEATURES(gtf_ch)
     
-    Required arguments:
-      --gtf          GTF file (e.g., gencode.v43.annotation.gtf)
-      --bam_dir      Directory containing BAM files
-      --rmsk         RepeatMasker BED file from UCSC
-      --genome_fasta Reference genome FASTA file
+    // Create a channel that combines peaks with their sample IDs
+    peaks_with_ids = PIRANHA_PEAK_CALLING.out.peaks_bed
+        .map { peaks -> 
+            def sample_id = peaks.toString().tokenize('/')[-1].tokenize('.')[0]
+            [sample_id, peaks]
+        }
     
-    Optional arguments:
-      --outdir            Output directory (default: 'results')
-      --piranha_params    Additional parameters for Piranha
-    """
-    exit 1
+    // Annotate peaks with features
+    ANNOTATE_FEATURES(
+        peaks_with_ids,
+        EXTRACT_FEATURES.out.feature_beds.collect()
+    )
+    
+    // Create a channel that repeats rmsk for each sample
+    rmsk_for_samples = peaks_with_ids
+        .map { sample_id, peaks -> [sample_id, peaks, params.rmsk] }
+    
+    // Annotate peaks with repeats
+    ANNOTATE_REPEATS(rmsk_for_samples)
+    
+    // Collect all outputs for report generation
+    feature_outputs = ANNOTATE_FEATURES.out.collect()
+    repeat_outputs = ANNOTATE_REPEATS.out.collect()
+    
+    // Generate final report
+    GENERATE_REPORT(
+        feature_outputs,
+        repeat_outputs
+    )
 }
 
 // Process to extract genomic features from GTF
@@ -57,8 +101,6 @@ process EXTRACT_FEATURES {
     ./gtf_features_extract.sh -i $gtf -o .
     """
 }
-
-
 
 // Process to annotate peaks with genomic features
 process ANNOTATE_FEATURES {
@@ -296,49 +338,4 @@ process GENERATE_REPORT {
                 f.write(df_rmsk.to_string())
                 f.write('\\n\\n')
     """
-}
-
-// Main workflow
-workflow {
-    // Input channel for BAM files
-    bam_ch = Channel.fromPath("${params.bam_dir}/*.bam")
-    rmsk_ch = Channel.fromPath(params.rmsk)
-    gtf_ch = Channel.fromPath(params.gtf)
-
-    // Run the workflow
-    BAM_PREPROCESSING(bam_ch)
-    PIRANHA_PEAK_CALLING(BAM_PREPROCESSING.out.processed_bam)
-    
-    // Extract features from GTF
-    EXTRACT_FEATURES(gtf_ch)
-    
-    // Create a channel that combines peaks with their sample IDs
-    peaks_with_ids = PIRANHA_PEAK_CALLING.out.peaks_bed
-        .map { peaks -> 
-            def sample_id = peaks.toString().tokenize('/')[-1].tokenize('.')[0]
-            [sample_id, peaks]
-        }
-    
-    // Annotate peaks with features
-    ANNOTATE_FEATURES(
-        peaks_with_ids,
-        EXTRACT_FEATURES.out.feature_beds.collect()
-    )
-    
-    // Create a channel that repeats rmsk for each sample
-    rmsk_for_samples = peaks_with_ids
-        .map { sample_id, peaks -> [sample_id, peaks, params.rmsk] }
-    
-    // Annotate peaks with repeats
-    ANNOTATE_REPEATS(rmsk_for_samples)
-    
-    // Collect all outputs for report generation
-    feature_outputs = ANNOTATE_FEATURES.out.collect()
-    repeat_outputs = ANNOTATE_REPEATS.out.collect()
-    
-    // Generate final report
-    GENERATE_REPORT(
-        feature_outputs,
-        repeat_outputs
-    )
 }
