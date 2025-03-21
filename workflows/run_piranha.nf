@@ -5,9 +5,11 @@ nextflow.enable.dsl=2
 include { BAM_PREPROCESSING } from '../modules/bam_preprocessing'
 include { PIRANHA_PEAK_CALLING } from '../modules/piranha_peak_calling'
 
+
+
 // Export the workflow
 workflow run_piranha {
-
+    publishDir "${params.outdir}", mode: 'copy'
     // Input channel for BAM files
     bam_ch = Channel.fromPath("${params.bam_dir}/*.bam")
     rmsk_ch = Channel.fromPath(params.rmsk)
@@ -52,13 +54,13 @@ workflow run_piranha {
     )
 
     // Define outputs
-    output:
-    path processed_bam = BAM_PREPROCESSING.out.processed_bam
-    path peaks_bed = PIRANHA_PEAK_CALLING.out.peaks_bed
-    path annotated_peaks = ANNOTATE_FEATURES.out.annotated_peaks
-    path feature_summary = ANNOTATE_FEATURES.out.feature_summary
-    path feature_plot = ANNOTATE_FEATURES.out.feature_plot
-    path out = GENERATE_REPORT.out
+    emit:
+    processed_bam = BAM_PREPROCESSING.out.processed_bam
+    peaks_bed = PIRANHA_PEAK_CALLING.out.peaks_bed
+    annotated_peaks = ANNOTATE_FEATURES.out.annotated_peaks
+    feature_summary = ANNOTATE_FEATURES.out.feature_summary
+    feature_plot = ANNOTATE_FEATURES.out.feature_plot
+    out = GENERATE_REPORT.out
 }
 
 // Process to extract genomic features from GTF
