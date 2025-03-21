@@ -74,31 +74,10 @@ for file in "${FEATURE_FILES[@]}"; do
     FEATURE_NAMES+=("$(basename "$file" .bed)")
 done
 
-# Preprocess BED files to ensure proper tab-delimiting
-echo "Preprocessing BED files..."
-# Process peaks file - ensure chr prefix and correct column order
-awk 'BEGIN{OFS="\t"} {
-    # Add chr prefix if not present
-    chr = $1
-    if (chr !~ /^chr/) chr = "chr" chr
-    print chr, $2, $3, $4, $5, $6
-}' "$PEAKS" > "$DEBUG_DIR/peaks_processed.bed"
-
-# Process feature files - ensure chr prefix and correct column order
-for i in "${!FEATURE_FILES[@]}"; do
-    awk 'BEGIN{OFS="\t"} {
-        # Add chr prefix if not present
-        chr = $1
-        if (chr !~ /^chr/) chr = "chr" chr
-        # Reorder columns to match: chr start end name score strand gene_name gene_id
-        print chr, $2, $3, $4, $5, $6, $7, $8
-    }' "${FEATURE_FILES[$i]}" > "$DEBUG_DIR/feature_${i}_processed.bed"
-done
-
 # Modify the annotation section to include gene names and specific features
 echo "Getting gene and feature annotations..."
 # First get gene names and features in separate temp files
-bedtools intersect -a "$DEBUG_DIR/peaks_processed.bed" -b "$DEBUG_DIR/feature_0_processed.bed" -wao | \
+bedtools intersect -a "$PEAKS" -b "${FEATURE_FILES[0]}" -wao | \
     awk 'BEGIN{OFS="\t"} {
         # Store gene info for each peak
         peak=$1"_"$2"_"$3;
@@ -116,7 +95,7 @@ bedtools intersect -a "$DEBUG_DIR/peaks_processed.bed" -b "$DEBUG_DIR/feature_0_
 # Get specific feature overlaps for each peak
 for i in "${!FEATURE_FILES[@]}"; do
     if [ $i -ne 0 ]; then  # Skip first file (genes) as we already processed it
-        bedtools intersect -a "$DEBUG_DIR/peaks_processed.bed" -b "$DEBUG_DIR/feature_${i}_processed.bed" -wao | \
+        bedtools intersect -a "$PEAKS" -b "${FEATURE_FILES[$i]}" -wao | \
             awk -v feat="${FEATURE_NAMES[$i]}" 'BEGIN{OFS="\t"} {
                 peak=$1"_"$2"_"$3;
                 if($14!=".") {  # If there is an overlap
@@ -133,8 +112,8 @@ done
 # Run annotateBed for feature counting
 echo "Running annotateBed for feature counting..."
 bedtools annotate -counts \
-    -i "$DEBUG_DIR/peaks_processed.bed" \
-    -files "$DEBUG_DIR/feature_"*"_processed.bed" \
+    -i "$PEAKS" \
+    -files "${FEATURE_FILES[@]}" \
     > "$DEBUG_DIR/temp_feature_counts.bed"
 
 # Combine all annotations
@@ -190,7 +169,7 @@ sample_id <- args[2]
 data <- read.table(input_file, header=FALSE, sep="\t", stringsAsFactors=FALSE)
 
 # Define feature names (matching the order in the shell script)
-feature_names <- c("CDS", "Exons", "5'UTR", "Genes", "Introns", "3'UTR", "Transcripts")
+feature_names <- c("CDS", "Exons", "5'UTR", "Genes", "Introns", "3'UTR")
 
 # Rename columns
 names(data) <- c("chr", "start", "end", "name", "score", "strand", 
@@ -265,10 +244,6 @@ echo "Running R analysis..."
 Rscript "$OUTPUT_DIR/analyze_features.R" \
     "$OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks.bed" \
     "$SAMPLE_ID"
-
-# Clean up temporary files
-#rm "$DEBUG_DIR/temp_gene_info.txt" "$DEBUG_DIR/temp_features_info.txt" "$DEBUG_DIR/temp_feature_counts.bed" \
-#  "$DEBUG_DIR/peaks_processed.bed" "$DEBUG_DIR/feature_"*"_processed.bed"
 
 # Print results
 echo -e "\nAnnotation complete!"

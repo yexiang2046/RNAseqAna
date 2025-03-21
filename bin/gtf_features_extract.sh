@@ -43,33 +43,45 @@ cd "$OUTPUT_DIR"
 # Extract features using gtftools
 echo "Extracting genes..."
 gtftools -g genes.bed "$INPUT"
+# format to bed6, add chr prefix
+awk 'BEGIN{OFS="\t"} {
+    print "chr"$1, $2, $3, $5, $6, $4, $7
+}' genes.bed > genes.bed
 
 echo "Extracting exons..."
 gtftools -m exons.bed "$INPUT"
+# format to bed6, add chr prefix
+awk 'BEGIN{OFS="\t"} {
+    print "chr"$1, $2, $3, $5, $6, $4, $7
+}' exons.bed > exons.bed
 
 echo "Extracting introns..."
 gtftools -d introns.bed "$INPUT"
+# format to bed6, add chr prefix
+awk 'BEGIN{OFS="\t"} {
+    print "chr"$1, $2, $3, $5, $4, '.'
+}' introns.bed > introns.bed
 
 echo "Extracting CDS..."
 gtftools -o cds.bed "$INPUT"
+# format to bed6, add chr prefix
+awk 'BEGIN{OFS="\t"} {
+    print "chr"$1, $2, $3, $5, $6, $4, $7
+}' cds.bed > cds.bed
 
-echo "Extracting splice regions..."
-gtftools -q splice_regions.bed "$INPUT"
 
 echo "Extracting UTRs..."
 gtftools -u utrs.bed "$INPUT"
+# format to bed6, add chr prefix
+awk 'BEGIN{OFS="\t"} {
+    print "chr"$1, $2, $3, $5, $6, $4, $7
+}' utrs.bed > utrs.bed
 
 # Split UTRs into 5' and 3'
 echo "Splitting UTRs..."
-awk '$6=="5UTR" {print > "five_prime_utr.bed"} $6=="3UTR" {print > "three_prime_utr.bed"}' utrs.bed
+awk '$5=="5UTR" {print > "five_prime_utr.bed"} $5=="3UTR" {print > "three_prime_utr.bed"}' utrs.bed
 rm utrs.bed
 
-# Add headers to BED files
-echo "Adding headers to BED files..."
-for bed in *.bed; do
-    echo -e "chr\tstart\tend\tname\tscore\tstrand\tgene_name\tgene_id" > "tmp_${bed}"
-    cat "$bed" >> "tmp_${bed}"
-    mv "tmp_${bed}" "$bed"
-done
+
 
 echo "Feature extraction complete!" 
