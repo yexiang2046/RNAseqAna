@@ -48,7 +48,7 @@ process EXTRACT_FEATURES {
     
     script:
     """
-    echo "Current directory: $(pwd)"
+    echo "Current directory: \$(pwd)"
     echo "baseDir: ${baseDir}"
     echo "Looking for script at: ${baseDir}/../bin/gtf_features_extract.sh"
     ls -l ${baseDir}/../bin/gtf_features_extract.sh || echo "File not found"
