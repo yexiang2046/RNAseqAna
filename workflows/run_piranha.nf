@@ -46,29 +46,11 @@ process EXTRACT_FEATURES {
     output:
     path "*.bed", emit: feature_beds
     
-    
     script:
     """
-    gtftools -g genes.bed $gtf
-    
-    gtftools -m exons.bed $gtf
-
-    gtftools -d introns.bed $gtf
-    
-    gtftools -o cds.bed $gtf
-
-    gtftools -q splice_regions.bed $gtf
-    
-    gtftools -u utrs.bed $gtf
-    
-    awk '\$6=="5UTR" {print > "five_prime_utr.bed"} \$6=="3UTR" {print > "three_prime_utr.bed"}' utrs.bed
-    rm utrs.bed
-    
-    for bed in *.bed; do
-        echo -e "chr\\tstart\\tend\\tname\\tscore\\tstrand\\tgene_name\\tgene_id" > tmp_\$bed
-        cat \$bed >> tmp_\$bed
-        mv tmp_\$bed $bed
-    done
+    cp ${baseDir}/../bin/gtf_features_extract.sh .
+    chmod +x gtf_features_extract.sh
+    ./gtf_features_extract.sh -i $gtf -o .
     """
 }
 
