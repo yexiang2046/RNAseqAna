@@ -4,6 +4,7 @@ FROM python:3.9-slim
 RUN apt-get update && apt-get install -y \
     build-essential \
     git \
+    procps \
     && rm -rf /var/lib/apt/lists/*
 
 # Install gtftools
@@ -13,6 +14,6 @@ RUN pip install gtftools
 WORKDIR /data
 
 # Add version and usage information
-LABEL maintainer="Your Name <your.email@example.com>"
+LABEL maintainer="Xiang Ye <yexiang2046@gmail.com>"
 LABEL version="1.0"
 LABEL description="Docker image for gtftools"
