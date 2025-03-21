@@ -311,7 +311,7 @@ workflow {
     // Create a channel that combines peaks with their sample IDs
     peaks_with_ids = PIRANHA_PEAK_CALLING.out.peaks_bed
         .map { peaks -> 
-            def sample_id = peaks.name.tokenize('_')[0]
+            def sample_id = peaks.toString().tokenize('/')[-1].tokenize('_')[0]
             [sample_id, peaks]
         }
     
