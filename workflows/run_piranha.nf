@@ -39,17 +39,44 @@ if (!params.gtf || !params.bam_dir || !params.rmsk || !params.genome_fasta) {
 process EXTRACT_FEATURES {
     publishDir "${params.outdir}/features_bed", mode: 'copy'
     
+    container "xiang201/gtftools:v1.0.0"
     input:
     path gtf
     
     output:
     path "*.bed", emit: feature_beds
     
+    
     script:
     """
-    cp ${baseDir}/../bin/gtf_features_bedtools.sh .
-    chmod +x gtf_features_bedtools.sh
-    ./gtf_features_bedtools.sh -i $gtf -o .
+    # Extract protein coding genes
+    gtftools.py -g genes.bed $gtf
+    
+    # Extract exons
+    gtftools.py -m exons.bed $gtf
+
+    # Extract introns
+    gtftools.py -d introns.bed $gtf
+    
+    # Extract CDS
+    gtftools.py -o cds.bed $gtf
+
+    # Extract splice sites
+    gtftools -q splice_regions.bed $gtf
+    
+    # Extract UTRs
+    gtftools.py -u utrs.bed $gtf
+    
+    # Split UTRs into 5' and 3'
+    awk '$6=="+" {print > "five_prime_utr.bed"} $6=="-" {print > "three_prime_utr.bed"}' utrs.bed
+    rm utrs.bed
+    
+    # Add headers to BED files
+    for bed in *.bed; do
+        echo -e "chr\\tstart\\tend\\tname\\tscore\\tstrand\\tgene_name\\tgene_id" > tmp_$bed
+        cat $bed >> tmp_$bed
+        mv tmp_$bed $bed
+    done
     """
 }
 
