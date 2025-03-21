@@ -2,14 +2,14 @@
 
 # Help message
 usage() {
-    echo "Usage: $0 [-h] -p PEAKS_BED -f FEATURES_DIR -o OUTPUT_DIR"
+    echo "Usage: $0 [-h] -p PEAKS_BED -f FEATURE_BED_LIST -o OUTPUT_DIR"
     echo "Annotate peaks with genomic features using bedtools annotate"
     echo ""
     echo "Arguments:"
-    echo "  -p PEAKS_BED    Input peaks BED file (from Piranha)"
-    echo "  -f FEATURES_DIR Directory containing feature BED files"
-    echo "  -o OUTPUT_DIR   Output directory"
-    echo "  -h             Show this help message"
+    echo "  -p PEAKS_BED      Input peaks BED file (from Piranha)"
+    echo "  -f FEATURE_LIST   File containing list of feature BED files (one per line)"
+    echo "  -o OUTPUT_DIR     Output directory"
+    echo "  -h               Show this help message"
     exit 1
 }
 
@@ -18,14 +18,14 @@ while getopts "hp:f:o:" opt; do
     case $opt in
         h) usage ;;
         p) PEAKS="$OPTARG" ;;
-        f) FEATURES_DIR="$OPTARG" ;;
+        f) FEATURE_LIST="$OPTARG" ;;
         o) OUTPUT_DIR="$OPTARG" ;;
         ?) usage ;;
     esac
 done
 
 # Check required arguments
-if [ -z "$PEAKS" ] || [ -z "$FEATURES_DIR" ] || [ -z "$OUTPUT_DIR" ]; then
+if [ -z "$PEAKS" ] || [ -z "$FEATURE_LIST" ] || [ -z "$OUTPUT_DIR" ]; then
     echo "Error: Missing required arguments"
     usage
 fi
@@ -36,8 +36,8 @@ if [ ! -f "$PEAKS" ]; then
     exit 1
 fi
 
-if [ ! -d "$FEATURES_DIR" ]; then
-    echo "Error: Features directory does not exist: $FEATURES_DIR"
+if [ ! -f "$FEATURE_LIST" ]; then
+    echo "Error: Feature list file does not exist: $FEATURE_LIST"
     exit 1
 fi
 
@@ -54,27 +54,26 @@ echo "Processing sample: $SAMPLE_ID"
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
-# List of feature types to process
-FEATURES=("cds" "exons" "five_prime_utr" "genes" "introns" "three_prime_utr" "transcripts")
-
-# Check if all feature files exist
-for feature in "${FEATURES[@]}"; do
-    if [ ! -f "$FEATURES_DIR/${feature}.bed" ]; then
-        echo "Error: Feature file not found: $FEATURES_DIR/${feature}.bed"
+# Read feature files from list
+FEATURE_FILES=()
+while IFS= read -r file; do
+    if [ ! -f "$file" ]; then
+        echo "Error: Feature file not found: $file"
         exit 1
     fi
-done
+    FEATURE_FILES+=("$file")
+done < "$FEATURE_LIST"
 
-# Create feature files list for annotateBed
-FEATURE_FILES=""
-for feature in "${FEATURES[@]}"; do
-    FEATURE_FILES="$FEATURE_FILES $FEATURES_DIR/${feature}.bed"
+# Get feature names from filenames
+FEATURE_NAMES=()
+for file in "${FEATURE_FILES[@]}"; do
+    FEATURE_NAMES+=("$(basename "$file" .bed)")
 done
 
 # Modify the annotation section to include gene names and specific features
 echo "Getting gene and feature annotations..."
 # First get gene names and features in separate temp files
-bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/genes.bed" -wao | \
+bedtools intersect -a "$PEAKS" -b "${FEATURE_FILES[0]}" -wao | \
     awk 'BEGIN{OFS="\t"} {
         # Store gene info for each peak
         peak=$1"_"$2"_"$3;
@@ -90,10 +89,10 @@ bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/genes.bed" -wao | \
     }' > "$OUTPUT_DIR/temp_gene_info.txt"
 
 # Get specific feature overlaps for each peak
-for feature in "${FEATURES[@]}"; do
-    if [ "$feature" != "genes" ]; then  # Skip genes as we already processed them
-        bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/${feature}.bed" -wao | \
-            awk -v feat="$feature" 'BEGIN{OFS="\t"} {
+for i in "${!FEATURE_FILES[@]}"; do
+    if [ $i -ne 0 ]; then  # Skip first file (genes) as we already processed it
+        bedtools intersect -a "$PEAKS" -b "${FEATURE_FILES[$i]}" -wao | \
+            awk -v feat="${FEATURE_NAMES[$i]}" 'BEGIN{OFS="\t"} {
                 peak=$1"_"$2"_"$3;
                 if($14!=".") {  # If there is an overlap
                     features[peak]=features[peak]?features[peak]";"feat:feat;
@@ -110,7 +109,7 @@ done
 echo "Running annotateBed for feature counting..."
 bedtools annotate -counts \
     -i "$PEAKS" \
-    -files $FEATURE_FILES \
+    -files "${FEATURE_FILES[@]}" \
     > "$OUTPUT_DIR/temp_feature_counts.bed"
 
 # Combine all annotations

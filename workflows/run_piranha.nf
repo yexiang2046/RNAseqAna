@@ -69,11 +69,14 @@ process ANNOTATE_FEATURES {
     
     script:
     """
+    # Create feature list file
+    find $feature_dir -name "*.bed" > feature_list.txt
+    
     cp ${baseDir}/../bin/annotate_peaks.sh .
     chmod +x annotate_peaks.sh
     ./annotate_peaks.sh \\
         -p $peaks \\
-        -f $feature_dir \\
+        -f feature_list.txt \\
         -o .
     """
 }
