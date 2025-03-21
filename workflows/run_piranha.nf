@@ -68,7 +68,7 @@ process EXTRACT_FEATURES {
     gtftools -u utrs.bed $gtf
     
     # Split UTRs into 5' and 3'
-    awk '$6=="5UTR" {print > "five_prime_utr.bed"} $6=="3UTR" {print > "three_prime_utr.bed"}' utrs.bed
+    awk '\$6=="5UTR" {print > "five_prime_utr.bed"} \$6=="3UTR" {print > "three_prime_utr.bed"}' utrs.bed
     rm utrs.bed
     
     # Add headers to BED files
