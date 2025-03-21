@@ -14,7 +14,7 @@ echo "Starting pipeline tests..."
 mkdir -p test_results
 
 # Run the test workflow
-nextflow run test_pipeline.nf \
+nextflow run tests/test_pipeline.nf \
     -profile test \
     --outdir test_results \
     -resume
