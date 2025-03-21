@@ -118,7 +118,7 @@ process ANNOTATE_REPEATS {
 
 // Process to generate final report
 process GENERATE_REPORT {
-    publishDir params.outdir, mode: 'copy'
+    publishDir "${params.outdir}/reports", mode: 'copy'
     
     input:
     path '*'
@@ -137,6 +137,7 @@ process GENERATE_REPORT {
     import matplotlib.pyplot as plt
     import seaborn as sns
     from datetime import datetime
+    import os
     
     # Set style for plots
     plt.style.use('seaborn')
@@ -163,8 +164,8 @@ process GENERATE_REPORT {
     
     # Process each sample
     sample_summaries = []
-    for feature_summary in glob.glob('*/*_feature_overlap_summary.csv'):
-        sample = feature_summary.split('/')[0]
+    for feature_summary in glob.glob('peak_annotations/*/*_feature_overlap_summary.csv'):
+        sample = os.path.basename(os.path.dirname(feature_summary))
         
         # Read feature statistics
         df_features = pd.read_csv(feature_summary)
@@ -175,7 +176,7 @@ process GENERATE_REPORT {
         plt.close()
         
         # Process repeat statistics if available
-        rmsk_summary = glob.glob(f'*/{sample}/*_rmsk_summary.csv')
+        rmsk_summary = glob.glob(f'repeat_annotations/{sample}/*_rmsk_summary.csv')
         if rmsk_summary:
             df_rmsk = pd.read_csv(rmsk_summary[0])
             fig = create_repeat_plot(df_rmsk, f'Repeat Element Distribution - {sample}')
