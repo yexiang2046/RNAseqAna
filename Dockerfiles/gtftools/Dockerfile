@@ -17,3 +17,6 @@ WORKDIR /data
 LABEL maintainer="Xiang Ye <yexiang2046@gmail.com>"
 LABEL version="1.0"
 LABEL description="Docker image for gtftools"
+
+# entrypoint
+ENTRYPOINT ["bash"]
