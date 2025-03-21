@@ -121,7 +121,8 @@ process GENERATE_REPORT {
     publishDir "${params.outdir}/reports", mode: 'copy'
     
     input:
-    path '*'
+    path feature_outputs
+    path repeat_outputs
     
     output:
     path "summary_report.html"
@@ -331,10 +332,13 @@ workflow {
     // Annotate peaks with repeats
     ANNOTATE_REPEATS(rmsk_for_samples)
     
+    // Collect all outputs for report generation
+    feature_outputs = ANNOTATE_FEATURES.out.collect()
+    repeat_outputs = ANNOTATE_REPEATS.out.collect()
+    
     // Generate final report
     GENERATE_REPORT(
-        ANNOTATE_FEATURES.out.collect()
-            .mix(ANNOTATE_REPEATS.out.collect())
-            .collect()
+        feature_outputs,
+        repeat_outputs
     )
 }
