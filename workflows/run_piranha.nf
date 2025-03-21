@@ -94,8 +94,7 @@ process ANNOTATE_REPEATS {
     publishDir "${params.outdir}/repeat_annotations/${sample_id}", mode: 'copy'
     
     input:
-    tuple val(sample_id), path(peaks)
-    path rmsk
+    tuple val(sample_id), path(peaks), path(rmsk)
     
     output:
     tuple val(sample_id), path("*_rmsk_counts.bed"), path("*_rmsk_summary.csv"), path("*_rmsk_distribution.pdf")
@@ -301,7 +300,6 @@ workflow {
     bam_ch = Channel.fromPath("${params.bam_dir}/*.bam")
     rmsk_ch = Channel.fromPath(params.rmsk)
     gtf_ch = Channel.fromPath(params.gtf)
-    // genome_fasta = Channel.fromPath(params.genome_fasta)
 
     // Run the workflow
     BAM_PREPROCESSING(bam_ch)
@@ -310,17 +308,25 @@ workflow {
     // Extract features from GTF
     EXTRACT_FEATURES(gtf_ch)
     
+    // Create a channel that combines peaks with their sample IDs
+    peaks_with_ids = PIRANHA_PEAK_CALLING.out.peaks_bed
+        .map { peaks -> 
+            def sample_id = peaks.name.tokenize('_')[0]
+            [sample_id, peaks]
+        }
+    
     // Annotate peaks with features
     ANNOTATE_FEATURES(
-        PIRANHA_PEAK_CALLING.out.peaks_bed,
+        peaks_with_ids,
         EXTRACT_FEATURES.out.feature_beds.collect()
     )
     
+    // Create a channel that repeats rmsk for each sample
+    rmsk_for_samples = peaks_with_ids
+        .map { sample_id, peaks -> [sample_id, peaks, params.rmsk] }
+    
     // Annotate peaks with repeats
-    ANNOTATE_REPEATS(
-        PIRANHA_PEAK_CALLING.out.peaks_bed,
-        rmsk_ch
-    )
+    ANNOTATE_REPEATS(rmsk_for_samples)
     
     // Generate final report
     GENERATE_REPORT(
