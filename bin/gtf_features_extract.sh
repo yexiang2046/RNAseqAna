@@ -34,6 +34,9 @@ if [ ! -f "$INPUT" ]; then
     exit 1
 fi
 
+# Get absolute path of input file
+INPUT_ABS=$(readlink -f "$INPUT")
+
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
@@ -42,36 +45,35 @@ cd "$OUTPUT_DIR"
 
 # Extract features using gtftools
 echo "Extracting genes..."
-gtftools -g genes.bed "$INPUT"
+gtftools -g genes.bed "$INPUT_ABS"
 # format to bed6, add chr prefix
 awk 'BEGIN{OFS="\t"} {
     print "chr"$1, $2, $3, $5, $6, $4, $7
 }' genes.bed > genes.bed
 
 echo "Extracting exons..."
-gtftools -m exons.bed "$INPUT"
+gtftools -m exons.bed "$INPUT_ABS"
 # format to bed6, add chr prefix
 awk 'BEGIN{OFS="\t"} {
     print "chr"$1, $2, $3, $5, $6, $4, $7
 }' exons.bed > exons.bed
 
 echo "Extracting introns..."
-gtftools -d introns.bed "$INPUT"
+gtftools -d introns.bed "$INPUT_ABS"
 # format to bed6, add chr prefix
 awk 'BEGIN{OFS="\t"} {
     print "chr"$1, $2, $3, $5, $4, '.'
 }' introns.bed > introns.bed
 
 echo "Extracting CDS..."
-gtftools -o cds.bed "$INPUT"
+gtftools -o cds.bed "$INPUT_ABS"
 # format to bed6, add chr prefix
 awk 'BEGIN{OFS="\t"} {
     print "chr"$1, $2, $3, $5, $6, $4, $7
 }' cds.bed > cds.bed
 
-
 echo "Extracting UTRs..."
-gtftools -u utrs.bed "$INPUT"
+gtftools -u utrs.bed "$INPUT_ABS"
 # format to bed6, add chr prefix
 awk 'BEGIN{OFS="\t"} {
     print "chr"$1, $2, $3, $5, $6, $4, $7
@@ -81,7 +83,5 @@ awk 'BEGIN{OFS="\t"} {
 echo "Splitting UTRs..."
 awk '$5=="5UTR" {print > "five_prime_utr.bed"} $5=="3UTR" {print > "three_prime_utr.bed"}' utrs.bed
 rm utrs.bed
-
-
 
 echo "Feature extraction complete!" 
