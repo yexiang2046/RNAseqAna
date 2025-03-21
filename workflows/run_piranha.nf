@@ -9,7 +9,7 @@ include { PIRANHA_PEAK_CALLING } from '../modules/piranha_peak_calling'
 
 // Export the workflow
 workflow run_piranha {
-    publishDir "${params.outdir}", mode: 'copy'
+
     // Input channel for BAM files
     bam_ch = Channel.fromPath("${params.bam_dir}/*.bam")
     rmsk_ch = Channel.fromPath(params.rmsk)
