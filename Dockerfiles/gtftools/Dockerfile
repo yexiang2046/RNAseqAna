@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install gtftools
-RUN pip install --no-cache-dir argparse sys numpy gtftools
+RUN pip install --no-cache-dir argparse numpy gtftools
 
 # Set working directory
 WORKDIR /data
