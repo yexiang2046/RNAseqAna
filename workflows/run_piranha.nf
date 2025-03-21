@@ -76,7 +76,7 @@ process ANNOTATE_FEATURES {
     # Create feature list file
     find $feature_dir -name "*.bed" > feature_list.txt
     
-    echo "Current directory: $(pwd)"
+    echo "Current directory: \$(pwd)"
     echo "baseDir: ${baseDir}"
     echo "Looking for script at: ${baseDir}/../bin/annotate_peaks.sh"
     ls -l ${baseDir}/../bin/annotate_peaks.sh || echo "File not found"
@@ -102,7 +102,7 @@ process ANNOTATE_REPEATS {
     
     script:
     """
-    echo "Current directory: $(pwd)"
+    echo "Current directory: \$(pwd)"
     echo "baseDir: ${baseDir}"
     echo "Looking for script at: ${baseDir}/../bin/annotate_peaks_rmsk.sh"
     ls -l ${baseDir}/../bin/annotate_peaks_rmsk.sh || echo "File not found"
