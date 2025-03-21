@@ -50,25 +50,25 @@ process EXTRACT_FEATURES {
     script:
     """
     # Extract protein coding genes
-    gtftools.py -g genes.bed $gtf
+    gtftools -g genes.bed $gtf
     
     # Extract exons
-    gtftools.py -m exons.bed $gtf
+    gtftools -m exons.bed $gtf
 
     # Extract introns
-    gtftools.py -d introns.bed $gtf
+    gtftools -d introns.bed $gtf
     
     # Extract CDS
-    gtftools.py -o cds.bed $gtf
+    gtftools -o cds.bed $gtf
 
     # Extract splice sites
     gtftools -q splice_regions.bed $gtf
     
     # Extract UTRs
-    gtftools.py -u utrs.bed $gtf
+    gtftools -u utrs.bed $gtf
     
     # Split UTRs into 5' and 3'
-    awk '$6=="+" {print > "five_prime_utr.bed"} $6=="-" {print > "three_prime_utr.bed"}' utrs.bed
+    awk '$6=="5UTR" {print > "five_prime_utr.bed"} $6=="3UTR" {print > "three_prime_utr.bed"}' utrs.bed
     rm utrs.bed
     
     # Add headers to BED files
