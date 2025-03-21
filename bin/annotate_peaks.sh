@@ -54,6 +54,10 @@ echo "Processing sample: $SAMPLE_ID"
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
+# Create debug directory
+DEBUG_DIR="$OUTPUT_DIR/debug"
+mkdir -p "$DEBUG_DIR"
+
 # Read feature files from list
 FEATURE_FILES=()
 while IFS= read -r file; do
@@ -78,7 +82,7 @@ awk 'BEGIN{OFS="\t"} {
     chr = $1
     if (chr !~ /^chr/) chr = "chr" chr
     print chr, $2, $3, $4, $5, $6
-}' "$PEAKS" > "$OUTPUT_DIR/peaks_processed.bed"
+}' "$PEAKS" > "$DEBUG_DIR/peaks_processed.bed"
 
 # Process feature files - ensure chr prefix and correct column order
 for i in "${!FEATURE_FILES[@]}"; do
@@ -88,13 +92,13 @@ for i in "${!FEATURE_FILES[@]}"; do
         if (chr !~ /^chr/) chr = "chr" chr
         # Reorder columns to match: chr start end name score strand gene_name gene_id
         print chr, $2, $3, $4, $5, $6, $7, $8
-    }' "${FEATURE_FILES[$i]}" > "$OUTPUT_DIR/feature_${i}_processed.bed"
+    }' "${FEATURE_FILES[$i]}" > "$DEBUG_DIR/feature_${i}_processed.bed"
 done
 
 # Modify the annotation section to include gene names and specific features
 echo "Getting gene and feature annotations..."
 # First get gene names and features in separate temp files
-bedtools intersect -a "$OUTPUT_DIR/peaks_processed.bed" -b "$OUTPUT_DIR/feature_0_processed.bed" -wao | \
+bedtools intersect -a "$DEBUG_DIR/peaks_processed.bed" -b "$DEBUG_DIR/feature_0_processed.bed" -wao | \
     awk 'BEGIN{OFS="\t"} {
         # Store gene info for each peak
         peak=$1"_"$2"_"$3;
@@ -107,12 +111,12 @@ bedtools intersect -a "$OUTPUT_DIR/peaks_processed.bed" -b "$OUTPUT_DIR/feature_
         for(peak in genes) {
             print peak, ensids[peak], genes[peak];
         }
-    }' > "$OUTPUT_DIR/temp_gene_info.txt"
+    }' > "$DEBUG_DIR/temp_gene_info.txt"
 
 # Get specific feature overlaps for each peak
 for i in "${!FEATURE_FILES[@]}"; do
     if [ $i -ne 0 ]; then  # Skip first file (genes) as we already processed it
-        bedtools intersect -a "$OUTPUT_DIR/peaks_processed.bed" -b "$OUTPUT_DIR/feature_${i}_processed.bed" -wao | \
+        bedtools intersect -a "$DEBUG_DIR/peaks_processed.bed" -b "$DEBUG_DIR/feature_${i}_processed.bed" -wao | \
             awk -v feat="${FEATURE_NAMES[$i]}" 'BEGIN{OFS="\t"} {
                 peak=$1"_"$2"_"$3;
                 if($14!=".") {  # If there is an overlap
@@ -122,16 +126,16 @@ for i in "${!FEATURE_FILES[@]}"; do
                 for(peak in features) {
                     print peak, features[peak];
                 }
-            }' >> "$OUTPUT_DIR/temp_features_info.txt"
+            }' >> "$DEBUG_DIR/temp_features_info.txt"
     fi
 done
 
 # Run annotateBed for feature counting
 echo "Running annotateBed for feature counting..."
 bedtools annotate -counts \
-    -i "$OUTPUT_DIR/peaks_processed.bed" \
-    -files "$OUTPUT_DIR/feature_"*"_processed.bed" \
-    > "$OUTPUT_DIR/temp_feature_counts.bed"
+    -i "$DEBUG_DIR/peaks_processed.bed" \
+    -files "$DEBUG_DIR/feature_"*"_processed.bed" \
+    > "$DEBUG_DIR/temp_feature_counts.bed"
 
 # Combine all annotations
 echo "Combining annotations..."
@@ -162,9 +166,9 @@ awk -v OFS='\t' '
         
         # Print original columns plus gene names and features
         print $0, ens_ids, gene_name, features;
-    }' "$OUTPUT_DIR/temp_gene_info.txt" \
-       "$OUTPUT_DIR/temp_features_info.txt" \
-       "$OUTPUT_DIR/temp_feature_counts.bed" \
+    }' "$DEBUG_DIR/temp_gene_info.txt" \
+       "$DEBUG_DIR/temp_features_info.txt" \
+       "$DEBUG_DIR/temp_feature_counts.bed" \
     > "$OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks.bed"
 
 # Create R script for analysis
@@ -263,8 +267,8 @@ Rscript "$OUTPUT_DIR/analyze_features.R" \
     "$SAMPLE_ID"
 
 # Clean up temporary files
-rm "$OUTPUT_DIR/temp_gene_info.txt" "$OUTPUT_DIR/temp_features_info.txt" "$OUTPUT_DIR/temp_feature_counts.bed" \
-   "$OUTPUT_DIR/peaks_processed.bed" "$OUTPUT_DIR/feature_"*"_processed.bed"
+#rm "$DEBUG_DIR/temp_gene_info.txt" "$DEBUG_DIR/temp_features_info.txt" "$DEBUG_DIR/temp_feature_counts.bed" \
+#  "$DEBUG_DIR/peaks_processed.bed" "$DEBUG_DIR/feature_"*"_processed.bed"
 
 # Print results
 echo -e "\nAnnotation complete!"
@@ -272,6 +276,8 @@ echo "Results written to:"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks.bed"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_overlap_summary.csv"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_overlap_plot.pdf"
+echo -e "\nDebug files available in:"
+echo "- $DEBUG_DIR/"
 
 # Display summary if available
 if [ -f "$OUTPUT_DIR/${SAMPLE_ID}_feature_overlap_summary.csv" ]; then
