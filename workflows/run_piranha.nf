@@ -48,7 +48,7 @@ process EXTRACT_FEATURES {
     
     script:
     """
-    cp ../bin/gtf_features_extract.sh .
+    cp ${baseDir}/../bin/gtf_features_extract.sh .
     chmod +x gtf_features_extract.sh
     ./gtf_features_extract.sh -i $gtf -o .
     """
@@ -72,7 +72,7 @@ process ANNOTATE_FEATURES {
     # Create feature list file
     find $feature_dir -name "*.bed" > feature_list.txt
     
-    cp ../bin/annotate_peaks.sh .
+    cp ${baseDir}/../bin/annotate_peaks.sh .
     chmod +x annotate_peaks.sh
     ./annotate_peaks.sh \\
         -p $peaks \\
@@ -94,7 +94,7 @@ process ANNOTATE_REPEATS {
     
     script:
     """
-    cp ../bin/annotate_peaks_rmsk.sh .
+    cp ${baseDir}/../bin/annotate_peaks_rmsk.sh .
     chmod +x annotate_peaks_rmsk.sh
     ./annotate_peaks_rmsk.sh \\
         -p $peaks \\
