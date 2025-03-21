@@ -7,39 +7,12 @@ include { PIRANHA_PEAK_CALLING } from '../modules/piranha_peak_calling'
 
 // Export the workflow
 workflow run_piranha {
-    // Parameters
-    params.gtf = 'gencode.v38.primary_assembly.annotation.gtf'
-    params.bam_dir = null
-    params.rmsk = null
-    params.outdir = 'results'
-    params.piranha_params = ''
-    params.genome_fasta = null
-
-    // Print usage message if required parameters are missing
-    if (!params.gtf || !params.bam_dir || !params.rmsk || !params.genome_fasta) {
-        log.error """
-        Required parameters missing!
-        
-        Usage:
-        nextflow run main.nf --gtf GTF_FILE --bam_dir BAM_DIR --rmsk RMSK_BED --genome_fasta FASTA [options]
-        
-        Required arguments:
-          --gtf          GTF file (e.g., gencode.v43.annotation.gtf)
-          --bam_dir      Directory containing BAM files
-          --rmsk         RepeatMasker BED file from UCSC
-          --genome_fasta Reference genome FASTA file
-        
-        Optional arguments:
-          --outdir            Output directory (default: 'results')
-          --piranha_params    Additional parameters for Piranha
-        """
-        exit 1
-    }
 
     // Input channel for BAM files
     bam_ch = Channel.fromPath("${params.bam_dir}/*.bam")
     rmsk_ch = Channel.fromPath(params.rmsk)
     gtf_ch = Channel.fromPath(params.gtf)
+    genome_fasta_ch = Channel.fromPath(params.genome_fasta)
 
     // Run the workflow
     BAM_PREPROCESSING(bam_ch)
@@ -77,6 +50,15 @@ workflow run_piranha {
         feature_outputs,
         repeat_outputs
     )
+
+    // Define outputs
+    output:
+    path processed_bam = BAM_PREPROCESSING.out.processed_bam
+    path peaks_bed = PIRANHA_PEAK_CALLING.out.peaks_bed
+    path annotated_peaks = ANNOTATE_FEATURES.out.annotated_peaks
+    path feature_summary = ANNOTATE_FEATURES.out.feature_summary
+    path feature_plot = ANNOTATE_FEATURES.out.feature_plot
+    path out = GENERATE_REPORT.out
 }
 
 // Process to extract genomic features from GTF
