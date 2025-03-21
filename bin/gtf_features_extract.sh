@@ -62,15 +62,8 @@ echo "Extracting introns..."
 gtftools -d introns.bed "$INPUT_ABS"
 # format to bed6, add chr prefix
 awk 'BEGIN{OFS="\t"} {
-    print "chr"$1, $2, $3, $5, $4, '.'
+    print "chr"$1, $2, $3, $5, $4, '\.'
 }' introns.bed > introns.bed
-
-echo "Extracting CDS..."
-gtftools -o cds.bed "$INPUT_ABS"
-# format to bed6, add chr prefix
-awk 'BEGIN{OFS="\t"} {
-    print "chr"$1, $2, $3, $5, $6, $4, $7
-}' cds.bed > cds.bed
 
 echo "Extracting UTRs..."
 gtftools -u utrs.bed "$INPUT_ABS"
