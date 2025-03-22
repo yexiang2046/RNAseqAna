@@ -22,11 +22,12 @@ process CREATE_TEST_BAM {
     
     script:
     """
-    # Create a small BAM file with simulated header
+    # Create a small BAM file with simulated header and read
     echo -e "@HD\tVN:1.6\tSO:coordinate
 @SQ\tSN:chr1\tLN:248956422
-@PG\tID:test\tPN:test 
-    test_read1\t0\tchr1\t100\t255\t50M\t*\t0\t0\tATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG\tIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII" | samtools view -b > test.bam
+@PG\tID:test\tPN:test
+test_read1\t0\tchr1\t100\t255\t50M\t*\t0\t0\tATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG\tIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII" > test.sam
+    samtools view -b test.sam > test.bam
     samtools index test.bam
     """
 }
