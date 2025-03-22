@@ -18,7 +18,8 @@ def test_genome = file("${params.test_data_dir}/GRCh38.primary_assembly.genome.f
 // Test process to create mock BAM file
 process CREATE_TEST_BAM {
     output:
-    path "test.bam"
+    path "test.bam", emit: bam
+    path "test.bam.bai", emit: bai
     
     script:
     """
@@ -128,22 +129,28 @@ process VALIDATE_FEATURE_ANNOTATION {
 // Test workflow
 workflow {
     // Create test data
-    template_bam = Channel.fromPath("${params.test_data_dir}/bamfiles/test.bam")
-    test_bam = CREATE_TEST_BAM()
+    CREATE_TEST_BAM()
     test_gtf = CREATE_TEST_GTF()
     test_rmsk = CREATE_TEST_RMSK()
     
+    // Create channels for the test data
+    bam_ch = CREATE_TEST_BAM.out.bam
+    gtf_ch = test_gtf
+    rmsk_ch = test_rmsk
+    genome_ch = Channel.fromPath("${params.test_data_dir}/GRCh38.primary_assembly.genome.fa", checkIfExists: true)
+    
     // Run main workflow with test data
     main_workflow = run_piranha(
-        test_bam,
-        test_gtf,
-        test_rmsk,
-        Channel.fromPath("${params.test_data_dir}/GRCh38.primary_assembly.genome.fa"),
+        bam_ch,
+        gtf_ch,
+        rmsk_ch,
+        genome_ch,
         params.outdir,
         ''
     )
     
     // Validate outputs
+    main_workflow.processed_bam.view { "Processed BAM: $it" }  // Debug line
     VALIDATE_BAM_PREPROCESSING(main_workflow.processed_bam)
     VALIDATE_PEAK_CALLING(main_workflow.peaks_bed)
     VALIDATE_FEATURE_ANNOTATION(
