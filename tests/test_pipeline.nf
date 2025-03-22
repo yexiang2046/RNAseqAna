@@ -26,7 +26,7 @@ process CREATE_TEST_BAM {
     echo -e "@HD\tVN:1.6\tSO:coordinate
 @SQ\tSN:chr1\tLN:248956422
 @PG\tID:test\tPN:test
-test_read1\t0\tchr1\t100\t255\t50M\t*\t0\t0\tATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG\tIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII" > test.sam
+test_read1\t0\tchr1\t100\t255\t25M\t*\t0\t0\tATCGATCGATCGATCGATCGATCGAT\tIIIIIIIIIIIIIIIIIIIIIIIII" > test.sam
     samtools view -b test.sam > test.bam
     samtools index test.bam
     """
