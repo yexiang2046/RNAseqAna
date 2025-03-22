@@ -120,16 +120,16 @@ process VALIDATE_FEATURE_ANNOTATION {
 // Test workflow
 workflow {
     // Create test data
-    CREATE_TEST_BAM()
-    CREATE_TEST_GTF()
-    CREATE_TEST_RMSK()
+    test_bam = CREATE_TEST_BAM()
+    test_gtf = CREATE_TEST_GTF()
+    test_rmsk = CREATE_TEST_RMSK()
     
     // Run main workflow with test data
     main_workflow = run_piranha(
-        CREATE_TEST_BAM.out,
-        CREATE_TEST_GTF.out,
-        CREATE_TEST_RMSK.out,
-        test_genome,
+        test_bam,
+        test_gtf,
+        test_rmsk,
+        Channel.fromPath("${params.test_data_dir}/GRCh38.primary_assembly.genome.fa"),
         params.outdir,
         ''
     )

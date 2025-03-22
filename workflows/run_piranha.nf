@@ -19,18 +19,14 @@ workflow run_piranha {
 
     main:
     // Set parameters
-    params.gtf = gtf
-    params.bam_dir = bam_dir
-    params.rmsk = rmsk
     params.outdir = outdir ?: 'results'
     params.piranha_params = piranha_params ?: ''
-    params.genome_fasta = genome_fasta
 
-    // Input channel for BAM files
-    bam_ch = Channel.fromPath("${params.bam_dir}/*.bam")
-    rmsk_ch = Channel.fromPath(params.rmsk)
-    gtf_ch = Channel.fromPath(params.gtf)
-    genome_fasta_ch = Channel.fromPath(params.genome_fasta)
+    // Input channels are already provided
+    bam_ch = bam_dir
+    rmsk_ch = rmsk
+    gtf_ch = gtf
+    genome_fasta_ch = genome_fasta
 
     // Run the workflow
     BAM_PREPROCESSING(bam_ch)
@@ -54,7 +50,7 @@ workflow run_piranha {
     
     // Create a channel that repeats rmsk for each sample
     rmsk_for_samples = peaks_with_ids
-        .map { sample_id, peaks -> [sample_id, peaks, params.rmsk] }
+        .map { sample_id, peaks -> [sample_id, peaks, rmsk] }
     
     // Annotate peaks with repeats
     ANNOTATE_REPEATS(rmsk_for_samples)
