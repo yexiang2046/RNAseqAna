@@ -70,6 +70,23 @@ process CREATE_TEST_RMSK {
     """
 }
 
+// Test process to create mock FASTA file
+process CREATE_TEST_FASTA {
+    output:
+    path "test.fa"
+    
+    script:
+    """
+    # Create a small FASTA file with test sequence
+    cat > test.fa << 'EOF'
+>chr1 GRCh38.p13 Primary Assembly
+AGCTATCACAGATCGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTG
+GCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA
+ATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG
+EOF
+    """
+}
+
 // Test process to validate BAM preprocessing
 process VALIDATE_BAM_PREPROCESSING {
     input:
@@ -132,12 +149,13 @@ workflow {
     CREATE_TEST_BAM()
     test_gtf = CREATE_TEST_GTF()
     test_rmsk = CREATE_TEST_RMSK()
+    test_fa = CREATE_TEST_FASTA()
     
     // Create channels for the test data
     bam_ch = CREATE_TEST_BAM.out.bam
     gtf_ch = test_gtf
     rmsk_ch = test_rmsk
-    genome_ch = Channel.fromPath("${params.test_data_dir}/GRCh38.primary_assembly.genome.fa", checkIfExists: true)
+    genome_ch = test_fa
     
     // Run main workflow with test data
     main_workflow = run_piranha(
