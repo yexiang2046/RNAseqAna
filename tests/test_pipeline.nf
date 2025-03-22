@@ -168,8 +168,14 @@ workflow {
     )
     
     // Validate outputs
-    main_workflow.processed_bam.view { "Processed BAM: $it" }  // Debug line
-    VALIDATE_BAM_PREPROCESSING(main_workflow.processed_bam)
+    main_workflow.processed_bam
+        .map { bam -> 
+            println "Debug - Processed BAM path: ${bam}"
+            return bam
+        }
+        .set { bam_for_validation }
+    
+    VALIDATE_BAM_PREPROCESSING(bam_for_validation)
     VALIDATE_PEAK_CALLING(main_workflow.peaks_bed)
     VALIDATE_FEATURE_ANNOTATION(
         main_workflow.annotated_peaks,
