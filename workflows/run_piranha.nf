@@ -80,7 +80,7 @@ workflow run_piranha {
 process EXTRACT_FEATURES {
     publishDir "${params.outdir}/features_bed", mode: 'copy'
     
-    container "xiang201/gtftools:v1.0.0"
+    container "xiang2019/gtftools:v1.0.0"
     input:
     path gtf
     
