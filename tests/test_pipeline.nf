@@ -144,5 +144,7 @@ workflow {
     )
     
     // Print test results
-    main_workflow.out.collect().view()
+    main_workflow.report_html.view { "Generated HTML report: $it" }
+    main_workflow.report_txt.view { "Generated text report: $it" }
+    main_workflow.report_plots.view { "Generated plots: $it" }
 } 

@@ -68,10 +68,12 @@ workflow run_piranha {
     emit:
     processed_bam = BAM_PREPROCESSING.out.processed_bam
     peaks_bed = PIRANHA_PEAK_CALLING.out.peaks_bed
-    annotated_peaks = ANNOTATE_FEATURES.out.annotated_peaks
-    feature_summary = ANNOTATE_FEATURES.out.feature_summary
-    feature_plot = ANNOTATE_FEATURES.out.feature_plot
-    out = GENERATE_REPORT.out
+    annotated_peaks = ANNOTATE_FEATURES.out.map { it[1] }
+    feature_summary = ANNOTATE_FEATURES.out.map { it[2] }
+    feature_plot = ANNOTATE_FEATURES.out.map { it[3] }
+    report_html = GENERATE_REPORT.out[0]
+    report_txt = GENERATE_REPORT.out[1]
+    report_plots = GENERATE_REPORT.out[2]
 }
 
 // Process to extract genomic features from GTF
