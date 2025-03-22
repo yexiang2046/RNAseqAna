@@ -9,14 +9,15 @@ include { PIRANHA_PEAK_CALLING } from '../modules/piranha_peak_calling'
 
 // Export the workflow
 workflow run_piranha {
-    input:
-    path bam_dir
-    path gtf
-    path rmsk
-    path genome_fasta
-    path outdir
-    string piranha_params
+    take:
+    bam_dir
+    gtf
+    rmsk
+    genome_fasta
+    outdir
+    piranha_params
 
+    main:
     // Set parameters
     params.gtf = gtf
     params.bam_dir = bam_dir
@@ -68,15 +69,13 @@ workflow run_piranha {
         repeat_outputs
     )
 
-    // Return outputs
-    return [
-        processed_bam: BAM_PREPROCESSING.out.processed_bam,
-        peaks_bed: PIRANHA_PEAK_CALLING.out.peaks_bed,
-        annotated_peaks: ANNOTATE_FEATURES.out.annotated_peaks,
-        feature_summary: ANNOTATE_FEATURES.out.feature_summary,
-        feature_plot: ANNOTATE_FEATURES.out.feature_plot,
-        out: GENERATE_REPORT.out
-    ]
+    emit:
+    processed_bam = BAM_PREPROCESSING.out.processed_bam
+    peaks_bed = PIRANHA_PEAK_CALLING.out.peaks_bed
+    annotated_peaks = ANNOTATE_FEATURES.out.annotated_peaks
+    feature_summary = ANNOTATE_FEATURES.out.feature_summary
+    feature_plot = ANNOTATE_FEATURES.out.feature_plot
+    out = GENERATE_REPORT.out
 }
 
 // Process to extract genomic features from GTF

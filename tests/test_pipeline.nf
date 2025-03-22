@@ -125,7 +125,14 @@ workflow {
     CREATE_TEST_RMSK()
     
     // Run main workflow with test data
-    main_workflow = run_piranha()
+    main_workflow = run_piranha(
+        CREATE_TEST_BAM.out,
+        CREATE_TEST_GTF.out,
+        CREATE_TEST_RMSK.out,
+        test_genome,
+        params.outdir,
+        ''
+    )
     
     // Validate outputs
     VALIDATE_BAM_PREPROCESSING(main_workflow.processed_bam)
