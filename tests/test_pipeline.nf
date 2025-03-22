@@ -169,9 +169,12 @@ workflow {
     
     // Validate outputs
     main_workflow.processed_bam
-        .map { bam -> 
-            println "Debug - Processed BAM path: ${bam}"
-            return bam
+        .map { tuple -> 
+            println "Debug - Full tuple: ${tuple}"
+            // Extract just the BAM file path from the tuple
+            def bam_path = tuple[1]  // Get the second element (index 1) which is the path
+            println "Debug - Extracted BAM path: ${bam_path}"
+            return bam_path
         }
         .set { bam_for_validation }
     
