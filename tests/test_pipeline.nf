@@ -22,11 +22,16 @@ process CREATE_TEST_BAM {
     
     script:
     """
-    # Create a small BAM file with simulated header and read
-    echo -e "@HD\tVN:1.6\tSO:coordinate
-@SQ\tSN:chr1\tLN:248956422
-@PG\tID:test\tPN:test
-test_read1\t0\tchr1\t100\t255\t25M\t*\t0\t0\tATCGATCGATCGATCGATCGATCGAT\tIIIIIIIIIIIIIIIIIIIIIIIII" > test.sam
+    # Create SAM header
+    echo "@HD	VN:1.6	SO:coordinate" > test.sam
+    echo "@SQ	SN:chr1	LN:248956422" >> test.sam
+    echo "@PG	ID:test	PN:test" >> test.sam
+    
+    # Create read with matching CIGAR and sequence length
+    # Format: QNAME FLAG RNAME POS MAPQ CIGAR RNEXT PNEXT TLEN SEQ QUAL
+    echo -e "test_read1\t0\tchr1\t100\t60\t10M\t*\t0\t0\tATCGATCGAT\tIIIIIIIIII" >> test.sam
+    
+    # Convert to BAM and index
     samtools view -b test.sam > test.bam
     samtools index test.bam
     """
