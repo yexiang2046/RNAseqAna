@@ -17,16 +17,16 @@ def test_genome = file("${params.test_data_dir}/GRCh38.primary_assembly.genome.f
 
 // Test process to create mock BAM file
 process CREATE_TEST_BAM {
-    input:
-    path template_bam
-
     output:
     path "test.bam"
     
     script:
     """
-    # Create a small BAM file with test data
-    samtools view -H ${template_bam} > test.bam
+    # Create a small BAM file with simulated header
+    echo -e "@HD\tVN:1.6\tSO:coordinate
+@SQ\tSN:chr1\tLN:248956422
+@PG\tID:test\tPN:test" > header.sam
+    samtools view -H header.sam > test.bam
     echo "test_read1\t0\tchr1\t100\t255\t50M\t*\t0\t0\tATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG\tIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII" | samtools view -b >> test.bam
     samtools index test.bam
     """
@@ -124,7 +124,7 @@ process VALIDATE_FEATURE_ANNOTATION {
 workflow {
     // Create test data
     template_bam = Channel.fromPath("${params.test_data_dir}/bamfiles/test.bam")
-    test_bam = CREATE_TEST_BAM(template_bam)
+    test_bam = CREATE_TEST_BAM()
     test_gtf = CREATE_TEST_GTF()
     test_rmsk = CREATE_TEST_RMSK()
     
