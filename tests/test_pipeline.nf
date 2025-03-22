@@ -26,7 +26,7 @@ process CREATE_TEST_BAM {
     echo -e "@HD\tVN:1.6\tSO:coordinate
 @SQ\tSN:chr1\tLN:248956422
 @PG\tID:test\tPN:test" > header.sam
-    samtools view -H header.sam > test.bam
+    samtools view -b -H header.sam -O BAM -o test.bam
     echo "test_read1\t0\tchr1\t100\t255\t50M\t*\t0\t0\tATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG\tIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII" | samtools view -b >> test.bam
     samtools index test.bam
     """
