@@ -9,12 +9,6 @@ include { run_piranha } from '../workflows/run_piranha'
 params.test_data_dir = "$baseDir/data"
 params.outdir = "test_results"
 
-// Test data paths
-def test_bam = file("${params.test_data_dir}/bamfiles/test.bam")
-def test_gtf = file("${params.test_data_dir}/gencode.v38.primary_assembly.annotation.gtf")
-def test_rmsk = file("${params.test_data_dir}/all_rmsk_hg38.bed")
-def test_genome = file("${params.test_data_dir}/GRCh38.primary_assembly.genome.fa")
-
 // Test process to create mock BAM file
 process CREATE_TEST_BAM {
     output:
