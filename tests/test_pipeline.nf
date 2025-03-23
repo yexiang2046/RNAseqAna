@@ -31,24 +31,29 @@ process CREATE_TEST_BAM {
     # Create a cluster of reads at position 100-150 (first peak)
     for i in {1..20}; do
         pos=\$((100 + i*2))
-        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t30M\t*\t0\t0\tATCGATCGATATCGATCGATATCGATCGAT\tIIIIIIIIIIIIIIIIIIIIIIIIIIIII" >> test.sam
+        seq="ATCGATCGATATCGATCGATATCGATCGAT"
+        qual=\$(printf '%.30s' 'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII')
+        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t30M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
     done
     
     # Create a cluster of reads at position 200-250 (second peak)
     for i in {21..40}; do
         pos=\$((200 + (i-20)*2))
-        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t30M\t*\t0\t0\tGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCT\tIIIIIIIIIIIIIIIIIIIIIIIIIIIII" >> test.sam
+        seq="GCTAGCTAGCTAGCTAGCTAGCTAGCTAGCT"
+        qual=\$(printf '%.30s' 'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII')
+        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t30M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
     done
     
     # Add some background reads
     for i in {41..60}; do
         pos=\$((300 + (i-40)*10))
-        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t30M\t*\t0\t0\tTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG\tIIIIIIIIIIIIIIIIIIIIIIIIIIIII" >> test.sam
+        seq="TAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG"
+        qual=\$(printf '%.30s' 'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII')
+        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t30M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
     done
     
     # Sort by coordinate and convert to BAM
-    sort -k3,3 -k4,4n test.sam > test_sorted.sam
-    samtools view -b test_sorted.sam > test_unsorted.bam
+    samtools view -b test.sam > test_unsorted.bam
     samtools sort -o test.bam test_unsorted.bam
     samtools index test.bam
     """
