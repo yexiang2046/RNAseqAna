@@ -28,32 +28,37 @@ EOF
     seq="ATCGATCGATATCGATCGAT"
     qual="IIIIIIIIIIIIIIIIIIII"
     
-    # Create a cluster of reads at position 100-150 (first peak)
-    for i in {1..20}; do
-        pos=\$((100 + i*2))
-        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
+    # Create strong peak region (100-150) with high coverage
+    for pos in {100..150}; do
+        # Add 5 reads at each position for good coverage
+        for j in {1..5}; do
+            read_id="peak1_pos\${pos}_\${j}"
+            echo -e "\${read_id}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
+        done
     done
     
-    # Create a cluster of reads at position 200-250 (second peak)
-    seq="GCTAGCTAGCTAGCTAGCTA"
-    for i in {21..40}; do
-        pos=\$((200 + (i-20)*2))
-        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
+    # Create second peak region (200-250) with medium coverage
+    for pos in {200..250}; do
+        # Add 3 reads at each position
+        for j in {1..3}; do
+            read_id="peak2_pos\${pos}_\${j}"
+            echo -e "\${read_id}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
+        done
     done
     
-    # Add some background reads
-    seq="TAGCTAGCTAGCTAGCTAGC"
-    for i in {41..60}; do
-        pos=\$((300 + (i-40)*10))
-        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
+    # Add background reads (300-500) with sparse coverage
+    for pos in {300..500..10}; do
+        read_id="background_pos\${pos}"
+        echo -e "\${read_id}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
     done
     
-    # Convert to BAM and index
-    samtools view -b test.sam > test.bam
+    # Convert to BAM, sort, and index
+    samtools sort -o test.bam test.sam
     samtools index test.bam
     
-    # Validate the BAM file
+    # Validate and get statistics
     samtools validate test.bam || true
+    samtools flagstat test.bam || true
     """
 }
 
