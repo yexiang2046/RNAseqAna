@@ -18,33 +18,38 @@ process CREATE_TEST_BAM {
     script:
     """
     # Create SAM header
-    cat > test.sam << 'EOF'
+    cat << EOF > test.sam
 @HD	VN:1.6	SO:coordinate
 @SQ	SN:chr1	LN:248956422
 @PG	ID:test	PN:test
 EOF
     
+    # Define sequence and quality strings of equal length
+    seq="ATCGATCGATATCGATCGAT"
+    qual="IIIIIIIIIIIIIIIIIIII"
+    
     # Create a cluster of reads at position 100-150 (first peak)
     for i in {1..20}; do
         pos=\$((100 + i*2))
-        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\tATCGATCGATATCGATCGAT\tIIIIIIIIIIIIIIIIIII" >> test.sam
+        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
     done
     
     # Create a cluster of reads at position 200-250 (second peak)
+    seq="GCTAGCTAGCTAGCTAGCTA"
     for i in {21..40}; do
         pos=\$((200 + (i-20)*2))
-        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\tGCTAGCTAGCTAGCTAGCTA\tIIIIIIIIIIIIIIIIIII" >> test.sam
+        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
     done
     
     # Add some background reads
+    seq="TAGCTAGCTAGCTAGCTAGC"
     for i in {41..60}; do
         pos=\$((300 + (i-40)*10))
-        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\tTAGCTAGCTAGCTAGCTAGC\tIIIIIIIIIIIIIIIIIII" >> test.sam
+        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
     done
     
-    # Convert to BAM and sort
-    samtools view -b test.sam > test_unsorted.bam
-    samtools sort -o test.bam test_unsorted.bam
+    # Convert to BAM and index
+    samtools view -b test.sam > test.bam
     samtools index test.bam
     
     # Validate the BAM file
