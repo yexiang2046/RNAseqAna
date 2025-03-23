@@ -24,38 +24,37 @@ process CREATE_TEST_BAM {
     script:
     """
     # Create SAM header
-    echo "@HD	VN:1.6	SO:coordinate" > test.sam
-    echo "@SQ	SN:chr1	LN:248956422" >> test.sam
-    echo "@PG	ID:test	PN:test" >> test.sam
+    cat > test.sam << 'EOF'
+@HD	VN:1.6	SO:coordinate
+@SQ	SN:chr1	LN:248956422
+@PG	ID:test	PN:test
+EOF
     
     # Create a cluster of reads at position 100-150 (first peak)
     for i in {1..20}; do
         pos=\$((100 + i*2))
-        seq="ATCGATCGATATCGATCGATATCGATCGAT"
-        qual=\$(printf '%.30s' 'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII')
-        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t30M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
+        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\tATCGATCGATATCGATCGAT\tIIIIIIIIIIIIIIIIIII" >> test.sam
     done
     
     # Create a cluster of reads at position 200-250 (second peak)
     for i in {21..40}; do
         pos=\$((200 + (i-20)*2))
-        seq="GCTAGCTAGCTAGCTAGCTAGCTAGCTAGCT"
-        qual=\$(printf '%.30s' 'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII')
-        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t30M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
+        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\tGCTAGCTAGCTAGCTAGCTA\tIIIIIIIIIIIIIIIIIII" >> test.sam
     done
     
     # Add some background reads
     for i in {41..60}; do
         pos=\$((300 + (i-40)*10))
-        seq="TAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG"
-        qual=\$(printf '%.30s' 'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII')
-        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t30M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
+        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\tTAGCTAGCTAGCTAGCTAGC\tIIIIIIIIIIIIIIIIIII" >> test.sam
     done
     
-    # Sort by coordinate and convert to BAM
+    # Convert to BAM and sort
     samtools view -b test.sam > test_unsorted.bam
     samtools sort -o test.bam test_unsorted.bam
     samtools index test.bam
+    
+    # Validate the BAM file
+    samtools validate test.bam || true
     """
 }
 
