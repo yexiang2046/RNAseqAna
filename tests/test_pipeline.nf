@@ -28,12 +28,21 @@ process CREATE_TEST_BAM {
     echo "@SQ	SN:chr1	LN:248956422" >> test.sam
     echo "@PG	ID:test	PN:test" >> test.sam
     
-    # Create read with matching CIGAR and sequence length
+    # Create multiple reads with different positions to form a peak
     # Format: QNAME FLAG RNAME POS MAPQ CIGAR RNEXT PNEXT TLEN SEQ QUAL
-    echo -e "test_read1\t0\tchr1\t100\t60\t10M\t*\t0\t0\tATCGATCGAT\tIIIIIIIIII" >> test.sam
+    echo -e "read1\t0\tchr1\t100\t60\t20M\t*\t0\t0\tATCGATCGATATCGATCGAT\tIIIIIIIIIIIIIIIIIIII" >> test.sam
+    echo -e "read2\t0\tchr1\t102\t60\t20M\t*\t0\t0\tCGATCGATATCGATCGATAT\tIIIIIIIIIIIIIIIIIIII" >> test.sam
+    echo -e "read3\t0\tchr1\t105\t60\t20M\t*\t0\t0\tTCGATATCGATCGATATCGA\tIIIIIIIIIIIIIIIIIIII" >> test.sam
+    echo -e "read4\t0\tchr1\t108\t60\t20M\t*\t0\t0\tTATCGATCGATATCGATCGA\tIIIIIIIIIIIIIIIIIIII" >> test.sam
+    echo -e "read5\t0\tchr1\t110\t60\t20M\t*\t0\t0\tTCGATCGATATCGATCGATA\tIIIIIIIIIIIIIIIIIIII" >> test.sam
     
-    # Convert to BAM and index
-    samtools view -b test.sam > test.bam
+    # Add some reads in another region to create a second peak
+    echo -e "read6\t0\tchr1\t200\t60\t20M\t*\t0\t0\tGCTAGCTAGCTAGCTAGCTA\tIIIIIIIIIIIIIIIIIIII" >> test.sam
+    echo -e "read7\t0\tchr1\t202\t60\t20M\t*\t0\t0\tTAGCTAGCTAGCTAGCTAGC\tIIIIIIIIIIIIIIIIIIII" >> test.sam
+    echo -e "read8\t0\tchr1\t205\t60\t20M\t*\t0\t0\tCTAGCTAGCTAGCTAGCTAG\tIIIIIIIIIIIIIIIIIIII" >> test.sam
+    
+    # Convert to BAM and sort
+    samtools sort -o test.bam test.sam
     samtools index test.bam
     """
 }
