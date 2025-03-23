@@ -28,21 +28,28 @@ process CREATE_TEST_BAM {
     echo "@SQ	SN:chr1	LN:248956422" >> test.sam
     echo "@PG	ID:test	PN:test" >> test.sam
     
-    # Create multiple reads with different positions to form a peak
-    # Format: QNAME FLAG RNAME POS MAPQ CIGAR RNEXT PNEXT TLEN SEQ QUAL
-    echo -e "read1\t0\tchr1\t100\t60\t20M\t*\t0\t0\tATCGATCGATATCGATCGAT\tIIIIIIIIIIIIIIIIIIII" >> test.sam
-    echo -e "read2\t0\tchr1\t102\t60\t20M\t*\t0\t0\tCGATCGATATCGATCGATAT\tIIIIIIIIIIIIIIIIIIII" >> test.sam
-    echo -e "read3\t0\tchr1\t105\t60\t20M\t*\t0\t0\tTCGATATCGATCGATATCGA\tIIIIIIIIIIIIIIIIIIII" >> test.sam
-    echo -e "read4\t0\tchr1\t108\t60\t20M\t*\t0\t0\tTATCGATCGATATCGATCGA\tIIIIIIIIIIIIIIIIIIII" >> test.sam
-    echo -e "read5\t0\tchr1\t110\t60\t20M\t*\t0\t0\tTCGATCGATATCGATCGATA\tIIIIIIIIIIIIIIIIIIII" >> test.sam
+    # Create a cluster of reads at position 100-150 (first peak)
+    for i in {1..20}; do
+        pos=\$((100 + i*2))
+        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t30M\t*\t0\t0\tATCGATCGATATCGATCGATATCGATCGAT\tIIIIIIIIIIIIIIIIIIIIIIIIIIIII" >> test.sam
+    done
     
-    # Add some reads in another region to create a second peak
-    echo -e "read6\t0\tchr1\t200\t60\t20M\t*\t0\t0\tGCTAGCTAGCTAGCTAGCTA\tIIIIIIIIIIIIIIIIIIII" >> test.sam
-    echo -e "read7\t0\tchr1\t202\t60\t20M\t*\t0\t0\tTAGCTAGCTAGCTAGCTAGC\tIIIIIIIIIIIIIIIIIIII" >> test.sam
-    echo -e "read8\t0\tchr1\t205\t60\t20M\t*\t0\t0\tCTAGCTAGCTAGCTAGCTAG\tIIIIIIIIIIIIIIIIIIII" >> test.sam
+    # Create a cluster of reads at position 200-250 (second peak)
+    for i in {21..40}; do
+        pos=\$((200 + (i-20)*2))
+        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t30M\t*\t0\t0\tGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCT\tIIIIIIIIIIIIIIIIIIIIIIIIIIIII" >> test.sam
+    done
     
-    # Convert to BAM and sort
-    samtools sort -o test.bam test.sam
+    # Add some background reads
+    for i in {41..60}; do
+        pos=\$((300 + (i-40)*10))
+        echo -e "read\${i}\t0\tchr1\t\${pos}\t60\t30M\t*\t0\t0\tTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG\tIIIIIIIIIIIIIIIIIIIIIIIIIIIII" >> test.sam
+    done
+    
+    # Sort by coordinate and convert to BAM
+    sort -k3,3 -k4,4n test.sam > test_sorted.sam
+    samtools view -b test_sorted.sam > test_unsorted.bam
+    samtools sort -o test.bam test_unsorted.bam
     samtools index test.bam
     """
 }
