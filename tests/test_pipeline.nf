@@ -24,41 +24,48 @@ process CREATE_TEST_BAM {
 @PG	ID:test	PN:test
 EOF
     
-    # Define sequence and quality strings of equal length
+    # Define sequence and quality strings
     seq="ATCGATCGATATCGATCGAT"
-    qual="IIIIIIIIIIIIIIIIIIII"
+    qual="HHHHHHHHHHHHHHHHHHHH"  # Higher quality scores
     
-    # Create strong peak region (100-150) with high coverage
-    for pos in {100..150}; do
-        # Add 5 reads at each position for good coverage
-        for j in {1..5}; do
-            read_id="peak1_pos\${pos}_\${j}"
-            echo -e "\${read_id}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
-        done
+    # Create paired-end reads for peak regions
+    # First peak region (100-120)
+    for pos in {100..120..2}; do
+        mate1_pos=\$pos
+        mate2_pos=\$((pos + 40))  # 40bp insert size
+        read_name="read_\${pos}"
+        
+        # Mate 1 (forward)
+        echo -e "\${read_name}\t99\tchr1\t\${mate1_pos}\t60\t20M\t=\t\${mate2_pos}\t60\t\${seq}\t\${qual}" >> test.sam
+        
+        # Mate 2 (reverse)
+        echo -e "\${read_name}\t147\tchr1\t\${mate2_pos}\t60\t20M\t=\t\${mate1_pos}\t-60\t\${seq}\t\${qual}" >> test.sam
     done
     
-    # Create second peak region (200-250) with medium coverage
-    for pos in {200..250}; do
-        # Add 3 reads at each position
-        for j in {1..3}; do
-            read_id="peak2_pos\${pos}_\${j}"
-            echo -e "\${read_id}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
-        done
+    # Second peak region (200-220)
+    for pos in {200..220..2}; do
+        mate1_pos=\$pos
+        mate2_pos=\$((pos + 40))
+        read_name="read_\${pos}"
+        
+        # Mate 1 (forward)
+        echo -e "\${read_name}\t99\tchr1\t\${mate1_pos}\t60\t20M\t=\t\${mate2_pos}\t60\t\${seq}\t\${qual}" >> test.sam
+        
+        # Mate 2 (reverse)
+        echo -e "\${read_name}\t147\tchr1\t\${mate2_pos}\t60\t20M\t=\t\${mate1_pos}\t-60\t\${seq}\t\${qual}" >> test.sam
     done
     
-    # Add background reads (300-500) with sparse coverage
-    for pos in {300..500..10}; do
-        read_id="background_pos\${pos}"
-        echo -e "\${read_id}\t0\tchr1\t\${pos}\t60\t20M\t*\t0\t0\t\${seq}\t\${qual}" >> test.sam
-    done
-    
-    # Convert to BAM, sort, and index
-    samtools sort -o test.bam test.sam
+    # Convert to BAM and sort by coordinate
+    samtools view -b test.sam | samtools sort -o test.bam
     samtools index test.bam
     
-    # Validate and get statistics
+    # Validate BAM file
+    echo "=== BAM validation ===" 
     samtools validate test.bam || true
+    echo "=== BAM statistics ==="
     samtools flagstat test.bam || true
+    echo "=== First few reads ==="
+    samtools view test.bam | head -n 4 || true
     """
 }
 
