@@ -78,7 +78,7 @@ if [ ! -s introns.bed ]; then
 fi
 # format to bed6, add chr prefix
 awk 'BEGIN{OFS="\t"} {
-    print "chr"$1, $2, $3, $5, $4, "."
+    print "chr"$1, $2, $3, $4, $5, "."
 }' introns.bed > introns.bed.tmp && mv introns.bed.tmp introns.bed
 
 echo "Extracting UTRs..."
