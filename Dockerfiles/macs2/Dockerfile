@@ -1,5 +1,5 @@
-# Use continuumio/miniconda3 as base image
-FROM continuumio/miniconda3:latest
+# Use debian:bullseye-slim as base image
+FROM debian:bullseye-slim
 
 # Set working directory
 WORKDIR /app
@@ -12,19 +12,25 @@ RUN apt-get update && apt-get install -y \
     libcurl4-openssl-dev \
     libssl-dev \
     libxml2-dev \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Initialize conda and create environment
-RUN conda init bash && \
-    . ~/.bashrc && \
-    conda create -n macs2_env python=3.9 -y && \
-    echo "conda activate macs2_env" >> ~/.bashrc && \
-    . ~/.bashrc && \
-    conda install -c bioconda macs2=2.2.7.1 -y && \
-    conda install -c conda-forge r-tidyverse r-ggplot2 r-dplyr r-tidyr -y
+# Install micromamba
+RUN wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba -O > /usr/local/bin/micromamba && \
+    chmod u+x /usr/local/bin/micromamba
 
-# Add conda environment to PATH
-ENV PATH="/opt/conda/envs/macs2_env/bin:${PATH}"
+# Create micromamba environment
+RUN micromamba create -n macs2_env -c bioconda -c conda-forge \
+    python=3.9 \
+    macs2=2.2.7.1 \
+    r-tidyverse \
+    r-ggplot2 \
+    r-dplyr \
+    r-tidyr \
+    -y
+
+# Add micromamba environment to PATH
+ENV PATH="/root/micromamba/envs/macs2_env/bin:${PATH}"
 
 # Create a non-root user
 RUN useradd -m -u 1000 appuser && \
