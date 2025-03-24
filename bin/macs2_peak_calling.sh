@@ -56,13 +56,13 @@ fi
 # Set default values
 NAME=${NAME:-"macs2"}
 QVALUE=${QVALUE:-"0.05"}
-FORMAT=${FORMAT:-"BED"}
+FORMAT=${FORMAT:-"BAMPE"}
 
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
 # Construct MACS2 command
-MACS2_CMD="macs2 callpeak -t $TREATMENT_BAM -c $CONTROL_BAM -g $GENOME_SIZE -n $NAME --outdir $OUTPUT_DIR -q $QVALUE"
+MACS2_CMD="macs2 callpeak -t $TREATMENT_BAM -c $CONTROL_BAM -f $FORMAT -g $GENOME_SIZE -n $NAME --outdir $OUTPUT_DIR -q $QVALUE"
 
 # Add optional parameters
 if [ "$SAVE_PILEUP" = true ]; then
