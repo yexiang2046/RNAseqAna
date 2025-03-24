@@ -14,9 +14,12 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Create conda environment and install packages
-RUN conda create -n macs2_env python=3.9 -y && \
-    conda activate macs2_env && \
+# Initialize conda and create environment
+RUN conda init bash && \
+    . ~/.bashrc && \
+    conda create -n macs2_env python=3.9 -y && \
+    echo "conda activate macs2_env" >> ~/.bashrc && \
+    . ~/.bashrc && \
     conda install -c bioconda macs2=2.2.7.1 -y && \
     conda install -c conda-forge r-tidyverse r-ggplot2 r-dplyr r-tidyr -y
 
