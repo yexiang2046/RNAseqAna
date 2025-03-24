@@ -185,6 +185,43 @@ feature_names <- c("Exons", "5'UTR", "Genes", "Introns", "3'UTR")
 names(data) <- c("chr", "start", "end", "name", "score", "strand", 
                 paste0(feature_names, "_count"), "gene_ids", "overlapping_features")
 
+# Calculate peak lengths and statistics
+data <- data %>%
+  mutate(peak_length = end - start)
+
+length_stats <- data %>%
+  summarise(
+    min_length = min(peak_length),
+    max_length = max(peak_length),
+    mean_length = mean(peak_length),
+    median_length = median(peak_length),
+    sd_length = sd(peak_length),
+    total_peaks = n()
+  )
+
+# Write peak length statistics
+write.csv(length_stats,
+          file = file.path(dirname(input_file),
+                          paste0(sample_id, "_peak_length_stats.csv")),
+          row.names = FALSE)
+
+# Create length distribution plot
+pdf(file.path(dirname(input_file),
+              paste0(sample_id, "_peak_length_distribution.pdf")),
+    width = 10, height = 6)
+
+ggplot(data, aes(x = peak_length)) +
+  geom_histogram(bins = 50, fill = "steelblue", color = "black") +
+  theme_minimal() +
+  labs(x = "Peak Length (bp)",
+       y = "Count",
+       title = paste("Distribution of Peak Lengths -", sample_id),
+       subtitle = sprintf("Mean: %.1f bp, Median: %.1f bp",
+                        length_stats$mean_length,
+                        length_stats$median_length))
+
+dev.off()
+
 # Calculate summary statistics
 summary_stats <- data %>%
   summarise(across(ends_with("_count"), 
@@ -237,6 +274,10 @@ dev.off()
 cat(sprintf("\nFeature Overlap Summary for %s:\n", sample_id))
 print(summary_wide)
 
+# Print length statistics
+cat("\nPeak Length Statistics:\n")
+print(length_stats)
+
 # Gene annotation summary
 gene_summary <- data %>%
   summarise(
@@ -267,9 +308,16 @@ echo "Results written to:"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks.bed"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_overlap_summary.csv"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_overlap_plot.pdf"
+echo "- $OUTPUT_DIR/${SAMPLE_ID}_peak_length_stats.csv"
+echo "- $OUTPUT_DIR/${SAMPLE_ID}_peak_length_distribution.pdf"
 
 # Display summary if available
 if [ -f "$OUTPUT_DIR/${SAMPLE_ID}_feature_overlap_summary.csv" ]; then
     echo -e "\nFeature overlap summary:"
     cat "$OUTPUT_DIR/${SAMPLE_ID}_feature_overlap_summary.csv"
+fi
+
+if [ -f "$OUTPUT_DIR/${SAMPLE_ID}_peak_length_stats.csv" ]; then
+    echo -e "\nPeak length statistics:"
+    cat "$OUTPUT_DIR/${SAMPLE_ID}_peak_length_stats.csv"
 fi 
