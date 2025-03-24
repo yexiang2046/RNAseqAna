@@ -54,8 +54,8 @@ echo "Processing sample: $SAMPLE_ID"
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
-# List of feature types to process
-FEATURES=("cds" "exons" "five_prime_utr" "genes" "introns" "three_prime_utr" "transcripts")
+# List of available feature types
+FEATURES=("exons" "five_prime_utr" "genes" "introns" "three_prime_utr")
 
 # Check if all feature files exist
 for feature in "${FEATURES[@]}"; do
@@ -71,31 +71,28 @@ for feature in "${FEATURES[@]}"; do
     FEATURE_FILES="$FEATURE_FILES $FEATURES_DIR/${feature}.bed"
 done
 
-# Modify the annotation section to include gene names and specific features
-echo "Getting gene and feature annotations..."
-# First get gene names and features in separate temp files
+# Get gene annotations
+echo "Getting gene annotations..."
 bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/genes.bed" -wao | \
     awk 'BEGIN{OFS="\t"} {
-        # Store gene info for each peak
         peak=$1"_"$2"_"$3;
-        if($13!=".") {  # $13 should be gene name column in genes.bed
-            genes[peak]=genes[peak]?genes[peak]";"$13:$13;  # gene name
-            ensids[peak]=ensids[peak]?ensids[peak]";"$10:$10;  # ensembl id
+        if($10!=".") {  # Assuming gene_id is in column 10
+            genes[peak]=genes[peak]?genes[peak]";"$10:$10;  # gene_id
         }
     } END{
-        # Print gene info mapping
         for(peak in genes) {
-            print peak, ensids[peak], genes[peak];
+            print peak, genes[peak];
         }
     }' > "$OUTPUT_DIR/temp_gene_info.txt"
 
-# Get specific feature overlaps for each peak
+# Get feature overlaps
+echo "Getting feature overlaps..."
 for feature in "${FEATURES[@]}"; do
-    if [ "$feature" != "genes" ]; then  # Skip genes as we already processed them
+    if [ "$feature" != "genes" ]; then
         bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/${feature}.bed" -wao | \
             awk -v feat="$feature" 'BEGIN{OFS="\t"} {
                 peak=$1"_"$2"_"$3;
-                if($14!=".") {  # If there is an overlap
+                if($10!=".") {  # Assuming feature_id is in column 10
                     features[peak]=features[peak]?features[peak]";"feat:feat;
                 }
             } END{
@@ -119,8 +116,7 @@ awk -v OFS='\t' '
     # Read gene info into arrays
     FILENAME == ARGV[1] {
         split($1, coords, "_");
-        ens_info[coords[1],coords[2],coords[3]]=$2;
-        gene_names[coords[1],coords[2],coords[3]]=$3;
+        gene_ids[coords[1],coords[2],coords[3]]=$2;
         next;
     }
     # Read feature info into arrays
@@ -129,19 +125,16 @@ awk -v OFS='\t' '
         feat_info[coords[1],coords[2],coords[3]]=$2;
         next;
     }
-    # Process feature counts and add gene and feature info
+    # Process feature counts and add annotations
     {
-        ens_ids = ens_info[$1,$2,$3];
-        if (!ens_ids) ens_ids = ".";
-        
-        gene_name = gene_names[$1,$2,$3];
-        if (!gene_name) gene_name = ".";
+        gene_id = gene_ids[$1,$2,$3];
+        if (!gene_id) gene_id = ".";
         
         features = feat_info[$1,$2,$3];
         if (!features) features = ".";
         
-        # Print original columns plus gene names and features
-        print $0, ens_ids, gene_name, features;
+        # Print original columns plus annotations
+        print $0, gene_id, features;
     }' "$OUTPUT_DIR/temp_gene_info.txt" \
        "$OUTPUT_DIR/temp_features_info.txt" \
        "$OUTPUT_DIR/temp_feature_counts.bed" \
@@ -166,11 +159,11 @@ sample_id <- args[2]
 data <- read.table(input_file, header=FALSE, sep="\t", stringsAsFactors=FALSE)
 
 # Define feature names (matching the order in the shell script)
-feature_names <- c("CDS", "Exons", "5'UTR", "Genes", "Introns", "3'UTR", "Transcripts")
+feature_names <- c("Exons", "5'UTR", "Genes", "Introns", "3'UTR")
 
 # Rename columns
 names(data) <- c("chr", "start", "end", "name", "score", "strand", 
-                paste0(feature_names, "_count"), "ensembl_ids", "gene_names", "overlapping_features")
+                paste0(feature_names, "_count"), "gene_ids", "overlapping_features")
 
 # Calculate summary statistics
 summary_stats <- data %>%
@@ -228,8 +221,8 @@ print(summary_wide)
 gene_summary <- data %>%
   summarise(
     total_peaks = n(),
-    peaks_with_genes = sum(ensembl_ids != "."),
-    percent_with_genes = mean(ensembl_ids != ".") * 100
+    peaks_with_genes = sum(gene_ids != "."),
+    percent_with_genes = mean(gene_ids != ".") * 100
   )
 
 cat("\nGene Annotation Summary:\n")
