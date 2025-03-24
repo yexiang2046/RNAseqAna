@@ -30,9 +30,8 @@ RUN micromamba create -n macs2_env -c bioconda -c conda-forge \
     -y
 
 # Initialize micromamba shell
-RUN micromamba shell init -s bash -p /opt/conda && \
-    echo "micromamba activate macs2_env" >> /root/.bashrc
+RUN micromamba shell init --shell=bash && \
+    echo "micromamba activate macs2_env" >> ~/.bashrc
 
-# Add micromamba environment to PATH
-ENV PATH="/root/micromamba/envs/macs2_env/bin:${PATH}"
+
 
