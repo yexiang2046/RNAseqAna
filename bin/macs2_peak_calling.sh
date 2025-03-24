@@ -2,7 +2,7 @@
 
 # Help message
 usage() {
-    echo "Usage: $0 [-h] -t TREATMENT_BAM -c CONTROL_BAM -o OUTPUT_DIR -g GENOME_SIZE [-n NAME] [-p PVALUE] [-q QVALUE] [-f FORMAT] [-B] [-C]"
+    echo "Usage: $0 [-h] -t TREATMENT_BAM -c CONTROL_BAM -o OUTPUT_DIR -g GENOME_SIZE [-n NAME] [-q QVALUE] [-f FORMAT] [-B] [-C]"
     echo "Call peaks using MACS2"
     echo ""
     echo "Arguments:"
@@ -11,7 +11,6 @@ usage() {
     echo "  -o OUTPUT_DIR     Output directory"
     echo "  -g GENOME_SIZE    Genome size (e.g., hs for human, mm for mouse)"
     echo "  -n NAME          Name prefix for output files (default: macs2)"
-    echo "  -p PVALUE        P-value threshold (default: 1e-5)"
     echo "  -q QVALUE        Q-value threshold (default: 0.05)"
     echo "  -f FORMAT        Output format (default: AUTO)"
     echo "  -B              Save fragment pileup signal"
@@ -21,7 +20,7 @@ usage() {
 }
 
 # Parse command line arguments
-while getopts "ht:c:o:g:n:p:q:f:BC" opt; do
+while getopts "ht:c:o:g:n:q:f:BC" opt; do
     case $opt in
         h) usage ;;
         t) TREATMENT_BAM="$OPTARG" ;;
@@ -29,7 +28,6 @@ while getopts "ht:c:o:g:n:p:q:f:BC" opt; do
         o) OUTPUT_DIR="$OPTARG" ;;
         g) GENOME_SIZE="$OPTARG" ;;
         n) NAME="$OPTARG" ;;
-        p) PVALUE="$OPTARG" ;;
         q) QVALUE="$OPTARG" ;;
         f) FORMAT="$OPTARG" ;;
         B) SAVE_PILEUP=true ;;
@@ -57,7 +55,6 @@ fi
 
 # Set default values
 NAME=${NAME:-"macs2"}
-PVALUE=${PVALUE:-"1e-5"}
 QVALUE=${QVALUE:-"0.05"}
 FORMAT=${FORMAT:-"BED"}
 
@@ -65,7 +62,7 @@ FORMAT=${FORMAT:-"BED"}
 mkdir -p "$OUTPUT_DIR"
 
 # Construct MACS2 command
-MACS2_CMD="macs2 callpeak -t $TREATMENT_BAM -c $CONTROL_BAM -g $GENOME_SIZE -n $NAME -o $OUTPUT_DIR -p $PVALUE -q $QVALUE"
+MACS2_CMD="macs2 callpeak -t $TREATMENT_BAM -c $CONTROL_BAM -g $GENOME_SIZE -n $NAME -o $OUTPUT_DIR -q $QVALUE"
 
 # Add optional parameters
 if [ "$SAVE_PILEUP" = true ]; then
