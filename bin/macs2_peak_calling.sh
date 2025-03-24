@@ -62,7 +62,7 @@ FORMAT=${FORMAT:-"BED"}
 mkdir -p "$OUTPUT_DIR"
 
 # Construct MACS2 command
-MACS2_CMD="macs2 callpeak -t $TREATMENT_BAM -c $CONTROL_BAM -g $GENOME_SIZE -n $NAME -o $OUTPUT_DIR -q $QVALUE"
+MACS2_CMD="macs2 callpeak -t $TREATMENT_BAM -c $CONTROL_BAM -g $GENOME_SIZE -n $NAME --outdir $OUTPUT_DIR -q $QVALUE"
 
 # Add optional parameters
 if [ "$SAVE_PILEUP" = true ]; then
