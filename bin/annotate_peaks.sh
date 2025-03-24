@@ -2,24 +2,26 @@
 
 # Help message
 usage() {
-    echo "Usage: $0 [-h] -p PEAKS_BED -f FEATURES_DIR -o OUTPUT_DIR"
+    echo "Usage: $0 [-h] -p PEAKS_BED -f FEATURES_DIR -o OUTPUT_DIR [-H]"
     echo "Annotate peaks with genomic features using bedtools annotate"
     echo ""
     echo "Arguments:"
     echo "  -p PEAKS_BED    Input peaks BED file (from Piranha)"
     echo "  -f FEATURES_DIR Directory containing feature BED files"
     echo "  -o OUTPUT_DIR   Output directory"
+    echo "  -H             Only annotate host regions (chromosomes starting with 'chr')"
     echo "  -h             Show this help message"
     exit 1
 }
 
 # Parse command line arguments
-while getopts "hp:f:o:" opt; do
+while getopts "hp:f:o:H" opt; do
     case $opt in
         h) usage ;;
         p) PEAKS="$OPTARG" ;;
         f) FEATURES_DIR="$OPTARG" ;;
         o) OUTPUT_DIR="$OPTARG" ;;
+        H) HOST_ONLY=true ;;
         ?) usage ;;
     esac
 done
@@ -54,6 +56,24 @@ echo "Processing sample: $SAMPLE_ID"
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
+# Filter peaks for host regions if requested
+if [ "$HOST_ONLY" = true ]; then
+    echo "Filtering for host regions (chr* chromosomes)..."
+    TOTAL_PEAKS=$(wc -l < "$PEAKS")
+    awk '$1 ~ /^chr/' "$PEAKS" > "$OUTPUT_DIR/host_peaks.bed"
+    PEAKS="$OUTPUT_DIR/host_peaks.bed"
+    HOST_PEAKS=$(wc -l < "$PEAKS")
+    echo "Total peaks: $TOTAL_PEAKS"
+    echo "Peaks in host regions: $HOST_PEAKS"
+    echo "Peaks filtered out: $((TOTAL_PEAKS - HOST_PEAKS))"
+    
+    if [ "$HOST_PEAKS" -eq 0 ]; then
+        echo "Error: No peaks found in host regions"
+        rm "$OUTPUT_DIR/host_peaks.bed"
+        exit 1
+    fi
+fi
+
 # List of available feature types
 FEATURES=("exons" "five_prime_utr" "genes" "introns" "three_prime_utr")
 
@@ -76,8 +96,8 @@ echo "Getting gene annotations..."
 bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/genes.bed" -wao | \
     awk 'BEGIN{OFS="\t"} {
         peak=$1"_"$2"_"$3;
-        if($10!=".") {  # Assuming gene_id is in column 10
-            genes[peak]=genes[peak]?genes[peak]";"$10:$10;  # gene_id
+        if($4!=".") {  # Assuming gene_id is in column 4
+            genes[peak]=genes[peak]?genes[peak]";"$4:$4;  # gene_id
         }
     } END{
         for(peak in genes) {
@@ -92,7 +112,7 @@ for feature in "${FEATURES[@]}"; do
         bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/${feature}.bed" -wao | \
             awk -v feat="$feature" 'BEGIN{OFS="\t"} {
                 peak=$1"_"$2"_"$3;
-                if($10!=".") {  # Assuming feature_id is in column 10
+                if($4!=".") {  # Assuming feature_id is in column 4
                     features[peak]=features[peak]?features[peak]";"feat:feat;
                 }
             } END{
@@ -237,6 +257,9 @@ Rscript "$OUTPUT_DIR/analyze_features.R" \
 
 # Clean up temporary files
 rm "$OUTPUT_DIR/temp_gene_info.txt" "$OUTPUT_DIR/temp_features_info.txt" "$OUTPUT_DIR/temp_feature_counts.bed"
+if [ "$HOST_ONLY" = true ]; then
+    rm "$OUTPUT_DIR/host_peaks.bed"
+fi
 
 # Print results
 echo -e "\nAnnotation complete!"
