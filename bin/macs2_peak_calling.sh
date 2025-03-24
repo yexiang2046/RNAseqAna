@@ -12,7 +12,7 @@ usage() {
     echo "  -g GENOME_SIZE    Genome size (e.g., hs for human, mm for mouse)"
     echo "  -n NAME          Name prefix for output files (default: macs2)"
     echo "  -q QVALUE        Q-value threshold (default: 0.05)"
-    echo "  -f FORMAT        Output format (default: AUTO)"
+    echo "  -f FORMAT        Output format (default: BAMPE)"
     echo "  -B              Save fragment pileup signal"
     echo "  -C              Save control lambda signal"
     echo "  -h              Show this help message"
