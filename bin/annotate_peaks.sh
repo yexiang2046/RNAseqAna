@@ -135,10 +135,10 @@ done
 # Get gene annotations
 echo "Getting gene annotations..."
 bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/genes.bed" -wao | \
-    awk 'BEGIN{OFS="\t"} {
+    awk 'BEGIN{OFS="\t"; FS="\t"} {
         peak=$1"_"$2"_"$3;
-        if($4!=".") {  # Assuming gene_id is in column 4
-            genes[peak]=genes[peak]?genes[peak]";"$4:$4;  # gene_id
+        if($10!=".") {  # Use gene ID from column 10 (bedtools intersect output)
+            genes[peak]=$10;  # Use gene ID
         }
     } END{
         for(peak in genes) {
@@ -146,30 +146,162 @@ bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/genes.bed" -wao | \
         }
     }' > "$OUTPUT_DIR/temp_gene_info.txt"
 
-# Get feature overlaps
+# Get feature overlaps with priority (exons > UTRs > introns > genes > intergenic)
 echo "Getting feature overlaps..."
-for feature in "${FEATURES[@]}"; do
-    if [ "$feature" != "genes" ]; then
-        bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/${feature}.bed" -wao | \
-            awk -v feat="$feature" 'BEGIN{OFS="\t"} {
-                peak=$1"_"$2"_"$3;
-                if($4!=".") {  # Assuming feature_id is in column 4
-                    features[peak]=features[peak]?features[peak]";"feat:feat;
+# First process exons separately to ensure they take highest priority
+echo "Processing exons..."
+echo "Checking input files..."
+echo "Number of peaks in input file:"
+wc -l "$PEAKS"
+echo "Number of exons in feature file:"
+wc -l "$FEATURES_DIR/exons.bed"
+
+# Clean input files to ensure proper tab formatting
+echo "Cleaning input files..."
+awk 'BEGIN{OFS="\t"} {print $1, $2, $3, $4, $5, $6}' "$PEAKS" > "$OUTPUT_DIR/clean_peaks.bed"
+awk 'BEGIN{OFS="\t"} {print $1, $2, $3, $4, $5, $6}' "$FEATURES_DIR/exons.bed" > "$OUTPUT_DIR/clean_exons.bed"
+
+echo "First few lines of cleaned peaks file:"
+head -n 3 "$OUTPUT_DIR/clean_peaks.bed"
+echo "First few lines of cleaned exons file:"
+head -n 3 "$OUTPUT_DIR/clean_exons.bed"
+
+echo "Running bedtools intersect for exons..."
+bedtools intersect -a "$OUTPUT_DIR/clean_peaks.bed" -b "$OUTPUT_DIR/clean_exons.bed" -wao > "$OUTPUT_DIR/debug_exon_overlaps.txt"
+
+echo "Checking if bedtools intersect produced output..."
+if [ ! -s "$OUTPUT_DIR/debug_exon_overlaps.txt" ]; then
+    echo "Warning: bedtools intersect produced no output!"
+    echo "Checking if bedtools intersect command works with a test case..."
+    # Create a small test file
+    echo -e "chr1\t100\t200\tpeak1\t0\t+" > "$OUTPUT_DIR/test_peaks.bed"
+    echo -e "chr1\t150\t250\texon1\t0\t+" > "$OUTPUT_DIR/test_exons.bed"
+    bedtools intersect -a "$OUTPUT_DIR/test_peaks.bed" -b "$OUTPUT_DIR/test_exons.bed" -wao
+    rm "$OUTPUT_DIR/test_peaks.bed" "$OUTPUT_DIR/test_exons.bed"
+fi
+
+echo "Checking exon overlaps..."
+awk 'BEGIN{OFS="\t"; FS="\t"} {
+    # For bedtools intersect -wao output:
+    # $1-$3: peak coordinates
+    # $4-$6: exon coordinates
+    # $7: gene ID from exon file (column 4 of original exon.bed)
+    # $8: score
+    # $9: strand
+    # $NF: overlap length
+    peak=$1"_"$2"_"$3;
+    overlap_len = $(NF);
+    
+    print "Processing peak:", peak, "overlap length:", overlap_len > "/dev/stderr";
+    
+    if(overlap_len > 0) {
+        # Store overlap information with maximum overlap
+        if(!(peak in max_overlap) || overlap_len > max_overlap[peak]) {
+            max_overlap[peak] = overlap_len;
+            features[peak] = "exons";
+            # Extract gene ID from column 7 (bedtools intersect output)
+            feature_ids[peak] = $7;
+            print "Found exon overlap for peak:", peak, "gene ID:", $7 > "/dev/stderr";
+        }
+    }
+} END{
+    print "Total peaks with exon overlaps:", length(features) > "/dev/stderr";
+    for(peak in features) {
+        print peak, feature_ids[peak], features[peak], max_overlap[peak];
+    }
+}' "$OUTPUT_DIR/debug_exon_overlaps.txt" > "$OUTPUT_DIR/temp_exons_info.txt"
+
+# Clean up temporary files
+rm "$OUTPUT_DIR/clean_peaks.bed" "$OUTPUT_DIR/clean_exons.bed"
+
+# Then process UTRs
+for feature in "five_prime_utr" "three_prime_utr"; do
+    echo "Processing $feature..."
+    bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/${feature}.bed" -wao | \
+        awk -v feat="$feature" 'BEGIN{OFS="\t"} {
+            peak=$1"_"$2"_"$3;
+            overlap_len = $(NF);
+            
+            if(overlap_len > 0) {
+                # Only store if no exon overlap exists
+                if(!(peak in seen)) {
+                    max_overlap[peak] = overlap_len;
+                    features[peak] = feat;
+                    # Extract gene ID from column 7 (bedtools intersect output)
+                    feature_ids[peak] = $7;
+                    seen[peak] = 1;
                 }
-            } END{
-                for(peak in features) {
-                    print peak, features[peak];
-                }
-            }' >> "$OUTPUT_DIR/temp_features_info.txt"
-    fi
+            }
+        } END{
+            for(peak in features) {
+                print peak, feature_ids[peak], features[peak], max_overlap[peak];
+            }
+        }' > "$OUTPUT_DIR/temp_${feature}_info.txt"
 done
 
-# Run annotateBed for feature counting
-echo "Running annotateBed for feature counting..."
-bedtools annotate -counts \
-    -i "$PEAKS" \
-    -files $FEATURE_FILES \
-    > "$OUTPUT_DIR/temp_feature_counts.bed"
+# Then process introns
+echo "Processing introns..."
+bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/introns.bed" -wao | \
+    awk 'BEGIN{OFS="\t"} {
+        peak=$1"_"$2"_"$3;
+        overlap_len = $(NF);
+        
+        if(overlap_len > 0) {
+            # Only store if no exon or UTR overlap exists
+            if(!(peak in seen)) {
+                max_overlap[peak] = overlap_len;
+                features[peak] = "introns";
+                # Extract gene ID from column 7 (bedtools intersect output)
+                feature_ids[peak] = $7;
+                seen[peak] = 1;
+            }
+        }
+    } END{
+        for(peak in features) {
+            print peak, feature_ids[peak], features[peak], max_overlap[peak];
+        }
+    }' > "$OUTPUT_DIR/temp_introns_info.txt"
+
+# Combine feature files and add intergenic peaks
+echo "Identifying intergenic peaks..."
+cat "$OUTPUT_DIR"/temp_*_info.txt > "$OUTPUT_DIR/temp_all_features.txt"
+
+# Find peaks without features and mark them as intergenic
+bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/genes.bed" -v | \
+    awk 'BEGIN{OFS="\t"} {
+        peak=$1"_"$2"_"$3;
+        print peak, ".", "intergenic", "0";
+    }' > "$OUTPUT_DIR/temp_intergenic.txt"
+
+# Sort and prioritize features (exons > UTRs > introns > genes > intergenic)
+cat "$OUTPUT_DIR/temp_all_features.txt" "$OUTPUT_DIR/temp_intergenic.txt" | \
+    awk 'BEGIN{OFS="\t"; 
+             # Define feature priority
+             priority["exons"]=1;
+             priority["five_prime_utr"]=2;
+             priority["three_prime_utr"]=2;
+             priority["introns"]=3;
+             priority["genes"]=4;
+             priority["intergenic"]=5;
+        }
+        {
+            peak=$1;
+            feat_type=$3;
+            curr_priority = priority[feat_type];
+            if(curr_priority == "") { curr_priority = 999; }  # Handle unknown features
+            
+            if(!(peak in seen) || curr_priority < min_priority[peak]) {
+                features[peak]=feat_type;
+                feature_ids[peak]=$2;
+                min_priority[peak] = curr_priority;
+                seen[peak]=1;
+            }
+        }
+        END{
+            for(peak in features) {
+                print peak, feature_ids[peak], features[peak];
+            }
+        }' | sort -k1,1 > "$OUTPUT_DIR/temp_features_info.txt"
 
 # Combine all annotations
 echo "Combining annotations..."
@@ -177,28 +309,36 @@ awk -v OFS='\t' '
     # Read gene info into arrays
     FILENAME == ARGV[1] {
         split($1, coords, "_");
-        gene_ids[coords[1],coords[2],coords[3]]=$2;
+        key = coords[1]"_"coords[2]"_"coords[3];
+        gene_ids[key]=$2;
         next;
     }
     # Read feature info into arrays
     FILENAME == ARGV[2] {
         split($1, coords, "_");
-        feat_info[coords[1],coords[2],coords[3]]=$2;
+        key = coords[1]"_"coords[2]"_"coords[3];
+        feat_id[key]=$2;
+        feat_type[key]=$3;
         next;
     }
     # Process feature counts and add annotations
     {
-        gene_id = gene_ids[$1,$2,$3];
+        key = $1"_"$2"_"$3;
+        gene_id = gene_ids[key];
         if (!gene_id) gene_id = ".";
         
-        features = feat_info[$1,$2,$3];
-        if (!features) features = ".";
+        feature_id = feat_id[key];
+        feature_type = feat_type[key];
+        if (!feature_type) {
+            feature_id = ".";
+            feature_type = "intergenic";
+        }
         
         # Print original columns plus annotations
-        print $0, gene_id, features;
+        print $0, gene_id, feature_id, feature_type;
     }' "$OUTPUT_DIR/temp_gene_info.txt" \
        "$OUTPUT_DIR/temp_features_info.txt" \
-       "$OUTPUT_DIR/temp_feature_counts.bed" \
+       "$PEAKS" \
     > "$OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks.bed"
 
 # Create R script for analysis
@@ -338,7 +478,7 @@ Rscript "$OUTPUT_DIR/analyze_features.R" \
     "$SAMPLE_ID"
 
 # Clean up temporary files
-rm "$OUTPUT_DIR/temp_gene_info.txt" "$OUTPUT_DIR/temp_features_info.txt" "$OUTPUT_DIR/temp_feature_counts.bed"
+rm "$OUTPUT_DIR/temp_gene_info.txt" "$OUTPUT_DIR/temp_features_info.txt" "$OUTPUT_DIR/temp_all_features.txt" "$OUTPUT_DIR/temp_intergenic.txt"
 if [ "$HOST_ONLY" = true ]; then
     rm "$OUTPUT_DIR/host_peaks.bed"
 fi
