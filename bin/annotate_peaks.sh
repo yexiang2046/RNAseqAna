@@ -339,6 +339,35 @@ awk -v OFS='\t' '
     }' "$OUTPUT_DIR/temp_gene_info.txt" \
        "$OUTPUT_DIR/temp_features_info.txt" \
        "$PEAKS" \
+    > "$OUTPUT_DIR/temp_annotated_peaks.bed"
+
+# Add gene name and type annotations
+echo "Adding gene name and type annotations..."
+awk -v OFS='\t' '
+    # First read genes.bed to create gene ID to name and type mapping
+    FILENAME == ARGV[1] {
+        if($4 != ".") {  # If gene ID exists
+            gene_names[$4] = $5;  # Use column 5 as gene name
+            gene_types[$4] = $7;  # Use column 7 as gene type
+        }
+        next;
+    }
+    # Process the annotated peaks file
+    {
+        # Get gene ID from column 7
+        gene_id = $7;
+        
+        # Get gene name and type from mapping
+        gene_name = gene_names[gene_id];
+        if (!gene_name) gene_name = ".";
+        
+        gene_type = gene_types[gene_id];
+        if (!gene_type) gene_type = ".";
+        
+        # Print all columns plus gene name and type
+        print $0, gene_name, gene_type;
+    }' "$FEATURES_DIR/genes.bed" \
+       "$OUTPUT_DIR/temp_annotated_peaks.bed" \
     > "$OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks.bed"
 
 # Create R script for analysis
@@ -361,7 +390,7 @@ data <- read.table(input_file, header=FALSE, sep="\t", stringsAsFactors=FALSE)
 
 # Rename columns (based on the actual columns in the annotated peaks file)
 names(data) <- c("chr", "start", "end", "name", "score", "strand", 
-                "gene_id", "feature_id", "feature_type")
+                "gene_id", "feature_id", "feature_type", "gene_name", "gene_type")
 
 # Calculate peak lengths and statistics
 data <- data %>%
@@ -437,13 +466,67 @@ gene_stats <- data %>%
   summarise(
     total_peaks = n(),
     peaks_with_genes = sum(gene_id != "."),
-    percent_with_genes = mean(gene_id != ".") * 100
+    peaks_with_names = sum(gene_name != "."),
+    peaks_with_types = sum(gene_type != "."),
+    percent_with_genes = mean(gene_id != ".") * 100,
+    percent_with_names = mean(gene_name != ".") * 100,
+    percent_with_types = mean(gene_type != ".") * 100
   )
 
 # Write gene annotation statistics
 write.csv(gene_stats,
           file = file.path(dirname(input_file),
                           paste0(sample_id, "_gene_stats.csv")),
+          row.names = FALSE)
+
+# Calculate gene type distribution
+gene_type_stats <- data %>%
+  filter(gene_type != ".") %>%
+  group_by(gene_type) %>%
+  summarise(
+    count = n(),
+    percentage = n() / nrow(data) * 100
+  ) %>%
+  arrange(desc(count))
+
+# Write gene type statistics
+write.csv(gene_type_stats,
+          file = file.path(dirname(input_file),
+                          paste0(sample_id, "_gene_type_stats.csv")),
+          row.names = FALSE)
+
+# Create gene type distribution plot
+pdf(file.path(dirname(input_file),
+              paste0(sample_id, "_gene_type_distribution.pdf")),
+    width = 10, height = 6)
+
+ggplot(gene_type_stats, aes(x = reorder(gene_type, -count), y = count)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = sprintf("%d (%.1f%%)", count, percentage)),
+            vjust = -0.5) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "Gene Type",
+       y = "Number of Peaks",
+       title = paste("Distribution of Peak Gene Types -", sample_id))
+
+dev.off()
+
+# Create top genes table
+top_genes <- data %>%
+  filter(gene_name != ".") %>%
+  group_by(gene_name, gene_type) %>%
+  summarise(
+    peak_count = n(),
+    feature_types = paste(unique(feature_type), collapse=", ")
+  ) %>%
+  arrange(desc(peak_count)) %>%
+  head(20)
+
+# Write top genes table
+write.csv(top_genes,
+          file = file.path(dirname(input_file),
+                          paste0(sample_id, "_top_genes.csv")),
           row.names = FALSE)
 
 # Print summary
@@ -455,6 +538,12 @@ print(length_stats)
 
 cat("\nGene Annotation Summary:\n")
 print(gene_stats)
+
+cat("\nGene Type Distribution:\n")
+print(gene_type_stats)
+
+cat("\nTop 20 Genes with Most Peaks:\n")
+print(top_genes)
 EOF
 
 # Run R script
@@ -464,7 +553,7 @@ Rscript "$OUTPUT_DIR/analyze_features.R" \
     "$SAMPLE_ID"
 
 # Clean up temporary files
-rm "$OUTPUT_DIR/temp_gene_info.txt" "$OUTPUT_DIR/temp_features_info.txt" "$OUTPUT_DIR/temp_all_features.txt" "$OUTPUT_DIR/temp_intergenic.txt"
+rm "$OUTPUT_DIR/temp_gene_info.txt" "$OUTPUT_DIR/temp_features_info.txt" "$OUTPUT_DIR/temp_all_features.txt" "$OUTPUT_DIR/temp_intergenic.txt" "$OUTPUT_DIR/temp_annotated_peaks.bed"
 if [ "$HOST_ONLY" = true ]; then
     rm "$OUTPUT_DIR/host_peaks.bed"
 fi
@@ -476,6 +565,9 @@ echo "- $OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks.bed"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_stats.csv"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_distribution.pdf"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_gene_stats.csv"
+echo "- $OUTPUT_DIR/${SAMPLE_ID}_gene_type_stats.csv"
+echo "- $OUTPUT_DIR/${SAMPLE_ID}_gene_type_distribution.pdf"
+echo "- $OUTPUT_DIR/${SAMPLE_ID}_top_genes.csv"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_peak_length_stats.csv"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_peak_length_distribution.pdf"
 
