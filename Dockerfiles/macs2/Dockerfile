@@ -36,9 +36,3 @@ RUN micromamba shell init -s bash -p /opt/conda && \
 # Add micromamba environment to PATH
 ENV PATH="/root/micromamba/envs/macs2_env/bin:${PATH}"
 
-# Create a non-root user
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
-
-# Switch to non-root user
-USER appuser
