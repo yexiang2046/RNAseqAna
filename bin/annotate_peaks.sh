@@ -359,12 +359,9 @@ sample_id <- args[2]
 # Read the feature counts file
 data <- read.table(input_file, header=FALSE, sep="\t", stringsAsFactors=FALSE)
 
-# Define feature names (matching the order in the shell script)
-feature_names <- c("Exons", "5'UTR", "Genes", "Introns", "3'UTR")
-
-# Rename columns
+# Rename columns (based on the actual columns in the annotated peaks file)
 names(data) <- c("chr", "start", "end", "name", "score", "strand", 
-                paste0(feature_names, "_count"), "gene_ids", "overlapping_features")
+                "gene_id", "feature_id", "feature_type")
 
 # Calculate peak lengths and statistics
 data <- data %>%
@@ -403,72 +400,61 @@ ggplot(data, aes(x = peak_length)) +
 
 dev.off()
 
-# Calculate summary statistics
-summary_stats <- data %>%
-  summarise(across(ends_with("_count"), 
-                  list(
-                    total = ~sum(. > 0),
-                    percent = ~mean(. > 0) * 100
-                  ))) %>%
-  pivot_longer(everything(),
-              names_to = c("feature", "stat"),
-              names_pattern = "(.+)_count_(.+)",
-              values_to = "value")
+# Calculate feature type distribution
+feature_stats <- data %>%
+  group_by(feature_type) %>%
+  summarise(
+    count = n(),
+    percentage = n() / nrow(data) * 100
+  ) %>%
+  arrange(desc(count))
 
-# Create summary table
-summary_wide <- summary_stats %>%
-  pivot_wider(names_from = stat, values_from = value) %>%
-  mutate(
-    feature = str_remove(feature, "_count"),
-    percent = round(percent, 2)
-  )
-
-# Add sample ID to the summary
-summary_wide$sample_id <- sample_id
-
-# Write results
-write.csv(summary_wide, 
-          file = file.path(dirname(input_file), 
-                          paste0(sample_id, "_feature_overlap_summary.csv")),
+# Write feature statistics
+write.csv(feature_stats,
+          file = file.path(dirname(input_file),
+                          paste0(sample_id, "_feature_stats.csv")),
           row.names = FALSE)
 
-# Create visualization
-pdf(file.path(dirname(input_file), 
-              paste0(sample_id, "_feature_overlap_plot.pdf")), 
+# Create feature type distribution plot
+pdf(file.path(dirname(input_file),
+              paste0(sample_id, "_feature_distribution.pdf")),
     width = 10, height = 6)
 
-# Bar plot of overlap percentages
-ggplot(summary_wide, aes(x = reorder(feature, -percent), y = percent)) +
+ggplot(feature_stats, aes(x = reorder(feature_type, -count), y = count)) +
   geom_bar(stat = "identity", fill = "steelblue") +
-  geom_text(aes(label = sprintf("%.1f%%", percent)), 
+  geom_text(aes(label = sprintf("%d (%.1f%%)", count, percentage)),
             vjust = -0.5) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(x = "Feature Type",
-       y = "Percentage of Peaks Overlapping",
-       title = paste("Distribution of Peak Overlaps Across Genomic Features -", sample_id),
-       subtitle = paste("Total peaks analyzed:", nrow(data)))
+       y = "Number of Peaks",
+       title = paste("Distribution of Peak Features -", sample_id))
 
 dev.off()
 
-# Print summary
-cat(sprintf("\nFeature Overlap Summary for %s:\n", sample_id))
-print(summary_wide)
+# Calculate gene annotation statistics
+gene_stats <- data %>%
+  summarise(
+    total_peaks = n(),
+    peaks_with_genes = sum(gene_id != "."),
+    percent_with_genes = mean(gene_id != ".") * 100
+  )
 
-# Print length statistics
+# Write gene annotation statistics
+write.csv(gene_stats,
+          file = file.path(dirname(input_file),
+                          paste0(sample_id, "_gene_stats.csv")),
+          row.names = FALSE)
+
+# Print summary
+cat(sprintf("\nFeature Distribution for %s:\n", sample_id))
+print(feature_stats)
+
 cat("\nPeak Length Statistics:\n")
 print(length_stats)
 
-# Gene annotation summary
-gene_summary <- data %>%
-  summarise(
-    total_peaks = n(),
-    peaks_with_genes = sum(gene_ids != "."),
-    percent_with_genes = mean(gene_ids != ".") * 100
-  )
-
 cat("\nGene Annotation Summary:\n")
-print(gene_summary)
+print(gene_stats)
 EOF
 
 # Run R script
@@ -487,15 +473,16 @@ fi
 echo -e "\nAnnotation complete!"
 echo "Results written to:"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks.bed"
-echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_overlap_summary.csv"
-echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_overlap_plot.pdf"
+echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_stats.csv"
+echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_distribution.pdf"
+echo "- $OUTPUT_DIR/${SAMPLE_ID}_gene_stats.csv"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_peak_length_stats.csv"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_peak_length_distribution.pdf"
 
 # Display summary if available
-if [ -f "$OUTPUT_DIR/${SAMPLE_ID}_feature_overlap_summary.csv" ]; then
-    echo -e "\nFeature overlap summary:"
-    cat "$OUTPUT_DIR/${SAMPLE_ID}_feature_overlap_summary.csv"
+if [ -f "$OUTPUT_DIR/${SAMPLE_ID}_feature_stats.csv" ]; then
+    echo -e "\nFeature statistics:"
+    cat "$OUTPUT_DIR/${SAMPLE_ID}_feature_stats.csv"
 fi
 
 if [ -f "$OUTPUT_DIR/${SAMPLE_ID}_peak_length_stats.csv" ]; then
