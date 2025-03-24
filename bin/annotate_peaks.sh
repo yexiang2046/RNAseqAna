@@ -2,7 +2,7 @@
 
 # Help message
 usage() {
-    echo "Usage: $0 [-h] -p PEAKS_BED -f FEATURES_DIR -o OUTPUT_DIR [-H]"
+    echo "Usage: $0 [-h] -p PEAKS_BED -f FEATURES_DIR -o OUTPUT_DIR [-H] [-m MIN_LENGTH] [-M MAX_LENGTH]"
     echo "Annotate peaks with genomic features using bedtools annotate"
     echo ""
     echo "Arguments:"
@@ -10,18 +10,22 @@ usage() {
     echo "  -f FEATURES_DIR Directory containing feature BED files"
     echo "  -o OUTPUT_DIR   Output directory"
     echo "  -H             Only annotate host regions (chromosomes starting with 'chr')"
+    echo "  -m MIN_LENGTH  Minimum peak length to include (default: no minimum)"
+    echo "  -M MAX_LENGTH  Maximum peak length to include (default: no maximum)"
     echo "  -h             Show this help message"
     exit 1
 }
 
 # Parse command line arguments
-while getopts "hp:f:o:H" opt; do
+while getopts "hp:f:o:Hm:M:" opt; do
     case $opt in
         h) usage ;;
         p) PEAKS="$OPTARG" ;;
         f) FEATURES_DIR="$OPTARG" ;;
         o) OUTPUT_DIR="$OPTARG" ;;
         H) HOST_ONLY=true ;;
+        m) MIN_LENGTH="$OPTARG" ;;
+        M) MAX_LENGTH="$OPTARG" ;;
         ?) usage ;;
     esac
 done
@@ -56,12 +60,49 @@ echo "Processing sample: $SAMPLE_ID"
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
+# Create temporary working file
+cp "$PEAKS" "$OUTPUT_DIR/temp_peaks.bed"
+PEAKS="$OUTPUT_DIR/temp_peaks.bed"
+
+# Filter peaks by length if specified
+if [ ! -z "$MIN_LENGTH" ] || [ ! -z "$MAX_LENGTH" ]; then
+    echo "Filtering peaks by length..."
+    TOTAL_PEAKS=$(wc -l < "$PEAKS")
+    
+    # Construct awk condition for length filtering
+    LENGTH_CONDITION=""
+    if [ ! -z "$MIN_LENGTH" ]; then
+        LENGTH_CONDITION="(\$3-\$2) >= $MIN_LENGTH"
+    fi
+    if [ ! -z "$MAX_LENGTH" ]; then
+        if [ ! -z "$LENGTH_CONDITION" ]; then
+            LENGTH_CONDITION="$LENGTH_CONDITION && "
+        fi
+        LENGTH_CONDITION="${LENGTH_CONDITION}(\$3-\$2) <= $MAX_LENGTH"
+    fi
+    
+    # Apply length filter
+    awk -v OFS="\t" "$LENGTH_CONDITION" "$PEAKS" > "$OUTPUT_DIR/length_filtered_peaks.bed"
+    mv "$OUTPUT_DIR/length_filtered_peaks.bed" "$PEAKS"
+    
+    FILTERED_PEAKS=$(wc -l < "$PEAKS")
+    echo "Total peaks: $TOTAL_PEAKS"
+    echo "Peaks after length filtering: $FILTERED_PEAKS"
+    echo "Peaks filtered out: $((TOTAL_PEAKS - FILTERED_PEAKS))"
+    
+    if [ "$FILTERED_PEAKS" -eq 0 ]; then
+        echo "Error: No peaks remain after length filtering"
+        rm "$PEAKS"
+        exit 1
+    fi
+fi
+
 # Filter peaks for host regions if requested
 if [ "$HOST_ONLY" = true ]; then
     echo "Filtering for host regions (chr* chromosomes)..."
     TOTAL_PEAKS=$(wc -l < "$PEAKS")
     awk '$1 ~ /^chr/' "$PEAKS" > "$OUTPUT_DIR/host_peaks.bed"
-    PEAKS="$OUTPUT_DIR/host_peaks.bed"
+    mv "$OUTPUT_DIR/host_peaks.bed" "$PEAKS"
     HOST_PEAKS=$(wc -l < "$PEAKS")
     echo "Total peaks: $TOTAL_PEAKS"
     echo "Peaks in host regions: $HOST_PEAKS"
@@ -69,7 +110,7 @@ if [ "$HOST_ONLY" = true ]; then
     
     if [ "$HOST_PEAKS" -eq 0 ]; then
         echo "Error: No peaks found in host regions"
-        rm "$OUTPUT_DIR/host_peaks.bed"
+        rm "$PEAKS"
         exit 1
     fi
 fi
