@@ -3,7 +3,7 @@ FROM ubuntu:20.04
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install required packages
+# Install system dependencies first
 RUN apt-get update && apt-get install -y \
     procps \
     python3 \
@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Verify ps is installed and in PATH
-RUN which ps
+# Verify ps command is available
+RUN which ps && ps --version
 
 # Install required R packages
 RUN R -e "install.packages(c('optparse', 'data.table', 'GenomicRanges', 'rtracklayer'), repos='https://cloud.r-project.org/')"
@@ -24,18 +24,18 @@ RUN R -e "install.packages(c('optparse', 'data.table', 'GenomicRanges', 'rtrackl
 # Install SPLICE-Q
 RUN pip3 install splice-q
 
-# Create a non-root user and add to necessary groups
+# Set environment path to include system binaries
+ENV PATH="/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
+
+# Create a non-root user
 RUN useradd -m -s /bin/bash spliceq && \
     usermod -aG staff spliceq
-
-# Set environment path to include system binaries
-ENV PATH="/usr/bin:/bin:${PATH}"
-
-# Switch to non-root user
-USER spliceq
 
 # Set working directory
 WORKDIR /data
 
-# Verify ps command is accessible for non-root user
+# Switch to non-root user
+USER spliceq
+
+# Test ps command as non-root user
 RUN ps --version
