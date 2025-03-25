@@ -15,15 +15,27 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Verify ps is installed and in PATH
+RUN which ps
+
 # Install required R packages
 RUN R -e "install.packages(c('optparse', 'data.table', 'GenomicRanges', 'rtracklayer'), repos='https://cloud.r-project.org/')"
 
 # Install SPLICE-Q
 RUN pip3 install splice-q
 
-# Create a non-root user
-RUN useradd -m -s /bin/bash spliceq
+# Create a non-root user and add to necessary groups
+RUN useradd -m -s /bin/bash spliceq && \
+    usermod -aG staff spliceq
+
+# Set environment path to include system binaries
+ENV PATH="/usr/bin:/bin:${PATH}"
+
+# Switch to non-root user
 USER spliceq
 
 # Set working directory
 WORKDIR /data
+
+# Verify ps command is accessible for non-root user
+RUN ps --version
