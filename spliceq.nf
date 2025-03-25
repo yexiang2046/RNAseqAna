@@ -31,7 +31,7 @@ workflow SPLICE_Q {
     Output dir   : ${params.outdir}
     """
 
-    // Run SPLICE-Q
+    // Run SPLICE-Q and publish results
     SPLICEQ(bam_ch, file(params.gtf))
 }
 

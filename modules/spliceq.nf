@@ -1,6 +1,6 @@
 process SPLICEQ {
 	debug true
-	publishDir "${projectDir}/spliceq_out", mode:'copy'
+	publishDir params.outdir, mode:'copy'
 	
 	input:
 	tuple val(sample_id), path(bamfile)
