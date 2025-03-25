@@ -34,8 +34,12 @@ RUN useradd -m -s /bin/bash spliceq && \
 # Set working directory
 WORKDIR /data
 
+# Create entrypoint script
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 # Switch to non-root user
 USER spliceq
 
-# Test ps command as non-root user
-RUN ps --version
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["splice-q", "--help"]
