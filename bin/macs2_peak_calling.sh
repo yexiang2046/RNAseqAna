@@ -2,7 +2,7 @@
 
 # Help message
 usage() {
-    echo "Usage: $0 [-h] -t TREATMENT_BAM -c CONTROL_BAM -o OUTPUT_DIR -g GENOME_SIZE [-n NAME] [-q QVALUE] [-f FORMAT] [-B] [-C]"
+    echo "Usage: $0 [-h] -t TREATMENT_BAM -c CONTROL_BAM -o OUTPUT_DIR -g GENOME_SIZE [-n NAME] [-q QVALUE] [-f FORMAT] [-B] [-C] [-H]"
     echo "Call peaks using MACS2"
     echo ""
     echo "Arguments:"
@@ -15,12 +15,13 @@ usage() {
     echo "  -f FORMAT        Output format (default: BAMPE)"
     echo "  -B              Save fragment pileup signal"
     echo "  -C              Save control lambda signal"
+    echo "  -H              Use only host reads (filter for chromosomes starting with 'chr')"
     echo "  -h              Show this help message"
     exit 1
 }
 
 # Parse command line arguments
-while getopts "ht:c:o:g:n:q:f:BC" opt; do
+while getopts "ht:c:o:g:n:q:f:BCH" opt; do
     case $opt in
         h) usage ;;
         t) TREATMENT_BAM="$OPTARG" ;;
@@ -32,6 +33,7 @@ while getopts "ht:c:o:g:n:q:f:BC" opt; do
         f) FORMAT="$OPTARG" ;;
         B) SAVE_PILEUP=true ;;
         C) SAVE_LAMBDA=true ;;
+        H) HOST_ONLY=true ;;
         ?) usage ;;
     esac
 done
@@ -61,6 +63,30 @@ FORMAT=${FORMAT:-"BAMPE"}
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
+# Function to filter host reads
+filter_host_reads() {
+    local input_bam="$1"
+    local output_bam="$2"
+    echo "Filtering host reads from $input_bam..."
+    samtools view -h "$input_bam" | grep -E "^@|^chr" | samtools view -bS - > "$output_bam"
+    samtools index "$output_bam"
+}
+
+# Process input files if host-only mode is enabled
+if [ "$HOST_ONLY" = true ]; then
+    echo "Host-only mode enabled: filtering for chromosomes starting with 'chr'"
+    
+    # Filter treatment BAM
+    TREATMENT_FILTERED="$OUTPUT_DIR/${NAME}_treatment_host.bam"
+    filter_host_reads "$TREATMENT_BAM" "$TREATMENT_FILTERED"
+    TREATMENT_BAM="$TREATMENT_FILTERED"
+    
+    # Filter control BAM
+    CONTROL_FILTERED="$OUTPUT_DIR/${NAME}_control_host.bam"
+    filter_host_reads "$CONTROL_BAM" "$CONTROL_FILTERED"
+    CONTROL_BAM="$CONTROL_FILTERED"
+fi
+
 # Construct MACS2 command
 MACS2_CMD="macs2 callpeak -t $TREATMENT_BAM -c $CONTROL_BAM -f $FORMAT -g $GENOME_SIZE -n $NAME --outdir $OUTPUT_DIR -q $QVALUE"
 
@@ -82,6 +108,11 @@ $MACS2_CMD
 if [ $? -ne 0 ]; then
     echo "Error: MACS2 peak calling failed"
     exit 1
+fi
+
+# Clean up filtered BAM files if they exist
+if [ "$HOST_ONLY" = true ]; then
+    rm -f "$TREATMENT_FILTERED" "$TREATMENT_FILTERED.bai" "$CONTROL_FILTERED" "$CONTROL_FILTERED.bai"
 fi
 
 # Create R script for analysis

@@ -2,24 +2,28 @@
 
 # Help message
 usage() {
-    echo "Usage: $0 [-h] -i BED_DIR -o OUTPUT_DIR [-m MIN_OVERLAP]"
+    echo "Usage: $0 [-h] -i BED_DIR -o OUTPUT_DIR [-m MIN_OVERLAP] [-s STRAND_AWARE] [-H]"
     echo "Find overlapping regions between BED files (pairwise and three-way)"
     echo ""
     echo "Arguments:"
     echo "  -i BED_DIR      Directory containing BED files"
     echo "  -o OUTPUT_DIR   Output directory"
     echo "  -m MIN_OVERLAP  Minimum overlap required (default: 1bp)"
+    echo "  -s STRAND_AWARE Consider strand in bedtools intersect: true/false (default: true)"
+    echo "  -H             Use only host regions (chromosomes starting with 'chr')"
     echo "  -h             Show this help message"
     exit 1
 }
 
 # Parse command line arguments
-while getopts "hi:o:m:" opt; do
+while getopts "hi:o:m:s:H" opt; do
     case $opt in
         h) usage ;;
         i) BED_DIR="$OPTARG" ;;
         o) OUTPUT_DIR="$OPTARG" ;;
         m) MIN_OVERLAP="$OPTARG" ;;
+        s) STRAND_AWARE="$OPTARG" ;;
+        H) HOST_ONLY=true ;;
         ?) usage ;;
     esac
 done
@@ -30,12 +34,20 @@ if [ -z "$BED_DIR" ] || [ -z "$OUTPUT_DIR" ]; then
     usage
 fi
 
-# Set default minimum overlap if not specified
+# Set default values
 MIN_OVERLAP=${MIN_OVERLAP:-1}
+STRAND_AWARE=${STRAND_AWARE:-"true"}
+HOST_ONLY=${HOST_ONLY:-false}
 
 # Check if input directory exists
 if [ ! -d "$BED_DIR" ]; then
     echo "Error: BED directory does not exist: $BED_DIR"
+    exit 1
+fi
+
+# Check strand_aware value if provided
+if [ ! -z "$STRAND_AWARE" ] && [ "$STRAND_AWARE" != "true" ] && [ "$STRAND_AWARE" != "false" ]; then
+    echo "Error: Invalid strand_aware value. Must be 'true' or 'false'"
     exit 1
 fi
 
@@ -46,10 +58,34 @@ if ! command -v bedtools &> /dev/null; then
 fi
 
 # Create output directories
-mkdir -p "$OUTPUT_DIR/pairwise" "$OUTPUT_DIR/three_way" "$OUTPUT_DIR/summary"
+mkdir -p "$OUTPUT_DIR/pairwise" "$OUTPUT_DIR/three_way" "$OUTPUT_DIR/summary" "$OUTPUT_DIR/filtered"
 
-# Get list of BED files
-BED_FILES=($(ls "$BED_DIR"/*.bed 2>/dev/null))
+# Function to filter host regions
+filter_host_regions() {
+    local input_file="$1"
+    local output_file="$2"
+    echo "Filtering host regions from $(basename "$input_file")..."
+    awk '$1 ~ /^chr/' "$input_file" > "$output_file"
+    local total_regions=$(wc -l < "$input_file")
+    local host_regions=$(wc -l < "$output_file")
+    echo "  Total regions: $total_regions"
+    echo "  Host regions: $host_regions"
+}
+
+# Get list of BED files and filter for host regions if requested
+if [ "$HOST_ONLY" = true ]; then
+    echo "Host-only mode enabled: filtering for chromosomes starting with 'chr'"
+    ORIG_BED_FILES=($(ls "$BED_DIR"/*.bed 2>/dev/null))
+    BED_FILES=()
+    for file in "${ORIG_BED_FILES[@]}"; do
+        filtered_file="$OUTPUT_DIR/filtered/$(basename "$file")"
+        filter_host_regions "$file" "$filtered_file"
+        BED_FILES+=("$filtered_file")
+    done
+else
+    BED_FILES=($(ls "$BED_DIR"/*.bed 2>/dev/null))
+fi
+
 NUM_FILES=${#BED_FILES[@]}
 
 if [ $NUM_FILES -lt 2 ]; then
@@ -64,17 +100,25 @@ SUMMARY_FILE="$OUTPUT_DIR/summary/overlap_summary.txt"
 echo "Overlap Analysis Summary" > "$SUMMARY_FILE"
 echo "Date: $(date)" >> "$SUMMARY_FILE"
 echo "Minimum overlap required: ${MIN_OVERLAP}bp" >> "$SUMMARY_FILE"
+echo "Strand-aware: $STRAND_AWARE" >> "$SUMMARY_FILE"
+echo "Host-only mode: $HOST_ONLY" >> "$SUMMARY_FILE"
 echo "----------------------------------------" >> "$SUMMARY_FILE"
 
 # Create CSV summaries
 PAIRWISE_CSV="$OUTPUT_DIR/summary/pairwise_overlap_summary.csv"
 THREE_WAY_CSV="$OUTPUT_DIR/summary/three_way_overlap_summary.csv"
-echo "File1,File2,Total_Regions_1,Total_Regions_2,Overlapping_Regions,Overlap_Percentage" > "$PAIRWISE_CSV"
-echo "File1,File2,File3,Total_Regions_1,Total_Regions_2,Total_Regions_3,Common_Regions,Overlap_Percentage" > "$THREE_WAY_CSV"
+echo "File1,File2,Total_Regions_1,Total_Regions_2,Host_Regions_1,Host_Regions_2,Total_Overlaps,Host_Overlaps,Total_Overlap_Percentage,Host_Overlap_Percentage" > "$PAIRWISE_CSV"
+echo "File1,File2,File3,Total_Regions_1,Total_Regions_2,Total_Regions_3,Host_Regions_1,Host_Regions_2,Host_Regions_3,Total_Common_Regions,Host_Common_Regions,Total_Overlap_Percentage,Host_Overlap_Percentage" > "$THREE_WAY_CSV"
 
 # Function to get base filename without extension
 get_basename() {
     basename "$1" .bed
+}
+
+# Function to count host regions
+count_host_regions() {
+    local input_file="$1"
+    awk '$1 ~ /^chr/' "$input_file" | wc -l
 }
 
 echo "Processing pairwise overlaps..."
@@ -89,37 +133,61 @@ for ((i=0; i<$NUM_FILES; i++)); do
         
         echo "Processing pair: $base1 vs $base2"
         
-        # Count total regions in each file
+        # Count total and host regions in each file
         total1=$(wc -l < "$file1")
         total2=$(wc -l < "$file2")
+        host1=$(count_host_regions "$file1")
+        host2=$(count_host_regions "$file2")
+        
+        # Construct bedtools command
+        BEDTOOLS_CMD="bedtools intersect -a "$file1" -b "$file2" -wa -wb -f ${MIN_OVERLAP} -r"
+        if [ "$STRAND_AWARE" = "true" ]; then
+            echo "Using strand-specific matching..."
+            BEDTOOLS_CMD="$BEDTOOLS_CMD -s"
+        else
+            echo "Not using strand-specific matching..."
+        fi
         
         # Find overlaps and remove duplicates
         overlap_file="$OUTPUT_DIR/pairwise/${base1}_vs_${base2}_overlap.bed"
-        bedtools intersect -s -a "$file1" -b "$file2" -wa -wb \
-            -f ${MIN_OVERLAP} -r | \
-            sort -k1,1 -k2,2n -k3,3n | \
-            uniq > "$overlap_file"
+        $BEDTOOLS_CMD | sort -k1,1 -k2,2n -k3,3n | uniq > "$overlap_file"
         
-        # Count unique overlapping regions
+        # Count unique overlapping regions (total and host-only)
         overlaps=$(cut -f1-3 "$overlap_file" | sort -k1,1 -k2,2n -k3,3n | uniq | wc -l)
+        host_overlaps=$(cut -f1-3 "$overlap_file" | awk '$1 ~ /^chr/' | sort -k1,1 -k2,2n -k3,3n | uniq | wc -l)
         
         # Calculate percentage (relative to file with fewer regions)
         min_regions=$(($total1 < $total2 ? $total1 : $total2))
+        min_host_regions=$(($host1 < $host2 ? $host1 : $host2))
+        
         if [ $min_regions -eq 0 ]; then
             percentage=0
         else
             percentage=$(echo "scale=2; ($overlaps * 100) / $min_regions" | bc)
         fi
         
+        if [ $min_host_regions -eq 0 ]; then
+            host_percentage=0
+        else
+            host_percentage=$(echo "scale=2; ($host_overlaps * 100) / $min_host_regions" | bc)
+        fi
+        
         # Add to summary
         echo -e "\nPairwise: $base1 vs $base2:" >> "$SUMMARY_FILE"
-        echo "Total regions in $base1: $total1" >> "$SUMMARY_FILE"
-        echo "Total regions in $base2: $total2" >> "$SUMMARY_FILE"
-        echo "Overlapping regions: $overlaps" >> "$SUMMARY_FILE"
-        echo "Overlap percentage: ${percentage}%" >> "$SUMMARY_FILE"
+        echo "File 1 ($base1):" >> "$SUMMARY_FILE"
+        echo "  Total regions: $total1" >> "$SUMMARY_FILE"
+        echo "  Host regions: $host1" >> "$SUMMARY_FILE"
+        echo "File 2 ($base2):" >> "$SUMMARY_FILE"
+        echo "  Total regions: $total2" >> "$SUMMARY_FILE"
+        echo "  Host regions: $host2" >> "$SUMMARY_FILE"
+        echo "Overlaps:" >> "$SUMMARY_FILE"
+        echo "  Total overlapping regions: $overlaps" >> "$SUMMARY_FILE"
+        echo "  Host overlapping regions: $host_overlaps" >> "$SUMMARY_FILE"
+        echo "  Total overlap percentage: ${percentage}%" >> "$SUMMARY_FILE"
+        echo "  Host overlap percentage: ${host_percentage}%" >> "$SUMMARY_FILE"
         
         # Add to CSV
-        echo "$base1,$base2,$total1,$total2,$overlaps,$percentage" >> "$PAIRWISE_CSV"
+        echo "$base1,$base2,$total1,$total2,$host1,$host2,$overlaps,$host_overlaps,$percentage,$host_percentage" >> "$PAIRWISE_CSV"
         
         # Create BED file with overlap statistics
         overlap_stats="$OUTPUT_DIR/pairwise/${base1}_vs_${base2}_stats.bed"
@@ -135,6 +203,9 @@ for ((i=0; i<$NUM_FILES; i++)); do
         }' "$overlap_file" > "$overlap_stats"
     done
 done
+
+# Update CSV header for pairwise overlaps
+sed -i.bak '1c\File1,File2,Total_Regions_1,Total_Regions_2,Host_Regions_1,Host_Regions_2,Total_Overlaps,Host_Overlaps,Total_Overlap_Percentage,Host_Overlap_Percentage' "$PAIRWISE_CSV"
 
 echo "Processing three-way overlaps..."
 # Process three-way overlaps
@@ -152,51 +223,76 @@ if [ $NUM_FILES -ge 3 ]; then
                 
                 echo "Processing trio: $base1 vs $base2 vs $base3"
                 
-                # Count total regions
+                # Count total and host regions
                 total1=$(wc -l < "$file1")
                 total2=$(wc -l < "$file2")
                 total3=$(wc -l < "$file3")
+                host1=$(count_host_regions "$file1")
+                host2=$(count_host_regions "$file2")
+                host3=$(count_host_regions "$file3")
+                
+                # Construct bedtools command
+                BEDTOOLS_CMD="bedtools intersect -wa -wb -f ${MIN_OVERLAP} -r"
+                if [ "$STRAND_AWARE" = "true" ]; then
+                    echo "Using strand-specific matching..."
+                    BEDTOOLS_CMD="$BEDTOOLS_CMD -s"
+                else
+                    echo "Not using strand-specific matching..."
+                fi
                 
                 # Find three-way overlaps and remove duplicates
                 overlap_file="$OUTPUT_DIR/three_way/${base1}_${base2}_${base3}_overlap.bed"
                 temp_overlap="$OUTPUT_DIR/three_way/temp_overlap.bed"
                 
                 # First find overlap between first two files
-                bedtools intersect -s -a "$file1" -b "$file2" -wa -wb \
-                    -f ${MIN_OVERLAP} -r | \
-                    sort -k1,1 -k2,2n -k3,3n | \
-                    uniq > "$temp_overlap"
+                $BEDTOOLS_CMD -a "$file1" -b "$file2" | sort -k1,1 -k2,2n -k3,3n | uniq > "$temp_overlap"
                 
-                # Then find overlap with third file and remove duplicates
-                bedtools intersect -s -a "$temp_overlap" -b "$file3" -wa -wb \
-                    -f ${MIN_OVERLAP} -r | \
-                    sort -k1,1 -k2,2n -k3,3n | \
-                    uniq > "$overlap_file"
+                # Then find overlap with third file
+                $BEDTOOLS_CMD -a "$temp_overlap" -b "$file3" | sort -k1,1 -k2,2n -k3,3n | uniq > "$overlap_file"
                 
                 rm -f "$temp_overlap"
                 
-                # Count unique three-way overlapping regions
+                # Count unique three-way overlapping regions (total and host-only)
                 common_regions=$(cut -f1-3 "$overlap_file" | sort -k1,1 -k2,2n -k3,3n | uniq | wc -l)
+                host_common_regions=$(cut -f1-3 "$overlap_file" | awk '$1 ~ /^chr/' | sort -k1,1 -k2,2n -k3,3n | uniq | wc -l)
                 
-                # Calculate percentage (relative to file with fewest regions)
+                # Calculate percentages
                 min_regions=$(($total1 < $total2 ? $total1 : $total2))
                 min_regions=$(($min_regions < $total3 ? $min_regions : $total3))
+                min_host_regions=$(($host1 < $host2 ? $host1 : $host2))
+                min_host_regions=$(($min_host_regions < $host3 ? $min_host_regions : $host3))
+                
                 if [ $min_regions -eq 0 ]; then
                     percentage=0
                 else
                     percentage=$(echo "scale=2; ($common_regions * 100) / $min_regions" | bc)
                 fi
                 
+                if [ $min_host_regions -eq 0 ]; then
+                    host_percentage=0
+                else
+                    host_percentage=$(echo "scale=2; ($host_common_regions * 100) / $min_host_regions" | bc)
+                fi
+                
                 # Add to summary
                 echo -e "\nThree-way: $base1 vs $base2 vs $base3:" >> "$SUMMARY_FILE"
-                echo "Total regions in $base1: $total1" >> "$SUMMARY_FILE"
-                echo "Total regions in $base2: $total2" >> "$SUMMARY_FILE"
-                echo "Total regions in $base3: $total3" >> "$SUMMARY_FILE"
-                echo "Common regions: $common_regions" >> "$SUMMARY_FILE"
-                echo "Overlap percentage: ${percentage}%" >> "$SUMMARY_FILE"
+                echo "File 1 ($base1):" >> "$SUMMARY_FILE"
+                echo "  Total regions: $total1" >> "$SUMMARY_FILE"
+                echo "  Host regions: $host1" >> "$SUMMARY_FILE"
+                echo "File 2 ($base2):" >> "$SUMMARY_FILE"
+                echo "  Total regions: $total2" >> "$SUMMARY_FILE"
+                echo "  Host regions: $host2" >> "$SUMMARY_FILE"
+                echo "File 3 ($base3):" >> "$SUMMARY_FILE"
+                echo "  Total regions: $total3" >> "$SUMMARY_FILE"
+                echo "  Host regions: $host3" >> "$SUMMARY_FILE"
+                echo "Common regions:" >> "$SUMMARY_FILE"
+                echo "  Total common regions: $common_regions" >> "$SUMMARY_FILE"
+                echo "  Host common regions: $host_common_regions" >> "$SUMMARY_FILE"
+                echo "  Total overlap percentage: ${percentage}%" >> "$SUMMARY_FILE"
+                echo "  Host overlap percentage: ${host_percentage}%" >> "$SUMMARY_FILE"
                 
                 # Add to CSV
-                echo "$base1,$base2,$base3,$total1,$total2,$total3,$common_regions,$percentage" >> "$THREE_WAY_CSV"
+                echo "$base1,$base2,$base3,$total1,$total2,$total3,$host1,$host2,$host3,$common_regions,$host_common_regions,$percentage,$host_percentage" >> "$THREE_WAY_CSV"
                 
                 # Create BED file with overlap statistics
                 overlap_stats="$OUTPUT_DIR/three_way/${base1}_${base2}_${base3}_stats.bed"
@@ -221,6 +317,9 @@ if [ $NUM_FILES -ge 3 ]; then
             done
         done
     done
+    
+    # Update CSV header for three-way overlaps
+    sed -i.bak '1c\File1,File2,File3,Total_Regions_1,Total_Regions_2,Total_Regions_3,Host_Regions_1,Host_Regions_2,Host_Regions_3,Total_Common_Regions,Host_Common_Regions,Total_Overlap_Percentage,Host_Overlap_Percentage' "$THREE_WAY_CSV"
 fi
 
 # Create R script for visualization
