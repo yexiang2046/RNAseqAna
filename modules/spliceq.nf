@@ -1,6 +1,5 @@
 process SPLICEQ {
 	debug true
-	container 'xiang2019/spliceq:v1.0.0'
 	publishDir "${projectDir}/spliceq_out", mode:'copy'
 	
 	input:
@@ -13,7 +12,7 @@ process SPLICEQ {
 
 	script:
 	"""
-	bash spliceq.sh $bamfile $annotation $sample_id
+	spliceq.sh $bamfile $annotation $sample_id
 	"""
 	
 }
