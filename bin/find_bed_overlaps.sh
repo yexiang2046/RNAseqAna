@@ -110,13 +110,13 @@ SUMMARY_FILE="$OUTPUT_DIR/summary/overlap_summary.txt"
 total1=0
 total2=0
 total3=0
-overlap12=0
-overlap13=0
-overlap23=0
+all_overlap12=0
+all_overlap13=0
+all_overlap23=0
 overlap123=0
 
 # Write headers
-echo "total1,total2,total3,overlap12,overlap13,overlap23,overlap123" > "$OVERLAP_CSV"
+echo "total1,total2,total3,all_overlap12,all_overlap13,all_overlap23,overlap123" > "$OVERLAP_CSV"
 {
     echo "Overlap Analysis Summary"
     echo "Date: $(date)"
@@ -167,11 +167,11 @@ for ((i=0; i<$NUM_FILES; i++)); do
         
         # Store overlaps for main trio
         if [ $i -eq 0 ] && [ $j -eq 1 ]; then
-            overlap12=$overlaps
+            all_overlap12=$overlaps
         elif [ $i -eq 0 ] && [ $j -eq 2 ]; then
-            overlap13=$overlaps
+            all_overlap13=$overlaps
         elif [ $i -eq 1 ] && [ $j -eq 2 ]; then
-            overlap23=$overlaps
+            all_overlap23=$overlaps
         fi
         
         # Write to summary
@@ -184,7 +184,7 @@ for ((i=0; i<$NUM_FILES; i++)); do
     done
 done
 
-# Process three-way overlaps if we have at least 3 files
+# Process three-way overlaps if at least three files are present
 if [ $NUM_FILES -ge 3 ]; then
     echo "Processing three-way overlaps..."
     file1="${BED_FILES[0]}"
@@ -196,40 +196,118 @@ if [ $NUM_FILES -ge 3 ]; then
     
     echo "Processing trio: $base1 vs $base2 vs $base3"
     
-    # Find three-way overlaps
-    temp_overlap="$OUTPUT_DIR/three_way/temp_overlap.bed"
-    overlap_file="$OUTPUT_DIR/three_way/${base1}_${base2}_${base3}_overlap.bed"
+    # Create temporary directory for intermediate files
+    TEMP_DIR="$OUTPUT_DIR/temp"
+    mkdir -p "$TEMP_DIR"
     
-    # First find overlap between first two files
-    echo "Running first bedtools intersect..."
+    # Find regions unique to each file
+    echo "Finding regions unique to each file..."
     if [ "$STRAND_AWARE" = "true" ]; then
-        bedtools intersect -a "$file1" -b "$file2" -wa -f "$MIN_OVERLAP" -s | sort -k1,1 -k2,2n -k3,3n | uniq > "$temp_overlap"
+        # Unique to file1
+        bedtools intersect -a "$file1" -b "$file2" "$file3" -v -s | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/unique_${base1}.bed"
+        # Unique to file2
+        bedtools intersect -a "$file2" -b "$file1" "$file3" -v -s | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/unique_${base2}.bed"
+        # Unique to file3
+        bedtools intersect -a "$file3" -b "$file1" "$file2" -v -s | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/unique_${base3}.bed"
     else
-        bedtools intersect -a "$file1" -b "$file2" -wa -f "$MIN_OVERLAP" | sort -k1,1 -k2,2n -k3,3n | uniq > "$temp_overlap"
+        # Unique to file1
+        bedtools intersect -a "$file1" -b "$file2" "$file3" -v | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/unique_${base1}.bed"
+        # Unique to file2
+        bedtools intersect -a "$file2" -b "$file1" "$file3" -v | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/unique_${base2}.bed"
+        # Unique to file3
+        bedtools intersect -a "$file3" -b "$file1" "$file2" -v | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/unique_${base3}.bed"
     fi
     
-    # Then find overlap with third file
-    echo "Running second bedtools intersect..."
+    # Find regions shared by all three files
+    echo "Finding regions shared by all three files..."
     if [ "$STRAND_AWARE" = "true" ]; then
-        bedtools intersect -a "$temp_overlap" -b "$file3" -wa -f "$MIN_OVERLAP" -s | sort -k1,1 -k2,2n -k3,3n | uniq > "$overlap_file"
+        # First find overlap between file1 and file2
+        bedtools intersect -a "$file1" -b "$file2" -wa -f "$MIN_OVERLAP" -s | sort -k1,1 -k2,2n -k3,3n | uniq > "$TEMP_DIR/temp_12.bed"
+        # Then find overlap with file3
+        bedtools intersect -a "$TEMP_DIR/temp_12.bed" -b "$file3" -wa -f "$MIN_OVERLAP" -s | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/shared_all.bed"
     else
-        bedtools intersect -a "$temp_overlap" -b "$file3" -wa -f "$MIN_OVERLAP" | sort -k1,1 -k2,2n -k3,3n | uniq > "$overlap_file"
+        # First find overlap between file1 and file2
+        bedtools intersect -a "$file1" -b "$file2" -wa -f "$MIN_OVERLAP" | sort -k1,1 -k2,2n -k3,3n | uniq > "$TEMP_DIR/temp_12.bed"
+        # Then find overlap with file3
+        bedtools intersect -a "$TEMP_DIR/temp_12.bed" -b "$file3" -wa -f "$MIN_OVERLAP" | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/shared_all.bed"
     fi
     
-    rm -f "$temp_overlap"
+    # Find regions shared by two files but not the third
+    echo "Finding regions shared by two files but not the third..."
+    if [ "$STRAND_AWARE" = "true" ]; then
+        # Shared by 1 and 2, not 3
+        bedtools intersect -a "$file1" -b "$file2" -wa -f "$MIN_OVERLAP" -s | \
+            bedtools intersect -a - -b "$file3" -v -s | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/shared_${base1}_${base2}_not_${base3}.bed"
+        
+        # Shared by 1 and 3, not 2
+        bedtools intersect -a "$file1" -b "$file3" -wa -f "$MIN_OVERLAP" -s | \
+            bedtools intersect -a - -b "$file2" -v -s | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/shared_${base1}_${base3}_not_${base2}.bed"
+        
+        # Shared by 2 and 3, not 1
+        bedtools intersect -a "$file2" -b "$file3" -wa -f "$MIN_OVERLAP" -s | \
+            bedtools intersect -a - -b "$file1" -v -s | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/shared_${base2}_${base3}_not_${base1}.bed"
+    else
+        # Shared by 1 and 2, not 3
+        bedtools intersect -a "$file1" -b "$file2" -wa -f "$MIN_OVERLAP" | \
+            bedtools intersect -a - -b "$file3" -v | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/shared_${base1}_${base2}_not_${base3}.bed"
+        
+        # Shared by 1 and 3, not 2
+        bedtools intersect -a "$file1" -b "$file3" -wa -f "$MIN_OVERLAP" | \
+            bedtools intersect -a - -b "$file2" -v | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/shared_${base1}_${base3}_not_${base2}.bed"
+        
+        # Shared by 2 and 3, not 1
+        bedtools intersect -a "$file2" -b "$file3" -wa -f "$MIN_OVERLAP" | \
+            bedtools intersect -a - -b "$file1" -v | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/shared_${base2}_${base3}_not_${base1}.bed"
+    fi
+
+    # Find all overlaps between each pair of files (including those that also overlap with the third)
+    echo "Finding all overlaps between each pair of files..."
+    if [ "$STRAND_AWARE" = "true" ]; then
+        # All overlaps between 1 and 2
+        bedtools intersect -a "$file1" -b "$file2" -wa -f "$MIN_OVERLAP" -s | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/all_overlap_${base1}_${base2}.bed"
+        # All overlaps between 1 and 3
+        bedtools intersect -a "$file1" -b "$file3" -wa -f "$MIN_OVERLAP" -s | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/all_overlap_${base1}_${base3}.bed"
+        # All overlaps between 2 and 3
+        bedtools intersect -a "$file2" -b "$file3" -wa -f "$MIN_OVERLAP" -s | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/all_overlap_${base2}_${base3}.bed"
+    else
+        # All overlaps between 1 and 2
+        bedtools intersect -a "$file1" -b "$file2" -wa -f "$MIN_OVERLAP" | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/all_overlap_${base1}_${base2}.bed"
+        # All overlaps between 1 and 3
+        bedtools intersect -a "$file1" -b "$file3" -wa -f "$MIN_OVERLAP" | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/all_overlap_${base1}_${base3}.bed"
+        # All overlaps between 2 and 3
+        bedtools intersect -a "$file2" -b "$file3" -wa -f "$MIN_OVERLAP" | sort -k1,1 -k2,2n -k3,3n | uniq > "$OUTPUT_DIR/all_overlap_${base2}_${base3}.bed"
+    fi
     
-    # Count three-way overlaps
-    overlap123=$(wc -l < "$overlap_file")
-    echo "Found $overlap123 three-way overlapping regions"
+    # Count overlaps
+    overlap123=$(wc -l < "$OUTPUT_DIR/shared_all.bed")
+    unique_overlap12=$(wc -l < "$OUTPUT_DIR/shared_${base1}_${base2}_not_${base3}.bed")
+    unique_overlap13=$(wc -l < "$OUTPUT_DIR/shared_${base1}_${base3}_not_${base2}.bed")
+    unique_overlap23=$(wc -l < "$OUTPUT_DIR/shared_${base2}_${base3}_not_${base1}.bed")
+    all_overlap12=$(wc -l < "$OUTPUT_DIR/all_overlap_${base1}_${base2}.bed")
+    all_overlap13=$(wc -l < "$OUTPUT_DIR/all_overlap_${base1}_${base3}.bed")
+    all_overlap23=$(wc -l < "$OUTPUT_DIR/all_overlap_${base2}_${base3}.bed")
     
-    # Write to summary
+    # Write to summary file
     {
-        echo -e "\nThree-way: $base1 vs $base2 vs $base3:"
+        echo -e "\nThree-way overlap analysis:"
         echo "File 1 ($base1): $(count_regions "$file1" "all") regions"
         echo "File 2 ($base2): $(count_regions "$file2" "all") regions"
         echo "File 3 ($base3): $(count_regions "$file3" "all") regions"
-        echo "Common regions: $overlap123"
+        echo "Regions unique to $base1: $(wc -l < "$OUTPUT_DIR/unique_${base1}.bed")"
+        echo "Regions unique to $base2: $(wc -l < "$OUTPUT_DIR/unique_${base2}.bed")"
+        echo "Regions unique to $base3: $(wc -l < "$OUTPUT_DIR/unique_${base3}.bed")"
+        echo "Regions shared by all three files: $overlap123"
+        echo "Regions shared by $base1 and $base2 (not $base3): $unique_overlap12"
+        echo "Regions shared by $base1 and $base3 (not $base2): $unique_overlap13"
+        echo "Regions shared by $base2 and $base3 (not $base1): $unique_overlap23"
+        echo "All regions shared by $base1 and $base2: $all_overlap12"
+        echo "All regions shared by $base1 and $base3: $all_overlap13"
+        echo "All regions shared by $base2 and $base3: $all_overlap23"
+        echo "----------------------------------------"
     } >> "$SUMMARY_FILE"
+    
+    # Clean up temporary files
+    rm -rf "$TEMP_DIR"
 fi
 
 # Write final CSV line with debug output
@@ -237,12 +315,12 @@ echo "Debug values:"
 echo "total1: $total1"
 echo "total2: $total2"
 echo "total3: $total3"
-echo "overlap12: $overlap12"
-echo "overlap13: $overlap13"
-echo "overlap23: $overlap23"
+echo "all_overlap12: $all_overlap12"
+echo "all_overlap13: $all_overlap13"
+echo "all_overlap23: $all_overlap23"
 echo "overlap123: $overlap123"
 
-echo "$total1,$total2,$total3,$overlap12,$overlap13,$overlap23,$overlap123" >> "$OVERLAP_CSV"
+echo "$total1,$total2,$total3,$all_overlap12,$all_overlap13,$all_overlap23,$overlap123" >> "$OVERLAP_CSV"
 
 # Generate Venn diagrams
 echo "Generating Venn diagrams..."
