@@ -444,9 +444,10 @@ write.csv(feature_stats,
                           paste0(sample_id, "_feature_stats.csv")),
           row.names = FALSE)
 
-# Create feature type distribution plot
+# Create feature type distribution plots
+# Bar plot
 pdf(file.path(dirname(input_file),
-              paste0(sample_id, "_feature_distribution.pdf")),
+              paste0(sample_id, "_feature_distribution_bar.pdf")),
     width = 10, height = 6)
 
 ggplot(feature_stats, aes(x = reorder(feature_type, -count), y = count)) +
@@ -461,6 +462,27 @@ ggplot(feature_stats, aes(x = reorder(feature_type, -count), y = count)) +
 
 dev.off()
 
+# Pie chart
+pdf(file.path(dirname(input_file),
+              paste0(sample_id, "_feature_distribution_pie.pdf")),
+    width = 8, height = 8)
+
+ggplot(feature_stats, aes(x = "", y = count, fill = feature_type)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = sprintf("%d\n(%.1f%%)", count, percentage)),
+            position = position_stack(vjust = 0.5),
+            size = 3) +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank()) +
+  labs(title = paste("Feature Distribution -", sample_id),
+       fill = "Feature Type")
+
+dev.off()
+
 # Calculate gene annotation statistics
 gene_stats <- data %>%
   summarise(
@@ -468,9 +490,9 @@ gene_stats <- data %>%
     peaks_with_genes = sum(gene_id != "."),
     peaks_with_names = sum(gene_name != "."),
     peaks_with_types = sum(gene_type != "."),
-    percent_with_genes = mean(gene_id != ".") * 100,
-    percent_with_names = mean(gene_name != ".") * 100,
-    percent_with_types = mean(gene_type != ".") * 100
+    percent_with_genes = mean(gene_id != ".")*100,
+    percent_with_names = mean(gene_name != ".")*100,
+    percent_with_types = mean(gene_type != ".")*100
   )
 
 # Write gene annotation statistics
@@ -563,7 +585,8 @@ echo -e "\nAnnotation complete!"
 echo "Results written to:"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks.bed"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_stats.csv"
-echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_distribution.pdf"
+echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_distribution_bar.pdf"
+echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_distribution_pie.pdf"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_gene_stats.csv"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_gene_type_stats.csv"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_gene_type_distribution.pdf"
