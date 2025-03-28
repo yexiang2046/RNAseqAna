@@ -37,45 +37,55 @@ cd "$OUTPUT_DIR"
 command -v fasterq-dump >/dev/null 2>&1 || { echo "Error: fasterq-dump is not installed. Please install SRA toolkit."; exit 1; }
 command -v prefetch >/dev/null 2>&1 || { echo "Error: prefetch is not installed. Please install SRA toolkit."; exit 1; }
 
-# Download GEO metadata
-echo "Downloading GEO metadata..."
-GEO_URL="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=${GEO_ACC}&targ=self&form=text&view=full"
-curl -s "$GEO_URL" > "${GEO_ACC}_metadata.txt"
+# Download SRA metadata from Run Selector
+SRA_URL="https://www.ncbi.nlm.nih.gov/Traces/study/?acc=${GEO_ACC}&output=file"
+curl -s "$SRA_URL" > "${GEO_ACC}_metadata.txt"
 
 # Extract SRA IDs and sample information
-echo "Extracting SRA IDs and sample information..."
-awk '
-    /^!Sample_geo_accession/ { split($0, a, "="); gsub(/^[ \t]+/, "", a[2]); sra[NR] = a[2] }
-    /^!Sample_characteristics_ch1/ { split($0, a, "="); gsub(/^[ \t]+/, "", a[2]); info[NR] = a[2] }
-    /^!Sample_title/ { split($0, a, "="); gsub(/^[ \t]+/, "", a[2]); title[NR] = a[2] }
-    END {
-        for (i in sra) {
-            if (sra[i] != "") {
-                print sra[i] "\t" title[i] "\t" info[i]
-            }
+awk -F',' '
+    NR==1 {
+        for(i=1; i<=NF; i++) {
+            if($i=="Run") run_col=i
+            if($i=="Sample Name") sample_col=i
+            if($i=="condition") condition_col=i
+            if($i=="cell_type") cell_type_col=i
+            if($i=="tissue") tissue_col=i
+            if($i=="time_point") time_point_col=i
         }
+    }
+    NR>1 {
+        # Clean up the fields (remove quotes and escape characters)
+        gsub(/"/, "", $run_col)
+        gsub(/"/, "", $sample_col)
+        gsub(/"/, "", $condition_col)
+        gsub(/"/, "", $cell_type_col)
+        gsub(/"/, "", $tissue_col)
+        gsub(/"/, "", $time_point_col)
+        gsub(/,/, "_", $sample_col)
+        gsub(/,/, "_", $condition_col)
+        gsub(/,/, "_", $cell_type_col)
+        gsub(/,/, "_", $tissue_col)
+        gsub(/,/, "_", $time_point_col)
+        
+        # Combine condition, cell_type, tissue, and time_point for a more descriptive condition
+        condition = $condition_col
+        if ($cell_type_col != "") condition = condition "_" $cell_type_col
+        if ($tissue_col != "") condition = condition "_" $tissue_col
+        if ($time_point_col != "") condition = condition "_" $time_point_col
+        
+        print $run_col "\t" $sample_col "\t" condition
     }
 ' "${GEO_ACC}_metadata.txt" > sample_info.txt
 
 # Create metadata.csv for edgeR
-echo "Creating metadata.csv..."
 echo "sample,condition" > metadata.csv
 awk -F'\t' '
     {
-        # Extract condition from characteristics (assuming format "condition: value")
-        split($3, a, ":")
-        if (length(a) > 1) {
-            gsub(/^[ \t]+/, "", a[2])
-            print $1 "," a[2]
-        } else {
-            # If no characteristics, use sample title
-            print $1 "," $2
-        }
+        print $1 "," $3
     }
 ' sample_info.txt >> metadata.csv
 
 # Create contrasts.csv for edgeR
-echo "Creating contrasts.csv..."
 echo "name,treatment,control" > contrasts.csv
 # Get unique conditions
 conditions=$(awk -F',' 'NR>1 {print $2}' metadata.csv | sort -u)
@@ -114,7 +124,7 @@ cd ..
 
 echo "Data download complete!"
 echo "Files created:"
-echo "1. ${GEO_ACC}_metadata.txt - Full GEO metadata"
+echo "1. ${GEO_ACC}_metadata.txt - Full SRA metadata"
 echo "2. sample_info.txt - Extracted sample information"
 echo "3. metadata.csv - Sample metadata for edgeR"
 echo "4. contrasts.csv - Contrast definitions for edgeR"
