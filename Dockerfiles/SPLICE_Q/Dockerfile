@@ -40,6 +40,3 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Switch to non-root user
 USER spliceq
-
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["splice-q", "--help"]
