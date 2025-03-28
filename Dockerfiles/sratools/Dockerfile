@@ -3,7 +3,6 @@ FROM ubuntu:22.04
 # Install dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
-    cmake \
     git \
     libxml2-dev \
     libssl-dev \
@@ -19,39 +18,20 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Build ncbi-vdb first
+# Build ncbi-vdb and sra-tools
 WORKDIR /tmp
 RUN git clone https://github.com/ncbi/ncbi-vdb.git && \
+    git clone https://github.com/ncbi/sra-tools.git && \
     cd ncbi-vdb && \
-    mkdir -p build && \
-    cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release \
-          -DBUILD_SHARED_LIBS=ON \
-          .. && \
+    ./configure && \
     make && \
     make install && \
-    cd ../.. && \
-    rm -rf ncbi-vdb
-
-# Clone and build SRA tools
-RUN git clone https://github.com/ncbi/sra-tools.git && \
-    cd sra-tools && \
-    git checkout 3.2.1 && \
-    mkdir -p build && \
-    cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release \
-          -DBUILD_TOOLS_INTERNAL=OFF \
-          -DBUILD_TOOLS_LOADERS=OFF \
-          -DBUILD_TOOLS_TEST_TOOLS=OFF \
-          -DTOOLS_ONLY=ON \
-          -DVERSION=3.2.1 \
-          -DVDB_INCDIR=/usr/local/include \
-          -DVDB_LIBDIR=/usr/local/lib \
-          .. && \
+    cd ../sra-tools && \
+    ./configure && \
     make && \
     make install && \
-    cd ../.. && \
-    rm -rf sra-tools
+    cd .. && \
+    rm -rf ncbi-vdb sra-tools
 
 # Set up environment
 ENV PATH="/usr/local/bin:${PATH}"
