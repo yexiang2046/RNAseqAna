@@ -67,7 +67,7 @@ while read -r sra_id; do
             --force \
             "$sra_id"
     fi
-done < "$ID_LIST"
+done < ../../"$ID_LIST"
 
 cd ..
 
