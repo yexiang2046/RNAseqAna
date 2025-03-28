@@ -15,12 +15,13 @@ workflow {
     }
     
     // Create output directory
-    file(params.outdir).mkdirs()
+    def outdir = file(params.outdir)
+    outdir.mkdirs()
     
     // Run the download process
     DOWNLOAD_GEO(
         params.geo_accession,
-        params.outdir
+        outdir
     )
     
     // Print summary
@@ -30,11 +31,11 @@ workflow {
         Download completed successfully!
         
         Output files:
-        - Metadata: ${params.outdir}/${params.geo_accession}_metadata.txt
-        - Sample info: ${params.outdir}/sample_info.txt
-        - edgeR metadata: ${params.outdir}/metadata.csv
-        - Contrasts: ${params.outdir}/contrasts.csv
-        - Raw reads: ${params.outdir}/raw_reads/
+        - Metadata: ${outdir}/${params.geo_accession}_metadata.txt
+        - Sample info: ${outdir}/sample_info.txt
+        - edgeR metadata: ${outdir}/metadata.csv
+        - Contrasts: ${outdir}/contrasts.csv
+        - Raw reads: ${outdir}/raw_reads/
         
         Number of FASTQ files: ${fastq_files.size()}
         ==============================================
