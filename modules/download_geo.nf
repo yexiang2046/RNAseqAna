@@ -16,6 +16,6 @@ process DOWNLOAD_GEO {
     chmod +x bin/download_geo_data.sh
     
     # Run the script
-    bin/download_geo_data.sh -i ${id_list} -o ${output_dir}
+    bin/download_SRA_data.sh -i ${id_list} -o ${output_dir}
     """
 } 
