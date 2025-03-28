@@ -15,7 +15,7 @@ workflow {
     }
     
     // Create output directory
-    mkdir(params.outdir)
+    file(params.outdir).mkdirs()
     
     // Run the download process
     DOWNLOAD_GEO(
