@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/ash
 
 # Help message
 usage() {

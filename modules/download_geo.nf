@@ -10,8 +10,6 @@ process DOWNLOAD_GEO {
     
     script:
     """
-    #!/usr/bin/env bash
-    
     # Run the script
     bin/download_SRA_data.sh -i ${id_list} -o ${output_dir}
     """
