@@ -1,5 +1,5 @@
 process DOWNLOAD_GEO {
-    container "ncbi/sra-tools:3.1.0"
+    container "xiang2019/sratools:v3.2.1"
     
     input:
         path id_list
