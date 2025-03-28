@@ -34,6 +34,9 @@ if [ ! -f "$ID_LIST" ]; then
     usage
 fi
 
+# copy the id list to the output directory
+cp "$ID_LIST" "$OUTPUT_DIR"
+
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 cd "$OUTPUT_DIR"
@@ -67,7 +70,7 @@ while read -r sra_id; do
             --force \
             "$sra_id"
     fi
-done < ../../"$ID_LIST"
+done < "$OUTPUT_DIR/$ID_LIST"
 
 cd ..
 
