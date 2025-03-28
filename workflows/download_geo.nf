@@ -6,12 +6,12 @@ include { DOWNLOAD_GEO } from '../modules/download_geo'
 
 workflow {
     // Input parameters
-    params.geo_accession = null
+    params.id_list = null
     params.outdir = 'results'
     
     // Validate required parameters
-    if (!params.geo_accession) {
-        error "Please provide a GEO accession ID using --geo_accession"
+    if (!params.id_list) {
+        error "Please provide an input file containing SRA IDs using --id_list"
     }
     
     // Create output directory
@@ -20,7 +20,7 @@ workflow {
     
     // Run the download process
     DOWNLOAD_GEO(
-        params.geo_accession,
+        file(params.id_list),
         outdir
     )
     
@@ -31,10 +31,6 @@ workflow {
         Download completed successfully!
         
         Output files:
-        - Metadata: ${outdir}/${params.geo_accession}_metadata.txt
-        - Sample info: ${outdir}/sample_info.txt
-        - edgeR metadata: ${outdir}/metadata.csv
-        - Contrasts: ${outdir}/contrasts.csv
         - Raw reads: ${outdir}/raw_reads/
         
         Number of FASTQ files: ${fastq_files.size()}
