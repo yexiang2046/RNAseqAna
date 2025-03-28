@@ -2,7 +2,7 @@ process DOWNLOAD_GEO {
     container "ncbi/sra-tools:3.1.0"
     
     input:
-        path geo_accession
+        val geo_accession
         path output_dir
     
     output:
