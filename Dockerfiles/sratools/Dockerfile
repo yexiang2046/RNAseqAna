@@ -24,6 +24,16 @@ WORKDIR /tmp
 RUN git clone https://github.com/ncbi/sra-tools.git && \
     cd sra-tools && \
     git checkout 3.2.1 && \
+    # Build ncbi-vdb first
+    mkdir -p build-vdb && \
+    cd build-vdb && \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=ON \
+          ../ngs/ncbi-vdb && \
+    make && \
+    make install && \
+    cd .. && \
+    # Now build SRA tools
     mkdir -p build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release \
@@ -32,8 +42,8 @@ RUN git clone https://github.com/ncbi/sra-tools.git && \
           -DBUILD_TOOLS_TEST_TOOLS=OFF \
           -DTOOLS_ONLY=ON \
           -DVERSION=3.2.1 \
-          -DVDB_INCDIR=/tmp/sra-tools/ngs/ncbi/ngs \
-          -DVDB_LIBDIR=/tmp/sra-tools/ngs/ncbi/ngs \
+          -DVDB_INCDIR=/usr/local/include \
+          -DVDB_LIBDIR=/usr/local/lib \
           .. && \
     make && \
     make install && \
@@ -42,6 +52,7 @@ RUN git clone https://github.com/ncbi/sra-tools.git && \
 
 # Set up environment
 ENV PATH="/usr/local/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}"
 
 # Create a non-root user
 RUN useradd -m -s /bin/bash sratools
