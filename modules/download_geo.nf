@@ -11,6 +11,6 @@ process DOWNLOAD_GEO {
     script:
     """
     # Run the script
-    bin/download_SRA_data.sh -i ${id_list} -o ${output_dir}
+    ${baseDir}/../bin/download_SRA_data.sh -i ${id_list} -o ${output_dir}
     """
 } 
