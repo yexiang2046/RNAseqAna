@@ -19,7 +19,7 @@ WORKDIR /tmp
 RUN git clone https://github.com/ncbi/sra-tools.git && \
     cd sra-tools && \
     git checkout 3.2.1 && \
-    mkdir build && \
+    mkdir -p build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
     make && \
