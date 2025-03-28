@@ -19,21 +19,24 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Clone and build SRA tools
+# Build ncbi-vdb first
 WORKDIR /tmp
+RUN git clone https://github.com/ncbi/ncbi-vdb.git && \
+    cd ncbi-vdb && \
+    mkdir -p build && \
+    cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=ON \
+          .. && \
+    make && \
+    make install && \
+    cd ../.. && \
+    rm -rf ncbi-vdb
+
+# Clone and build SRA tools
 RUN git clone https://github.com/ncbi/sra-tools.git && \
     cd sra-tools && \
     git checkout 3.2.1 && \
-    # Build ncbi-vdb first
-    mkdir -p build-vdb && \
-    cd build-vdb && \
-    cmake -DCMAKE_BUILD_TYPE=Release \
-          -DBUILD_SHARED_LIBS=ON \
-          ../ngs/ncbi-vdb && \
-    make && \
-    make install && \
-    cd .. && \
-    # Now build SRA tools
     mkdir -p build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release \
