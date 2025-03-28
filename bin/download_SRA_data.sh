@@ -29,6 +29,11 @@ if [ -z "$ID_LIST" ] || [ -z "$OUTPUT_DIR" ]; then
     usage
 fi
 
+if [ ! -f "$ID_LIST" ]; then
+    echo "Error: ID_LIST file does not exist"
+    usage
+fi
+
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 cd "$OUTPUT_DIR"
