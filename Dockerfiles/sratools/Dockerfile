@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     git \
+    wget \
     libxml2-dev \
     libssl-dev \
     libcurl4-openssl-dev \
@@ -19,20 +20,12 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Build ncbi-vdb and sra-tools
+# Install SRA toolkit using the official binaries
 WORKDIR /tmp
-RUN git clone https://github.com/ncbi/ncbi-vdb.git && \
-    git clone https://github.com/ncbi/sra-tools.git && \
-    cd ncbi-vdb && \
-    ./configure && \
-    make && \
-    make install && \
-    cd ../sra-tools && \
-    ./configure && \
-    make && \
-    make install && \
-    cd .. && \
-    rm -rf ncbi-vdb sra-tools
+RUN wget https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/current/sratoolkit.current-ubuntu64.tar.gz && \
+    tar -xzf sratoolkit.current-ubuntu64.tar.gz && \
+    cp -r sratoolkit.*/bin/* /usr/local/bin/ && \
+    rm -rf sratoolkit.*
 
 # Set up environment
 ENV PATH="/usr/local/bin:${PATH}"

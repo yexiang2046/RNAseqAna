@@ -2,39 +2,34 @@
 
 nextflow.enable.dsl = 2
 
-include { DOWNLOAD_GEO } from '../modules/download_geo'
+params.id_list = 'SRR_ID.txt'
+params.output_dir = 'results'
+
+process DOWNLOAD_GEO {
+    container 'xiang2019/sratools:v3.2.1'
+    
+    publishDir 'results', mode: 'copy'
+
+    input:
+    path srr_file    // Input file containing SRR IDs
+
+    output:
+    path "results/raw_reads/*.fastq", emit: fastq_files
+
+    script:
+    """
+    mkdir -p results/raw_reads
+    
+    
+    # Run the script
+    ${baseDir}/../bin/download_SRA_data.sh -i ${srr_file} -o ${params.output_dir}
+    """
+}
 
 workflow {
-    // Input parameters
-    params.id_list = null
-    params.outdir = 'results'
-    
-    // Validate required parameters
-    if (!params.id_list) {
-        error "Please provide an input file containing SRA IDs using --id_list"
-    }
-    
-    // Create output directory
-    def outdir = file(params.outdir)
-    outdir.mkdirs()
+    // Define the input channel
+    srr_ids = Channel.fromPath(params.id_list)
     
     // Run the download process
-    DOWNLOAD_GEO(
-        file(params.id_list),
-        outdir
-    )
-    
-    // Print summary
-    DOWNLOAD_GEO.out.fastq_files.collect().subscribe { fastq_files ->
-        log.info """
-        ==============================================
-        Download completed successfully!
-        
-        Output files:
-        - Raw reads: ${outdir}/raw_reads/
-        
-        Number of FASTQ files: ${fastq_files.size()}
-        ==============================================
-        """
-    }
+    DOWNLOAD_GEO(srr_ids)
 } 
