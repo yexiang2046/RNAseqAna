@@ -47,6 +47,7 @@ counts <- read.delim(opt$counts, header = TRUE, skip = 1)
 colnames(counts) <- sapply(colnames(counts), function(x){strsplit(x, "_")}[[1]][1])
 colnames(counts) <- gsub("\\.", "-", colnames(counts))
 colnames(counts) <- gsub("^X", "", colnames(counts))
+colnames(counts) <- gsub("Aligned.sortedByCoord.out.bam", "", colnames(counts))
 # Extract gene expression counts (columns 7 onwards) 
 counts_matrix <- counts[,7:ncol(counts)]
 
