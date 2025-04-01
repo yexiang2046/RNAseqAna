@@ -28,14 +28,16 @@ extract_gene_info <- function(gtf_file) {
   # Filter for gene entries
   gene_lines <- gtf_lines[grep('gene_id', gtf_lines) & grep('\tgene\t', gtf_lines)]
   
-  # Extract gene_id and gene_name
+  # Extract gene_id, gene_name, and gene_type
   gene_ids <- gsub('.*gene_id "(.*?)".*', '\\1', gene_lines)
   gene_names <- gsub('.*gene_name "(.*?)".*', '\\1', gene_lines)
+  gene_types <- gsub('.*gene_type "(.*?)".*', '\\1', gene_lines)
   
   # Create data frame
   gene_info <- data.frame(
     gene_id = gene_ids,
     gene_name = gene_names,
+    gene_type = gene_types,
     stringsAsFactors = FALSE
   )
   
@@ -57,7 +59,8 @@ gene_info <- extract_gene_info(opt$gtf)
 row.names(counts_matrix) <- counts$Geneid  # Assuming Geneid is the column with Ensembl IDs
 gene_annotations <- data.frame(
   gene_id = counts$Geneid,
-  gene_name = gene_info$gene_name[match(counts$Geneid, gene_info$gene_id)]
+  gene_name = gene_info$gene_name[match(counts$Geneid, gene_info$gene_id)],
+  gene_type = gene_info$gene_type[match(counts$Geneid, gene_info$gene_id)]
 )
 
 metaData <- read.table(opt$metadata, header = TRUE)
@@ -65,6 +68,13 @@ metaData <- read.table(opt$metadata, header = TRUE)
 # order counts_matrix to metaData sample order with SampleId
 counts_matrix <- counts_matrix[, metaData$SampleId]
 
+# Read metadata and remove SampleId column
+metaData_for_annotation <- metaData[, !colnames(metaData) %in% "SampleId"]
+
+
+# Create annotation column using all remaining columns for heatmap
+annotation_col <- as.data.frame(metaData_for_annotation)
+rownames(annotation_col) <- metaData$SampleId
 
 
 # Create DGEList object
@@ -117,6 +127,7 @@ for (i in 1:(length(group_levels) - 1)) {
     # add annotation to results
     results$table$gene_id <- rownames(results$table)
     results$table$gene_name <- filtered_gene_annotations$gene_name[match(results$table$gene_id, filtered_gene_annotations$gene_id)]
+    results$table$gene_type <- filtered_gene_annotations$gene_type[match(results$table$gene_id, filtered_gene_annotations$gene_id)]
     comparison_results[[contrast_name]] <- results
     write.csv(results, file = file.path(opt$output, paste0("DEG_", contrast_name, ".csv")), row.names = FALSE)
   }
@@ -164,37 +175,38 @@ all_de_genes <- do.call(rbind, lapply(comparison_results, function(x) {
 all_de_genes <- all_de_genes[!duplicated(all_de_genes$gene_id), ]$gene_id
 
 # get the normalized counts for the differentially expressed genes
-de_counts <- normalized_counts_with_annotations[all_de_genes, ]
+de_counts <- normalized_counts[all_de_genes, ]
 
 # create a heatmap of the differentially expressed genes
-heatmap_data <- de_counts[, -c(1:2)]
-heatmap_data <- as.matrix(heatmap_data)
+heatmap_data <- as.matrix(de_counts)
 # scale the data by row
 heatmap_data <- t(scale(t(heatmap_data)))
 
-# annotation column
-annotation_col <- data.frame(
-  cell_type = metaData$Celltype,
-  temperature = metaData$Temp,
-  genotype = metaData$genotype
-)
-rownames(annotation_col) <- metaData$SampleId
-
-# create a heatmap of the differentially expressed genes
-heatmap_plot <- pheatmap(heatmap_data, 
-                        #color = colorRampPalette(c("blue", "white", "red"))(100),
+# For the main DEG heatmap (around line 175)
+heatmap_plot <- pheatmap(heatmap_data,
                         annotation_col = annotation_col,
                         show_rownames = FALSE,
                         cluster_rows = TRUE,
-                        cluster_cols = TRUE)
+                        cluster_cols = FALSE,  # Don't cluster columns
+                        main = "Differentially Expressed Genes",
+                        annotation_colors = list(),
+                        # Order columns according to metadata
+                        annotation_names_col = TRUE,
+                        annotation_names_row = TRUE,
+                        gaps_col = NULL,  # Only include gaps_col once
+                        # Force the column order to match metadata
+                        colnames = metaData$SampleId)
 ggsave(filename = file.path(opt$output, "DEG_heatmap.png"), plot = heatmap_plot)
 
 # After the heatmap code, add k-means clustering analysis
 
 # Function to perform k-means clustering and create plots
 perform_kmeans_analysis <- function(data, n_clusters, label, output_dir) {
+    # Ensure we're working with numeric data only
+    data_matrix <- as.matrix(data)
+    
     # Scale the data
-    scaled_data <- t(scale(t(data)))
+    scaled_data <- t(scale(t(data_matrix)))
     
     # Determine optimal number of clusters using elbow method
     wss <- sapply(1:15, function(k) {
@@ -219,6 +231,8 @@ perform_kmeans_analysis <- function(data, n_clusters, label, output_dir) {
     # Add cluster information to the data
     clustered_data <- data.frame(
         gene_id = rownames(data),
+        gene_name = filtered_gene_annotations$gene_name[match(rownames(data), filtered_gene_annotations$gene_id)],
+        gene_type = filtered_gene_annotations$gene_type[match(rownames(data), filtered_gene_annotations$gene_id)],
         cluster = km$cluster
     )
     
@@ -228,19 +242,25 @@ perform_kmeans_analysis <- function(data, n_clusters, label, output_dir) {
     )
     rownames(annotation_row) <- rownames(data)
     
-    # Generate heatmap with clusters
+    # Sort the data by cluster number to group genes in same cluster together
+    scaled_data <- scaled_data[order(annotation_row$Cluster), ]
+    # Update annotation_row to match the new order
+    annotation_row <- annotation_row[rownames(scaled_data), , drop=FALSE]
+    
     cluster_heatmap <- pheatmap(scaled_data,
                                annotation_col = annotation_col,
                                annotation_row = annotation_row,
                                show_rownames = FALSE,
-                               cluster_rows = TRUE,
-                               cluster_cols = TRUE,
-                               main = paste("K-means Clustering (k=", n_clusters, ")", label))
+                               cluster_rows = FALSE,
+                               cluster_cols = FALSE,
+                               main = paste("K-means Clustering (k=", n_clusters, ")", label),
+                               gaps_row = cumsum(table(annotation_row$Cluster))[-n_clusters],
+                               colnames = metaData$SampleId)
     
-    ggsave(filename=file.path(output_dir, paste0("kmeans_heatmap_", label, ".png")), 
+    # Save the plots and data
+    ggsave(filename=file.path(output_dir, paste0("kmeans_heatmap_", label, ".pdf")), 
            plot=cluster_heatmap)
     
-    # Export cluster assignments
     write.csv(clustered_data, 
               file=file.path(output_dir, paste0("kmeans_clusters_", label, ".csv")),
               row.names=FALSE)
@@ -278,16 +298,16 @@ clustering_dir <- file.path(opt$output, "clustering")
 dir.create(clustering_dir, showWarnings = FALSE)
 
 # Perform k-means clustering on all genes
-all_genes_data <- normalized_counts_with_annotations[, -c(1:2)]
+all_genes_data <- normalized_counts
 kmeans_all <- perform_kmeans_analysis(all_genes_data, 
                                     n_clusters=6, 
                                     label="all_genes",
                                     clustering_dir)
 
 # Perform k-means clustering on DEGs only
-deg_data <- normalized_counts_with_annotations[all_de_genes, -c(1:2)]
+deg_data <- normalized_counts[all_de_genes, ]
 kmeans_deg <- perform_kmeans_analysis(deg_data, 
-                                    n_clusters=4, 
+                                    n_clusters=6, 
                                     label="DEGs",
                                     clustering_dir)
 
