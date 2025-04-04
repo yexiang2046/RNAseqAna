@@ -76,10 +76,56 @@ if [ ! -s introns.bed ]; then
     echo "Error: introns.bed is empty"
     exit 1
 fi
-# format to bed6, add chr prefix
+
+# format to bed6, use strand from GTF (7th column)
 awk 'BEGIN{OFS="\t"} {
-    print "chr"$1, $2, $3, $4, $5, "."
+    # Remove any existing chr prefix and add it back
+    chr = $1;
+    sub(/^chr/, "", chr);
+    print "chr"chr, $2, $3, $4, $5, $7
 }' introns.bed > introns.bed.tmp && mv introns.bed.tmp introns.bed
+
+# Debug: Show first few lines of introns
+echo "First few lines of introns:"
+head -n 5 introns.bed
+
+# First, create a gene ID to strand mapping from the GTF file
+echo "Creating gene ID to strand mapping..."
+awk '$3=="gene" {
+    # Extract gene_id from the attributes field
+    if (match($0, /gene_id "([^"]+)"/, arr)) {
+        print arr[1], $7
+    }
+}' "$INPUT_ABS" > gene_strands.txt
+
+# Debug: Show first few lines of gene_strands.txt
+echo "First few lines of gene_strands.txt:"
+head -n 5 gene_strands.txt
+
+# Now use the mapping to add strand information to introns
+echo "Adding strand information to introns..."
+awk 'BEGIN{OFS="\t"} {
+    # Read gene ID to strand mapping
+    if (NR == FNR) {
+        gene_strands[$1] = $2;
+        next;
+    }
+    # Process introns
+    gene_id = $4;
+    strand = gene_strands[gene_id];
+    if (strand == "") {
+        print "Warning: No strand found for gene_id", gene_id > "/dev/stderr";
+        strand = ".";
+    }
+    print "chr"$1, $2, $3, $4, $5, strand;
+}' gene_strands.txt introns.bed > introns.bed.tmp && mv introns.bed.tmp introns.bed
+
+# Debug: Show first few lines of annotated introns
+echo "First few lines of annotated introns:"
+head -n 5 introns.bed
+
+# Keep gene_strands.txt for debugging
+echo "Gene ID to strand mapping saved in gene_strands.txt"
 
 echo "Extracting UTRs..."
 gtftools -u utrs.bed "$INPUT_ABS"
