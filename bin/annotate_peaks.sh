@@ -132,17 +132,18 @@ for feature in "${FEATURES[@]}"; do
     FEATURE_FILES="$FEATURE_FILES $FEATURES_DIR/${feature}.bed"
 done
 
-# Get gene annotations
+# Get gene annotations with strand information
 echo "Getting gene annotations..."
 bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/genes.bed" -wao | \
     awk 'BEGIN{OFS="\t"; FS="\t"} {
         peak=$1"_"$2"_"$3;
         if($10!=".") {  # Use gene ID from column 10 (bedtools intersect output)
             genes[peak]=$10;  # Use gene ID
+            strands[peak]=$6;  # Store strand information from the gene file
         }
     } END{
         for(peak in genes) {
-            print peak, genes[peak];
+            print peak, genes[peak], strands[peak];
         }
     }' > "$OUTPUT_DIR/temp_gene_info.txt"
 
@@ -201,13 +202,15 @@ awk 'BEGIN{OFS="\t"; FS="\t"} {
             features[peak] = "exons";
             # Extract gene ID from column 7 (bedtools intersect output)
             feature_ids[peak] = $7;
-            print "Found exon overlap for peak:", peak, "gene ID:", $7 > "/dev/stderr";
+            # Store strand information from the exon file
+            feature_strands[peak] = $6;
+            print "Found exon overlap for peak:", peak, "gene ID:", $7, "strand:", $6 > "/dev/stderr";
         }
     }
 } END{
     print "Total peaks with exon overlaps:", length(features) > "/dev/stderr";
     for(peak in features) {
-        print peak, feature_ids[peak], features[peak], max_overlap[peak];
+        print peak, feature_ids[peak], features[peak], max_overlap[peak], feature_strands[peak];
     }
 }' "$OUTPUT_DIR/debug_exon_overlaps.txt" > "$OUTPUT_DIR/temp_exons_info.txt"
 
@@ -229,12 +232,14 @@ for feature in "five_prime_utr" "three_prime_utr"; do
                     features[peak] = feat;
                     # Extract gene ID from column 7 (bedtools intersect output)
                     feature_ids[peak] = $7;
+                    # Store strand information from the UTR file
+                    feature_strands[peak] = $6;
                     seen[peak] = 1;
                 }
             }
         } END{
             for(peak in features) {
-                print peak, feature_ids[peak], features[peak], max_overlap[peak];
+                print peak, feature_ids[peak], features[peak], max_overlap[peak], feature_strands[peak];
             }
         }' > "$OUTPUT_DIR/temp_${feature}_info.txt"
 done
@@ -253,12 +258,14 @@ bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/introns.bed" -wao | \
                 features[peak] = "introns";
                 # Extract gene ID from column 7 (bedtools intersect output)
                 feature_ids[peak] = $7;
+                # Store strand information from the intron file
+                feature_strands[peak] = $6;
                 seen[peak] = 1;
             }
         }
     } END{
         for(peak in features) {
-            print peak, feature_ids[peak], features[peak], max_overlap[peak];
+            print peak, feature_ids[peak], features[peak], max_overlap[peak], feature_strands[peak];
         }
     }' > "$OUTPUT_DIR/temp_introns_info.txt"
 
@@ -270,7 +277,7 @@ cat "$OUTPUT_DIR"/temp_*_info.txt > "$OUTPUT_DIR/temp_all_features.txt"
 bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/genes.bed" -v | \
     awk 'BEGIN{OFS="\t"} {
         peak=$1"_"$2"_"$3;
-        print peak, ".", "intergenic", "0";
+        print peak, ".", "intergenic", "0", ".";
     }' > "$OUTPUT_DIR/temp_intergenic.txt"
 
 # Sort and prioritize features (exons > UTRs > introns > genes > intergenic)
@@ -294,12 +301,13 @@ cat "$OUTPUT_DIR/temp_all_features.txt" "$OUTPUT_DIR/temp_intergenic.txt" | \
                 features[peak]=feat_type;
                 feature_ids[peak]=$2;
                 min_priority[peak] = curr_priority;
+                feature_strands[peak]=$5;  # Store strand information
                 seen[peak]=1;
             }
         }
         END{
             for(peak in features) {
-                print peak, feature_ids[peak], features[peak];
+                print peak, feature_ids[peak], features[peak], feature_strands[peak];
             }
         }' | sort -k1,1 > "$OUTPUT_DIR/temp_features_info.txt"
 
@@ -311,6 +319,7 @@ awk -v OFS='\t' '
         split($1, coords, "_");
         key = coords[1]"_"coords[2]"_"coords[3];
         gene_ids[key]=$2;
+        gene_strands[key]=$3;  # Store gene strand
         next;
     }
     # Read feature info into arrays
@@ -319,6 +328,7 @@ awk -v OFS='\t' '
         key = coords[1]"_"coords[2]"_"coords[3];
         feat_id[key]=$2;
         feat_type[key]=$3;
+        feat_strand[key]=$4;  # Store feature strand
         next;
     }
     # Process feature counts and add annotations
@@ -334,8 +344,15 @@ awk -v OFS='\t' '
             feature_type = "intergenic";
         }
         
+        # Get strand information (prefer feature strand, fall back to gene strand)
+        strand = feat_strand[key];
+        if (strand == ".") {
+            strand = gene_strands[key];
+        }
+        if (!strand) strand = ".";
+        
         # Print original columns plus annotations
-        print $0, gene_id, feature_id, feature_type;
+        print $0, gene_id, feature_id, feature_type, strand;
     }' "$OUTPUT_DIR/temp_gene_info.txt" \
        "$OUTPUT_DIR/temp_features_info.txt" \
        "$PEAKS" \
@@ -390,7 +407,8 @@ data <- read.table(input_file, header=FALSE, sep="\t", stringsAsFactors=FALSE)
 
 # Rename columns (based on the actual columns in the annotated peaks file)
 names(data) <- c("chr", "start", "end", "name", "score", "strand", 
-                "gene_id", "feature_id", "feature_type", "gene_name", "gene_type")
+                "gene_id", "feature_id", "feature_type", "feature_strand",
+                "gene_name", "gene_type")
 
 # Calculate peak lengths and statistics
 data <- data %>%
@@ -461,6 +479,38 @@ ggplot(feature_stats, aes(x = reorder(feature_type, -count), y = count)) +
 
 dev.off()
 
+# Calculate strand distribution
+strand_stats <- data %>%
+  filter(feature_strand != ".") %>%
+  group_by(feature_strand) %>%
+  summarise(
+    count = n(),
+    percentage = n() / nrow(data) * 100
+  ) %>%
+  arrange(desc(count))
+
+# Write strand statistics
+write.csv(strand_stats,
+          file = file.path(dirname(input_file),
+                          paste0(sample_id, "_strand_stats.csv")),
+          row.names = FALSE)
+
+# Create strand distribution plot
+pdf(file.path(dirname(input_file),
+              paste0(sample_id, "_strand_distribution.pdf")),
+    width = 10, height = 6)
+
+ggplot(strand_stats, aes(x = feature_strand, y = count)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = sprintf("%d (%.1f%%)", count, percentage)),
+            vjust = -0.5) +
+  theme_minimal() +
+  labs(x = "Strand",
+       y = "Number of Peaks",
+       title = paste("Distribution of Peak Strands -", sample_id))
+
+dev.off()
+
 # Calculate gene annotation statistics
 gene_stats <- data %>%
   summarise(
@@ -468,9 +518,11 @@ gene_stats <- data %>%
     peaks_with_genes = sum(gene_id != "."),
     peaks_with_names = sum(gene_name != "."),
     peaks_with_types = sum(gene_type != "."),
+    peaks_with_strand = sum(feature_strand != "."),
     percent_with_genes = mean(gene_id != ".") * 100,
     percent_with_names = mean(gene_name != ".") * 100,
-    percent_with_types = mean(gene_type != ".") * 100
+    percent_with_types = mean(gene_type != ".") * 100,
+    percent_with_strand = mean(feature_strand != ".") * 100
   )
 
 # Write gene annotation statistics
@@ -515,7 +567,7 @@ dev.off()
 # Create top genes table
 top_genes <- data %>%
   filter(gene_name != ".") %>%
-  group_by(gene_name, gene_type) %>%
+  group_by(gene_name, gene_type, feature_strand) %>%
   summarise(
     peak_count = n(),
     feature_types = paste(unique(feature_type), collapse=", ")
@@ -535,6 +587,9 @@ print(feature_stats)
 
 cat("\nPeak Length Statistics:\n")
 print(length_stats)
+
+cat("\nStrand Distribution:\n")
+print(strand_stats)
 
 cat("\nGene Annotation Summary:\n")
 print(gene_stats)
@@ -570,6 +625,8 @@ echo "- $OUTPUT_DIR/${SAMPLE_ID}_gene_type_distribution.pdf"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_top_genes.csv"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_peak_length_stats.csv"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_peak_length_distribution.pdf"
+echo "- $OUTPUT_DIR/${SAMPLE_ID}_strand_stats.csv"
+echo "- $OUTPUT_DIR/${SAMPLE_ID}_strand_distribution.pdf"
 
 # Display summary if available
 if [ -f "$OUTPUT_DIR/${SAMPLE_ID}_feature_stats.csv" ]; then
@@ -580,4 +637,9 @@ fi
 if [ -f "$OUTPUT_DIR/${SAMPLE_ID}_peak_length_stats.csv" ]; then
     echo -e "\nPeak length statistics:"
     cat "$OUTPUT_DIR/${SAMPLE_ID}_peak_length_stats.csv"
+fi
+
+if [ -f "$OUTPUT_DIR/${SAMPLE_ID}_strand_stats.csv" ]; then
+    echo -e "\nStrand statistics:"
+    cat "$OUTPUT_DIR/${SAMPLE_ID}_strand_stats.csv"
 fi 
