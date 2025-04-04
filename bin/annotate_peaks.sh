@@ -339,20 +339,15 @@ awk -v OFS='\t' '
         
         feature_id = feat_id[key];
         feature_type = feat_type[key];
+        feature_strand = feat_strand[key];
         if (!feature_type) {
             feature_id = ".";
             feature_type = "intergenic";
+            feature_strand = ".";
         }
         
-        # Get strand information (use feature strand)
-        strand = feat_strand[key];
-        if (!strand || strand == ".") {
-            strand = gene_strands[key];
-            if (!strand) strand = ".";
-        }
-        
-        # Print original columns plus annotations, using feature strand in column 6
-        print $1, $2, $3, $4, $5, strand, gene_id, feature_id, feature_type, strand;
+        # Print original columns but replace column 6 with feature strand
+        print $1, $2, $3, $4, $5, feature_strand, gene_id, feature_id, feature_type, feature_strand;
     }' "$OUTPUT_DIR/temp_gene_info.txt" \
        "$OUTPUT_DIR/temp_features_info.txt" \
        "$PEAKS" \
