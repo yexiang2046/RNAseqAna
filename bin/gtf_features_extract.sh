@@ -94,6 +94,9 @@ echo "Creating gene ID to strand mapping..."
 awk '$3=="gene" {
     # Extract gene_id from the attributes field
     if (match($0, /gene_id "([^"]+)"/, arr)) {
+        # Remove any existing chr prefix and add it back
+        chr = $1;
+        sub(/^chr/, "", chr);
         print arr[1], $7
     }
 }' "$INPUT_ABS" > gene_strands.txt
@@ -117,7 +120,10 @@ awk 'BEGIN{OFS="\t"} {
         print "Warning: No strand found for gene_id", gene_id > "/dev/stderr";
         strand = ".";
     }
-    print "chr"$1, $2, $3, $4, $5, strand;
+    # Remove any existing chr prefix and add it back
+    chr = $1;
+    sub(/^chr/, "", chr);
+    print "chr"chr, $2, $3, $4, $5, strand;
 }' gene_strands.txt introns.bed > introns.bed.tmp && mv introns.bed.tmp introns.bed
 
 # Debug: Show first few lines of annotated introns
