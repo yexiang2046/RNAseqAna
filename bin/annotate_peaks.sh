@@ -292,10 +292,19 @@ awk -v OFS='\t' '
         }
         
         # Print original columns but replace column 6 with feature strand
-        print $1, $2, $3, $4, $5, feature_strand, feature_id, feature_type, feature_strand;
+        # Use key as unique identifier to avoid duplicates
+        if (!seen[key]) {
+            print $1, $2, $3, $4, $5, feature_strand, feature_id, feature_type, feature_strand;
+            seen[key] = 1;
+        }
     }' "$OUTPUT_DIR/temp_features_info.txt" \
        "$PEAKS" \
     > "$OUTPUT_DIR/temp_annotated_peaks.bed"
+
+# Sort and deduplicate the final output
+echo "Sorting and deduplicating final output..."
+sort -k1,1 -k2,2n -k3,3n "$OUTPUT_DIR/temp_annotated_peaks.bed" | \
+    awk '!seen[$1"_"$2"_"$3]++' > "$OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks.bed"
 
 # Add gene name and type annotations
 echo "Adding gene name and type annotations..."
@@ -323,8 +332,8 @@ awk -v OFS='\t' '
         # Print all columns plus gene name and type
         print $0, gene_name, gene_type;
     }' "$FEATURES_DIR/genes.bed" \
-       "$OUTPUT_DIR/temp_annotated_peaks.bed" \
-    > "$OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks.bed"
+       "$OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks.bed" \
+    > "$OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks_with_names.bed"
 
 # Create R script for analysis
 echo "Creating R script for analysis..."
@@ -543,7 +552,7 @@ EOF
 # Run R script
 echo "Running R analysis..."
 Rscript "$OUTPUT_DIR/analyze_features.R" \
-    "$OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks.bed" \
+    "$OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks_with_names.bed" \
     "$SAMPLE_ID"
 
 # Clean up temporary files
@@ -555,7 +564,7 @@ fi
 # Print results
 echo -e "\nAnnotation complete!"
 echo "Results written to:"
-echo "- $OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks.bed"
+echo "- $OUTPUT_DIR/${SAMPLE_ID}_annotated_peaks_with_names.bed"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_stats.csv"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_feature_distribution.pdf"
 echo "- $OUTPUT_DIR/${SAMPLE_ID}_gene_stats.csv"
