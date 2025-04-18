@@ -2,24 +2,26 @@
 
 # Help message
 usage() {
-    echo "Usage: $0 [-h] -i BED_DIR -o OUTPUT_DIR [-m MIN_OVERLAP]"
+    echo "Usage: $0 [-h] -i BED_DIR -o OUTPUT_DIR [-m MIN_OVERLAP] [-s]"
     echo "Find overlapping regions between BED files (pairwise and three-way)"
     echo ""
     echo "Arguments:"
     echo "  -i BED_DIR      Directory containing BED files"
     echo "  -o OUTPUT_DIR   Output directory"
     echo "  -m MIN_OVERLAP  Minimum overlap required (default: 1bp)"
+    echo "  -s             Use strand-specific intersection (default: false)"
     echo "  -h             Show this help message"
     exit 1
 }
 
 # Parse command line arguments
-while getopts "hi:o:m:" opt; do
+while getopts "hi:o:m:s" opt; do
     case $opt in
         h) usage ;;
         i) BED_DIR="$OPTARG" ;;
         o) OUTPUT_DIR="$OPTARG" ;;
         m) MIN_OVERLAP="$OPTARG" ;;
+        s) STRAND_SPECIFIC=true ;;
         ?) usage ;;
     esac
 done
@@ -77,6 +79,15 @@ get_basename() {
     basename "$1" .bed
 }
 
+# Set strand-specific option for bedtools
+STRAND_OPTION=""
+if [ "$STRAND_SPECIFIC" = true ]; then
+    STRAND_OPTION="-s"
+    echo "Using strand-specific intersection"
+else
+    echo "Not using strand-specific intersection"
+fi
+
 echo "Processing pairwise overlaps..."
 # Process each pair of files
 for ((i=0; i<$NUM_FILES; i++)); do
@@ -95,7 +106,7 @@ for ((i=0; i<$NUM_FILES; i++)); do
         
         # Find overlaps and remove duplicates
         overlap_file="$OUTPUT_DIR/pairwise/${base1}_vs_${base2}_overlap.bed"
-        bedtools intersect -s -a "$file1" -b "$file2" -wa -wb \
+        bedtools intersect $STRAND_OPTION -a "$file1" -b "$file2" -wa -wb \
             -f ${MIN_OVERLAP} -r | \
             sort -k1,1 -k2,2n -k3,3n | \
             uniq > "$overlap_file"
@@ -162,13 +173,13 @@ if [ $NUM_FILES -ge 3 ]; then
                 temp_overlap="$OUTPUT_DIR/three_way/temp_overlap.bed"
                 
                 # First find overlap between first two files
-                bedtools intersect -s -a "$file1" -b "$file2" -wa -wb \
+                bedtools intersect $STRAND_OPTION -a "$file1" -b "$file2" -wa -wb \
                     -f ${MIN_OVERLAP} -r | \
                     sort -k1,1 -k2,2n -k3,3n | \
                     uniq > "$temp_overlap"
                 
                 # Then find overlap with third file and remove duplicates
-                bedtools intersect -s -a "$temp_overlap" -b "$file3" -wa -wb \
+                bedtools intersect $STRAND_OPTION -a "$temp_overlap" -b "$file3" -wa -wb \
                     -f ${MIN_OVERLAP} -r | \
                     sort -k1,1 -k2,2n -k3,3n | \
                     uniq > "$overlap_file"
