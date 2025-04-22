@@ -240,9 +240,9 @@ bedtools intersect -a "$PEAKS" -b "$FEATURES_DIR/genes.bed" -v | \
 cat "$OUTPUT_DIR/temp_all_features.txt" "$OUTPUT_DIR/temp_intergenic.txt" | \
     awk 'BEGIN{OFS="\t"; 
              # Define feature priority
-             priority["exons"]=1;
-             priority["five_prime_utr"]=2;
-             priority["three_prime_utr"]=2;
+             priority["five_prime_utr"]=1;
+             priority["three_prime_utr"]=1;
+             priority["exons"]=2;
              priority["introns"]=3;
              priority["genes"]=4;
              priority["intergenic"]=5;
