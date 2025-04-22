@@ -236,9 +236,17 @@ fi
 
 # Create R script for visualization
 cat > "$OUTPUT_DIR/summary/plot_overlaps.R" << 'EOF'
-library(ggplot2)
-library(VennDiagram)
-library(gridExtra)
+# Load required libraries with error checking
+required_packages <- c("ggplot2", "VennDiagram", "gridExtra")
+for(pkg in required_packages) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+        install.packages(pkg, repos = "https://cloud.r-project.org", quiet = TRUE)
+    }
+    library(pkg, character.only = TRUE)
+}
+
+# Suppress VennDiagram messages
+futile.logger::flog.threshold(futile.logger::ERROR)
 
 # Function to create a color-transparent version of a color
 transparent_color <- function(color, alpha=0.5) {
@@ -246,155 +254,152 @@ transparent_color <- function(color, alpha=0.5) {
     rgb(rgb_col[1], rgb_col[2], rgb_col[3], alpha=alpha*255, maxColorValue=255)
 }
 
-# Read the data
-pairwise_data <- read.csv("pairwise_overlap_summary.csv")
-three_way_data <- NULL
-if (file.exists("three_way_overlap_summary.csv")) {
-    three_way_data <- read.csv("three_way_overlap_summary.csv")
-}
+# Read the data with error handling
+tryCatch({
+    pairwise_data <- read.csv("pairwise_overlap_summary.csv", stringsAsFactors = FALSE)
+    three_way_data <- NULL
+    if (file.exists("three_way_overlap_summary.csv")) {
+        three_way_data <- read.csv("three_way_overlap_summary.csv", stringsAsFactors = FALSE)
+    }
+}, error = function(e) {
+    stop("Error reading CSV files: ", e$message)
+})
 
-# Create PDF
-pdf("overlap_visualization.pdf", width=12, height=10)
+# Create PDF with error handling
+pdf("overlap_visualization.pdf", width=12, height=8)
 
-# Function to get non-overlapping counts for Venn diagram
-get_venn_counts <- function(data) {
-    unique_files <- unique(c(as.character(data$File1), as.character(data$File2)))
-    total_counts <- sapply(unique_files, function(f) {
-        rows <- data[data$File1 == f | data$File2 == f, ]
-        if(length(rows) > 0) {
-            return(rows[1, grep("Total_Regions", colnames(data))][1])
-        }
-        return(0)
-    })
-    names(total_counts) <- unique_files
-    
-    overlap_counts <- setNames(data$Overlapping_Regions, 
-                             paste(data$File1, data$File2, sep="|"))
-    
-    return(list(totals=total_counts, overlaps=overlap_counts))
-}
+# Colors for the Venn diagrams
+venn_colors <- c("#4B89DC", "#37BC9B", "#F6BB42", "#E9573F", "#967ADC")
 
-# Create Venn diagrams based on number of files
-n_files <- length(unique(c(pairwise_data$File1, pairwise_data$File2)))
+# Calculate the number of unique files
+unique_files <- unique(c(pairwise_data$File1, pairwise_data$File2))
+n_files <- length(unique_files)
 
-# Set up the plotting area
+# Set up the layout based on available data
 if (n_files >= 3 && !is.null(three_way_data)) {
     layout(matrix(c(1,2,3,3), 2, 2))
 } else {
     layout(matrix(c(1,2), 1, 2))
 }
 
-# Colors for the Venn diagrams
-venn_colors <- c("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd")
-
-# Create pairwise Venn diagrams
-unique_pairs <- unique(paste(pairwise_data$File1, pairwise_data$File2))
-par(mar=c(2,2,4,2))
-
-# Split pairs into groups of 2 for visualization
-n_pairs <- length(unique_pairs)
-pairs_per_plot <- min(3, n_pairs)
-pair_groups <- split(unique_pairs, ceiling(seq_along(unique_pairs)/pairs_per_plot))
-
-for (pair_group in pair_groups) {
-    # Create a new plot for each group of pairs
+# Create pairwise Venn diagrams with error handling
+tryCatch({
+    # Create pairwise overlaps plot
+    par(mar=c(2,2,4,2))
     plot.new()
     title("Pairwise Overlaps")
     
-    for (i in seq_along(pair_group)) {
-        pair <- strsplit(pair_group[i], " ")[[1]]
-        pair_data <- pairwise_data[pairwise_data$File1 == pair[1] & 
-                                  pairwise_data$File2 == pair[2], ]
+    for (i in 1:nrow(pairwise_data)) {
+        pair_data <- pairwise_data[i,]
         
-        # Calculate positions for multiple Venn diagrams
-        x_pos <- 0.2 + (i-1) * 0.3
-        y_pos <- 0.5
+        # Calculate position for each Venn diagram
+        x_pos <- 0.2 + ((i-1) %% 3) * 0.3
+        y_pos <- 0.5 - floor((i-1)/3) * 0.4
         
-        # Draw Venn diagram
-        draw.pairwise.venn(
-            area1 = pair_data$Total_Regions_1,
-            area2 = pair_data$Total_Regions_2,
-            cross.area = pair_data$Overlapping_Regions,
-            category = c(pair[1], pair[2]),
-            col = venn_colors[c(i*2-1, i*2)],
-            fill = transparent_color(venn_colors[c(i*2-1, i*2)]),
-            scaled = TRUE,
-            euler.d = TRUE,
-            sep.dist = 0.03,
-            rotation.degree = 0,
-            lwd = 2,
-            cex = 0.8,
-            cat.cex = 0.8,
-            cat.dist = 0.05,
-            ext.pos = 0,
-            ext.dist = -0.05,
-            ext.length = 0.85,
-            ext.line.lwd = 2,
-            ext.line.lty = "dashed"
-        )
+        # Draw Venn diagram with error handling
+        tryCatch({
+            venn.plot <- draw.pairwise.venn(
+                area1 = pair_data$Total_Regions_1,
+                area2 = pair_data$Total_Regions_2,
+                cross.area = pair_data$Overlapping_Regions,
+                category = c(pair_data$File1, pair_data$File2),
+                col = venn_colors[c(1,2)],
+                fill = sapply(venn_colors[c(1,2)], transparent_color),
+                scaled = TRUE,
+                euler.d = TRUE,
+                sep.dist = 0.03,
+                rotation.degree = 0,
+                lwd = 2,
+                cex = 0.8,
+                cat.cex = 0.7,
+                cat.dist = 0.05,
+                cat.pos = c(-20, 20)
+            )
+        }, error = function(e) {
+            warning("Error drawing pairwise Venn diagram: ", e$message)
+        })
     }
-}
+}, error = function(e) {
+    warning("Error in pairwise Venn diagrams: ", e$message)
+})
 
 # Create three-way Venn diagram if applicable
 if (n_files >= 3 && !is.null(three_way_data)) {
-    # Get a representative trio
-    trio <- three_way_data[1,]
-    
-    plot.new()
-    title("Three-way Overlaps")
-    
-    draw.triple.venn(
-        area1 = trio$Total_Regions_1,
-        area2 = trio$Total_Regions_2,
-        area3 = trio$Total_Regions_3,
-        n12 = sum(pairwise_data$Overlapping_Regions[
+    tryCatch({
+        plot.new()
+        title("Three-way Overlaps")
+        
+        # Get the first trio
+        trio <- three_way_data[1,]
+        
+        # Get pairwise overlaps
+        n12 <- pairwise_data$Overlapping_Regions[
             pairwise_data$File1 == trio$File1 & 
-            pairwise_data$File2 == trio$File2]),
-        n23 = sum(pairwise_data$Overlapping_Regions[
+            pairwise_data$File2 == trio$File2]
+        n23 <- pairwise_data$Overlapping_Regions[
             pairwise_data$File1 == trio$File2 & 
-            pairwise_data$File2 == trio$File3]),
-        n13 = sum(pairwise_data$Overlapping_Regions[
+            pairwise_data$File2 == trio$File3]
+        n13 <- pairwise_data$Overlapping_Regions[
             pairwise_data$File1 == trio$File1 & 
-            pairwise_data$File2 == trio$File3]),
-        n123 = trio$Common_Regions,
-        category = c(trio$File1, trio$File2, trio$File3),
-        col = venn_colors[1:3],
-        fill = sapply(venn_colors[1:3], transparent_color),
-        scaled = TRUE,
-        euler.d = TRUE,
-        lwd = 2,
-        cex = 0.8,
-        cat.cex = 0.8,
-        cat.col = venn_colors[1:3]
-    )
+            pairwise_data$File2 == trio$File3]
+        
+        draw.triple.venn(
+            area1 = trio$Total_Regions_1,
+            area2 = trio$Total_Regions_2,
+            area3 = trio$Total_Regions_3,
+            n12 = n12,
+            n23 = n23,
+            n13 = n13,
+            n123 = trio$Common_Regions,
+            category = c(trio$File1, trio$File2, trio$File3),
+            col = venn_colors[1:3],
+            fill = sapply(venn_colors[1:3], transparent_color),
+            scaled = TRUE,
+            euler.d = TRUE,
+            lwd = 2,
+            cex = 0.8,
+            cat.cex = 0.7,
+            cat.col = venn_colors[1:3]
+        )
+    }, error = function(e) {
+        warning("Error in three-way Venn diagram: ", e$message)
+    })
 }
 
-# Create overlap percentage barplots
-par(mar=c(10,4,4,2))
-plot.new()
-
-# Pairwise overlap barplot
-p1 <- ggplot(pairwise_data, aes(x=paste(File1, "vs", File2), y=Overlap_Percentage)) +
-    geom_bar(stat="identity", fill="steelblue") +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-    labs(x="File Pairs", y="Overlap Percentage (%)",
-         title="Pairwise Overlap Percentages")
-print(p1)
-
-# Three-way overlap visualization if data exists
-if (!is.null(three_way_data)) {
-    p2 <- ggplot(three_way_data, 
-                 aes(x=paste(File1, "vs", File2, "vs", File3), 
+# Create barplots with error handling
+tryCatch({
+    # Pairwise overlap barplot
+    p1 <- ggplot(pairwise_data, 
+                 aes(x=paste(File1, "vs", File2), 
                      y=Overlap_Percentage)) +
-        geom_bar(stat="identity", fill="darkred") +
+        geom_bar(stat="identity", fill="#4B89DC") +
         theme_minimal() +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-        labs(x="File Trios", y="Overlap Percentage (%)",
-             title="Three-way Overlap Percentages")
-    print(p2)
-}
+        theme(axis.text.x = element_text(angle = 45, hjust = 1),
+              plot.title = element_text(hjust = 0.5)) +
+        labs(x="File Pairs", 
+             y="Overlap Percentage (%)",
+             title="Pairwise Overlap Percentages")
+    print(p1)
+    
+    # Three-way overlap barplot if data exists
+    if (!is.null(three_way_data)) {
+        p2 <- ggplot(three_way_data, 
+                     aes(x=paste(File1, "vs", File2, "vs", File3), 
+                         y=Overlap_Percentage)) +
+            geom_bar(stat="identity", fill="#E9573F") +
+            theme_minimal() +
+            theme(axis.text.x = element_text(angle = 45, hjust = 1),
+                  plot.title = element_text(hjust = 0.5)) +
+            labs(x="File Trios", 
+                 y="Overlap Percentage (%)",
+                 title="Three-way Overlap Percentages")
+        print(p2)
+    }
+}, error = function(e) {
+    warning("Error in barplots: ", e$message)
+})
 
+# Close PDF device
 dev.off()
 EOF
 
