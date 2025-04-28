@@ -11,7 +11,7 @@ params.genome  = "hs" // or "mm", or provide effective genome size
 
 process MACS2_PEAKCALL {
     tag "${sample_id}"
-    container "fooliu/macs2:version-2.2.7.1-slim"
+    container "fooliu/macs2:version-2.2.7.1"
 
     publishDir "${params.outdir}", mode: 'copy'
 
@@ -25,8 +25,7 @@ process MACS2_PEAKCALL {
 
     script:
     """
-    #!/bin/bash
-    macs2 callpeak \\
+    callpeak \\
         -t ${treat_bam} \\
         -c ${ctrl_bam} \\
         -f BAM \\
