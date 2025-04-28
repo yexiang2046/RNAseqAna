@@ -11,7 +11,7 @@ params.genome  = "hs" // or "mm", or provide effective genome size
 
 process MACS2_PEAKCALL {
     tag "${sample_id}"
-    container "quay.io/biocontainers/macs2:2.2.9.1--py311haab0aaa_3"
+    container "fooliu/macs2:version-2.2.7.1-slim"
 
     publishDir "${params.outdir}", mode: 'copy'
 
