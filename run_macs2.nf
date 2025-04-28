@@ -25,14 +25,15 @@ process MACS2_PEAKCALL {
 
     script:
     """
-    macs2 callpeak \
-        -t ${treat_bam} \
-        -c ${ctrl_bam} \
-        -f BAM \
-        -g ${params.genome} \
-        -n ${sample_id}_macs2 \
-        --outdir . \
-        --keep-dup all \
+    #!/bin/bash
+    macs2 callpeak \\
+        -t ${treat_bam} \\
+        -c ${ctrl_bam} \\
+        -f BAM \\
+        -g ${params.genome} \\
+        -n ${sample_id}_macs2 \\
+        --outdir . \\
+        --keep-dup all \\
         -q 0.05
     """
 }
