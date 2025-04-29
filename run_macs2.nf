@@ -25,7 +25,7 @@ process MACS2_PEAKCALL {
 
     script:
     """
-    callpeak \\
+    macs2 callpeak \\
         -t ${treat_bam} \\
         -c ${ctrl_bam} \\
         -f BAM \\

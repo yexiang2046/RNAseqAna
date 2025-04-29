@@ -34,5 +34,13 @@ RUN micromamba create -n macs2_env -c bioconda -c conda-forge \
 RUN micromamba shell init --shell=bash && \
     echo "micromamba activate macs2_env" >> ~/.bashrc
 
+# Create entrypoint script
+RUN echo '#!/bin/bash\nsource ~/.bashrc\nexec "$@"' > /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
+# Set entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["macs2"]
+
 
 
