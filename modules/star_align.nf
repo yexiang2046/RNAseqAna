@@ -3,7 +3,7 @@
  * given the genome file
  */
 process STAR_INDEX {
-	container 'nfcore/star:2.7.9a'
+	container 'xiang2019/rnaseq_cmd:v1.0.0'
 	publishDir "${projectDir}", mode: 'copy'
 
 	input:
@@ -18,7 +18,7 @@ process STAR_INDEX {
 	STAR --runMode genomeGenerate \
 		--genomeDir star_index \
 		--genomeFastaFiles ${refgenome} \
-		--runThreadN ${task.cpus}
+		--runThreadN ${params.cpus}
 	"""
 }
 
@@ -27,14 +27,18 @@ process STAR_INDEX {
  * given the trimmed read pairs and the STAR index
  */
 process ALIGN {
+	fair true
+	container 'xiang2019/rnaseq_cmd:v1.0.0'
+	debug true
 	tag "STAR on $sample_id"
+
 	publishDir "${projectDir}/aligned", mode: 'copy'
 
-	container 'nfcore/star:2.7.9a'
+	maxForks 1
 
 	input:
 	path star_index
-	tuple val(sample_id), path(reads)
+	tuple   val(sample_id), path(reads)
 
 	output:
 	path "*Aligned.sortedByCoord.out.bam", emit: bam
@@ -44,7 +48,7 @@ process ALIGN {
 	STAR --genomeDir ${star_index} \
 		--readFilesIn ${reads[0]} ${reads[1]} \
 		--readFilesCommand zcat \
-		--runThreadN ${task.cpus} \
+		--runThreadN ${params.cpus} \
 		--genomeLoad NoSharedMemory \
 		--outFilterMultimapNmax 20 \
 		--alignSJoverhangMin 8 \
@@ -58,7 +62,7 @@ process ALIGN {
 		--outSAMattributes NH HI AS NM MD \
 		--outSAMtype BAM SortedByCoordinate \
 		--sjdbScore 1 \
-		--limitBAMsortRAM ${task.memory.toBytes() - 2.gb} \
+		--limitBAMsortRAM ${params.ram} \
 		--outFileNamePrefix ${sample_id}
 	"""
 }

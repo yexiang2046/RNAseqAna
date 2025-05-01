@@ -51,7 +51,7 @@ workflow RNASEQ {
 	TRIM(read_pairs_ch)
 	
 	// Run alignment
-	ALIGN(STAR_INDEX.out, TRIM.out.trimmed_reads)
+	ALIGN(STAR_INDEX.out.star_index, TRIM.out.trimmed_reads)
 	
 	// Run feature counting
 	FEATURECOUNT(params.gtf, ALIGN.out.bam.collect())

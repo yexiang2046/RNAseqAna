@@ -2,20 +2,17 @@
  * define the TRIM process that trims the reads
  * given the read pairs
  */
-process TRIM{
-	fair true
-	container 'staphb/fastp:0.24.0'
-	debug true
+process TRIM {
 	tag "fastp on $sample_id"
-	publishDir	"${projectDir}/trimmed", mode: 'copy'
-
-	maxForks 1
-
+	publishDir "${projectDir}/trimmed", mode: 'copy'
+	
+	container 'staphb/fastp:0.24.0'
+	
 	input:
 	tuple val(sample_id), path(reads)
 	
 	output:
-	tuple val(sample_id), path("*{1,2}.fastq.gz"), emit: trimmed_reads
+	tuple val(sample_id), path("*_{1,2}.fastq.gz"), emit: trimmed_reads
  
 	script:
 	"""
