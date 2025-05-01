@@ -26,7 +26,6 @@ params.trimmeddir = "$projectDir/trimmed"
 params.aligneddir = "$projectDir/aligned"
 params.gtf = "$projectDir/gencode.v47.primary_assembly.basic.annotation.gtf"
 params.genome = "$projectDir/GRCh38.primary_assembly_KSHV.genome.fa"
-
 params.metadata = "$projectDir/metadata.txt"
 
 
@@ -40,51 +39,28 @@ params.metadata = "$projectDir/metadata.txt"
 workflow RNASEQ {
 	refgenome = file(params.genome)	
 
-	
+	// Create channel for read pairs
 	Channel
 	   	.fromFilePairs("${projectDir}/data/*{1,2}*.fastq.gz", checkIfExists: true)
 	   	.set { read_pairs_ch }
-	
-	println "DEBUG: Read pairs channel:"
-	read_pairs_ch.view()
 
+	// Run STAR indexing
 	STAR_INDEX(refgenome)
-	println "DEBUG: STAR_INDEX output:"
-	STAR_INDEX.out.view()
-
-	// FASTQC(read_pairs_ch)
-	// FASTQC.out.view()
 	
+	// Run trimming
 	TRIM(read_pairs_ch)
-	println "DEBUG: TRIM output:"
-	TRIM.out.view()
+	
+	// Run alignment
+	ALIGN(STAR_INDEX.out, TRIM.out.trimmed_reads)
+	
+	// Run feature counting
+	FEATURECOUNT(params.gtf, ALIGN.out.bam.collect())
 
-	ALIGN(STAR_INDEX.out, TRIM.out)
-	println "DEBUG: ALIGN output:"
-	ALIGN.out.view()
-
-	FEATURECOUNT(params.gtf, ALIGN.out.collect())
-	println "DEBUG: FEATURECOUNT output:"
-	FEATURECOUNT.out.view()
-
-	// Define input channels
-    Channel.fromPath('counts.txt').set { counts_ch }
-    Channel.fromPath('metadata.txt').set { metadata_ch }
-
-    // Run DE analysis
-    DE_ANALYSIS(FEATURECOUNT.out, params.metadata)
-    println "DEBUG: DE_ANALYSIS output:"
-    DE_ANALYSIS.out.view()
-
-    // Run Functional Analysis
-    // FUNCTIONAL_ANALYSIS(de_results_ch)
-    // FUNCTIONAL_ANALYSIS(DE_ANALYSIS.out)
-
-	// emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | collect	
-	// emit: FASTQC.out | concat(TRIM.out) | concat(ALIGN.out) | collect	
+	// Run DE analysis
+	DE_ANALYSIS(FEATURECOUNT.out, params.metadata)
 }
 
-workflow  {
+workflow {
 	RNASEQ()
 }
 
