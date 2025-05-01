@@ -43,15 +43,31 @@ workflow RNASEQ {
 	Channel
 	   	.fromFilePairs("${projectDir}/data/*{1,2}*.fastq.gz", checkIfExists: true)
 	   	.set { read_pairs_ch }
+	
+	// Debug output for read pairs
+	println "DEBUG: Read pairs channel contents:"
+	read_pairs_ch.view()
 
 	// Run STAR indexing
 	STAR_INDEX(refgenome)
 	
+	// Debug output for STAR index
+	println "DEBUG: STAR index output:"
+	STAR_INDEX.out.star_index.view()
+	
 	// Run trimming
 	TRIM(read_pairs_ch)
 	
+	// Debug output for trimmed reads
+	println "DEBUG: Trimmed reads output:"
+	TRIM.out.trimmed_reads.view()
+	
 	// Run alignment
 	ALIGN(STAR_INDEX.out.star_index, TRIM.out.trimmed_reads)
+	
+	// Debug output for aligned BAMs
+	println "DEBUG: Aligned BAMs output:"
+	ALIGN.out.bam.view()
 	
 	// Run feature counting
 	FEATURECOUNT(params.gtf, ALIGN.out.bam.collect())

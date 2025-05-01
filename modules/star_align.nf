@@ -27,21 +27,16 @@ process STAR_INDEX {
  * given the trimmed read pairs and the STAR index
  */
 process ALIGN {
-	fair true
 	container 'xiang2019/rnaseq_cmd:v1.0.0'
-	debug true
 	tag "STAR on $sample_id"
-
 	publishDir "${projectDir}/aligned", mode: 'copy'
-
-	maxForks 1
 
 	input:
 	path star_index
 	tuple   val(sample_id), path(reads)
 
 	output:
-	path "*Aligned.sortedByCoord.out.bam", emit: bam
+	path("*Aligned.sortedByCoord.out.bam"), emit: bam
 
 	script:
 	"""
