@@ -3,7 +3,7 @@
  * given the genome file
  */
 process STAR_INDEX {
-	container 'xiang2019/rnaseq_cmd:v1.0.0'
+	container 'alexdobin/star:2.6.1d'
 	publishDir "${projectDir}", mode: 'copy'
 
 	input:
@@ -27,10 +27,10 @@ process STAR_INDEX {
  * given the trimmed read pairs and the STAR index
  */
 process ALIGN {
-	container 'xiang2019/rnaseq_cmd:v1.0.0'
+	container 'alexdobin/star:2.6.1d'
 	tag "STAR on $sample_id"
 	publishDir "${projectDir}/aligned", mode: 'copy'
-
+	maxForks 1
 	input:
 	path star_index
 	tuple   val(sample_id), path(reads)
