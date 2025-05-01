@@ -41,7 +41,7 @@ workflow RNASEQ {
 
 	// Create channel for read pairs
 	Channel
-	   	.fromFilePairs("${projectDir}/data/*{1,2}*.fastq.gz", checkIfExists: true)
+	   	.fromFilePairs("${projectDir}/data/*{_R1,_R2}_001.fastq.gz", checkIfExists: true)
 	   	.set { read_pairs_ch }
 	
 	// Debug output for read pairs
