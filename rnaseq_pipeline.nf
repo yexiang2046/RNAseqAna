@@ -25,7 +25,7 @@ params.starindex = "$projectDir/star_index"
 params.trimmeddir = "$projectDir/trimmed"
 params.aligneddir = "$projectDir/aligned"
 params.gtf = "$projectDir/gencode.v47.primary_assembly.basic.annotation.gtf"
-
+params.genome = "$projectDir/GRCh38.primary_assembly_KSHV.genome.fa"
 
 params.metadata = "$projectDir/metadata.txt"
 
@@ -38,30 +38,33 @@ params.metadata = "$projectDir/metadata.txt"
 
 
 workflow RNASEQ {
-	refgenome = file("${projectDir}/*.genome.fa")	
+	refgenome = file(params.genome)	
 
 	
 	Channel
 	   	.fromFilePairs("${projectDir}/data/*{1,2}*.fastq.gz", checkIfExists: true)
 	   	.set { read_pairs_ch }
+	
+	println "DEBUG: Read pairs channel:"
 	read_pairs_ch.view()
 
 	STAR_INDEX(refgenome)
+	println "DEBUG: STAR_INDEX output:"
 	STAR_INDEX.out.view()
-
 
 	// FASTQC(read_pairs_ch)
 	// FASTQC.out.view()
 	
 	TRIM(read_pairs_ch)
+	println "DEBUG: TRIM output:"
 	TRIM.out.view()
 
 	ALIGN(STAR_INDEX.out, TRIM.out)
+	println "DEBUG: ALIGN output:"
 	ALIGN.out.view()
 
-
 	FEATURECOUNT(params.gtf, ALIGN.out.collect())
-
+	println "DEBUG: FEATURECOUNT output:"
 	FEATURECOUNT.out.view()
 
 	// Define input channels
@@ -70,7 +73,8 @@ workflow RNASEQ {
 
     // Run DE analysis
     DE_ANALYSIS(FEATURECOUNT.out, params.metadata)
-    // DE_ANALYSIS(counts_ch, metadata_ch)
+    println "DEBUG: DE_ANALYSIS output:"
+    DE_ANALYSIS.out.view()
 
     // Run Functional Analysis
     // FUNCTIONAL_ANALYSIS(de_results_ch)
