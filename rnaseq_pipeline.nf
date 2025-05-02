@@ -70,10 +70,10 @@ workflow RNASEQ {
 	ALIGN.out.bam.view()
 	
 	// Run feature counting
-	FEATURECOUNT(params.gtf, ALIGN.out.bam.collect())
+	FEATURECOUNT(file(params.gtf), ALIGN.out.bam.collect())
 
 	// Run DE analysis
-	DE_ANALYSIS(FEATURECOUNT.out, params.metadata)
+	DE_ANALYSIS(FEATURECOUNT.out, file(params.metadata))
 }
 
 workflow {
