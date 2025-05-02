@@ -57,7 +57,7 @@ process ALIGN {
 		--outSAMattributes NH HI AS NM MD \
 		--outSAMtype BAM SortedByCoordinate \
 		--sjdbScore 1 \
-		--limitBAMsortRAM ${params.ram} \
+		--limitBAMsortRAM 1646912681 \
 		--outFileNamePrefix ${sample_id}
 	"""
 }
