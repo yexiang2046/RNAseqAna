@@ -1,5 +1,5 @@
 {
-    "image": "xiang2019/rnaseq_renv:v1.0.0",
+    "image": "xiang2019/rnaseq_renv:v1.0.1",
   
     "customizations": {
       "vscode": {
