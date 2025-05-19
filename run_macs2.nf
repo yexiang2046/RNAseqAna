@@ -11,7 +11,7 @@ params.genome  = "hs" // or "mm", or provide effective genome size
 
 process MACS2_PEAKCALL {
     tag "${sample_id}"
-    container "fooliu/macs2:version-2.2.7.1"
+    container "xiang2019/macs2:v2.2.7.1"
 
     publishDir "${params.outdir}", mode: 'copy'
 
