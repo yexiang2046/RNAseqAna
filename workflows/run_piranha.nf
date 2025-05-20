@@ -118,6 +118,7 @@ process COUNT_PEAK_READS {
     output:
     tuple val(bam_meta), path("*_peak_counts.txt"), emit: peak_counts
     tuple val(bam_meta), path("*_viral_coverage.txt"), emit: viral_coverage
+    tuple val(bam_meta), path("*_viral_depth.txt"), emit: viral_depth
     
     script:
     """
