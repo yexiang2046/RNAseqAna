@@ -129,6 +129,7 @@ process COUNT_PEAK_READS {
     viral_length=\$(samtools view -H $bam | grep "SN:${viral_chr}" | awk '{print \$3}' | sed 's/LN://')
     
     # Calculate coverage on viral genome
+    samtools index -@ 10 $bam
     samtools depth -r ${viral_chr} $bam > ${bam_meta}_viral_depth.txt
     
     # Calculate coverage statistics
