@@ -125,32 +125,28 @@ process COUNT_PEAK_READS {
     tuple val(bam_meta), path("*_viral_depth.txt"), emit: viral_depth
     
     script:
+    def bam_file = file(bam).exists() && file("${bam}.bai").exists() ? bam : "${bam_meta}_sorted.bam"
+    def peaks_file = file(peaks).exists() && file("${peaks}.sorted").exists() ? peaks : "${peaks}.sorted"
     """
     # Sort and index BAM file if not already indexed
     if [ ! -f "${bam}.bai" ]; then
         samtools sort -@ 4 -o ${bam_meta}_sorted.bam $bam
         samtools index -@ 4 ${bam_meta}_sorted.bam
-        BAM_FILE=${bam_meta}_sorted.bam
-    else
-        BAM_FILE=$bam
     fi
     
     # Sort peaks file if not already sorted
     if [ ! -f "${peaks}.sorted" ]; then
         sort -k1,1 -k2,2n $peaks > ${peaks}.sorted
-        PEAKS_FILE=${peaks}.sorted
-    else
-        PEAKS_FILE=$peaks
     fi
     
     # Count reads in peaks using bedtools with memory-efficient options
-    bedtools coverage -a $PEAKS_FILE -b $BAM_FILE -counts -s -sorted > ${bam_meta}_peak_counts.txt
+    bedtools coverage -a ${peaks_file} -b ${bam_file} -counts -s -sorted > ${bam_meta}_peak_counts.txt
     
     # Calculate viral genome coverage
-    samtools depth -r ${viral_chr} $BAM_FILE > ${bam_meta}_viral_depth.txt
+    samtools depth -r ${viral_chr} ${bam_file} > ${bam_meta}_viral_depth.txt
     
     # Calculate coverage statistics
-    awk -v chr="${viral_chr}" -v len=\$(samtools view -H $BAM_FILE | grep "SN:${viral_chr}" | awk '{print \$3}' | sed 's/LN://') '
+    awk -v chr="${viral_chr}" -v len=\$(samtools view -H ${bam_file} | grep "SN:${viral_chr}" | awk '{print \$3}' | sed 's/LN://') '
     BEGIN {
         total_bases = 0
         covered_bases = 0
