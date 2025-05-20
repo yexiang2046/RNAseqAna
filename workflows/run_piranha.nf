@@ -123,7 +123,7 @@ process COUNT_PEAK_READS {
     script:
     """
     # Count reads in peaks using bedtools
-    bedtools coverage -a $peaks -b $bam -counts > ${bam_meta}_peak_counts.txt
+    bedtools coverage -a $peaks -b $bam -counts -s  > ${bam_meta}_peak_counts.txt
     
     # Calculate viral genome coverage
     # First get viral genome length
@@ -174,16 +174,19 @@ process COUNT_PEAK_READS {
     
     # Calculate rolling average (window size = 1000bp)
     window_size <- 1000
-    depth_data$window <- floor(depth_data$pos/window_size)
-    rolling_avg <- depth_data %>%
+    depth_data <- depth_data %>%
+        mutate(window = floor(pos/window_size)) %>%
         group_by(window) %>%
-        summarise(avg_depth=mean(depth),
-                 start_pos=min(pos),
-                 end_pos=max(pos))
+        summarise(
+            avg_depth = mean(depth),
+            start_pos = min(pos),
+            end_pos = max(pos),
+            .groups = "drop"
+        )
     
     # Create coverage plot
     pdf("${bam_meta}_peak_coverage_plot.pdf", width=12, height=6)
-    p <- ggplot(rolling_avg, aes(x=start_pos, y=avg_depth)) +
+    p <- ggplot(depth_data, aes(x=start_pos, y=avg_depth)) +
         geom_line(color="red") +
         theme_minimal() +
         labs(title="Viral Genome Coverage",
@@ -198,12 +201,12 @@ process COUNT_PEAK_READS {
     # Print summary statistics
     cat("\nCoverage Summary Statistics:\n")
     cat("==========================\n")
-    cat("Mean coverage:", mean(depth_data$depth), "\n")
-    cat("Median coverage:", median(depth_data$depth), "\n")
-    cat("Max coverage:", max(depth_data$depth), "\n")
-    cat("Bases with coverage > 0:", sum(depth_data$depth > 0), "\n")
-    cat("Total bases:", nrow(depth_data), "\n")
-    cat("Coverage percentage:", (sum(depth_data$depth > 0)/nrow(depth_data))*100, "%\n")
+    cat("Mean coverage:", mean(depth_data$avg_depth), "\n")
+    cat("Median coverage:", median(depth_data$avg_depth), "\n")
+    cat("Max coverage:", max(depth_data$avg_depth), "\n")
+    cat("Total windows:", nrow(depth_data), "\n")
+    cat("Windows with coverage > 0:", sum(depth_data$avg_depth > 0), "\n")
+    cat("Coverage percentage:", (sum(depth_data$avg_depth > 0)/nrow(depth_data))*100, "%\n")
     '
     """
 }
