@@ -169,12 +169,12 @@ process COUNT_PEAK_READS {
     library(dplyr)
     
     # Read depth data
-    depth_data <- read.table("${bam_meta}_viral_depth.txt", header=FALSE, 
-                            col.names=c("chr", "pos", "depth"))
+    raw_depth_data <- read.table("${bam_meta}_viral_depth.txt", header=FALSE, 
+                                col.names=c("chr", "pos", "depth"))
     
     # Calculate rolling average (window size = 1000bp)
     window_size <- 1000
-    depth_data <- depth_data %>%
+    windowed_data <- raw_depth_data %>%
         mutate(window = floor(pos/window_size)) %>%
         group_by(window) %>%
         summarise(
@@ -186,7 +186,7 @@ process COUNT_PEAK_READS {
     
     # Create coverage plot
     pdf("${bam_meta}_peak_coverage_plot.pdf", width=12, height=6)
-    p <- ggplot(depth_data, aes(x=start_pos, y=avg_depth)) +
+    p <- ggplot(windowed_data, aes(x=start_pos, y=avg_depth)) +
         geom_line(color="red") +
         theme_minimal() +
         labs(title="Viral Genome Coverage",
@@ -198,15 +198,25 @@ process COUNT_PEAK_READS {
     print(p)
     dev.off()
     
-    # Print summary statistics
+    # Print summary statistics using raw depth data
     cat("\nCoverage Summary Statistics:\n")
     cat("==========================\n")
-    cat("Mean coverage:", mean(depth_data$avg_depth), "\n")
-    cat("Median coverage:", median(depth_data$avg_depth), "\n")
-    cat("Max coverage:", max(depth_data$avg_depth), "\n")
-    cat("Total windows:", nrow(depth_data), "\n")
-    cat("Windows with coverage > 0:", sum(depth_data$avg_depth > 0), "\n")
-    cat("Coverage percentage:", (sum(depth_data$avg_depth > 0)/nrow(depth_data))*100, "%\n")
+    cat("Mean coverage:", mean(raw_depth_data$depth), "\n")
+    cat("Median coverage:", median(raw_depth_data$depth), "\n")
+    cat("Max coverage:", max(raw_depth_data$depth), "\n")
+    cat("Bases with coverage > 0:", sum(raw_depth_data$depth > 0), "\n")
+    cat("Total bases:", nrow(raw_depth_data), "\n")
+    cat("Coverage percentage:", (sum(raw_depth_data$depth > 0)/nrow(raw_depth_data))*100, "%\n")
+    
+    # Print window-based statistics
+    cat("\nWindow-based Statistics (1000bp windows):\n")
+    cat("=======================================\n")
+    cat("Mean window coverage:", mean(windowed_data$avg_depth), "\n")
+    cat("Median window coverage:", median(windowed_data$avg_depth), "\n")
+    cat("Max window coverage:", max(windowed_data$avg_depth), "\n")
+    cat("Total windows:", nrow(windowed_data), "\n")
+    cat("Windows with coverage > 0:", sum(windowed_data$avg_depth > 0), "\n")
+    cat("Window coverage percentage:", (sum(windowed_data$avg_depth > 0)/nrow(windowed_data))*100, "%\n")
     '
     """
 }
