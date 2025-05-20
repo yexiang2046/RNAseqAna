@@ -118,12 +118,11 @@ process COUNT_PEAK_READS {
     output:
     tuple val(bam_meta), path("*_peak_counts.txt"), emit: peak_counts
     tuple val(bam_meta), path("*_viral_coverage.txt"), emit: viral_coverage
-    path "*_peak_coverage_plot.pdf", emit: coverage_plot
     
     script:
     """
     # Count reads in peaks using bedtools
-    bedtools coverage -a $peaks -b $bam -counts -s  > ${bam_meta}_peak_counts.txt
+    bedtools coverage -a $peaks -b $bam -counts -s > ${bam_meta}_peak_counts.txt
     
     # Calculate viral genome coverage
     # First get viral genome length
@@ -162,84 +161,6 @@ process COUNT_PEAK_READS {
         print "Coverage percentage: " coverage "%"
         print "Total reads: " total_depth
     }' ${bam_meta}_viral_depth.txt > ${bam_meta}_viral_coverage.txt
-    
-    # Create coverage plot using R
-    Rscript -e '
-    library(ggplot2)
-    library(dplyr)
-    
-    # Read depth data with explicit column types
-    if(file.exists("${bam_meta}_viral_depth.txt")) {
-        raw_depth_data <- read.table("${bam_meta}_viral_depth.txt", 
-                                   header=FALSE,
-                                   col.names=c("chr", "pos", "depth"),
-                                   colClasses=c("character", "integer", "integer"))
-        
-        if(nrow(raw_depth_data) > 0) {
-            # Calculate rolling average (window size = 1000bp)
-            window_size <- 1000
-            windowed_data <- raw_depth_data %>%
-                mutate(window = as.integer(floor(pos/window_size))) %>%
-                group_by(window) %>%
-                summarise(
-                    avg_depth = mean(as.numeric(depth)),
-                    start_pos = min(pos),
-                    end_pos = max(pos),
-                    .groups = "drop"
-                )
-            
-            # Create coverage plot
-            pdf("${bam_meta}_peak_coverage_plot.pdf", width=12, height=6)
-            p <- ggplot(windowed_data, aes(x=start_pos, y=avg_depth)) +
-                geom_line(color="red") +
-                theme_minimal() +
-                labs(title="Viral Genome Coverage",
-                     subtitle="${bam_meta}",
-                     x="Genomic Position",
-                     y="Average Coverage (1000bp window)") +
-                theme(plot.title = element_text(hjust = 0.5),
-                      plot.subtitle = element_text(hjust = 0.5))
-            print(p)
-            dev.off()
-            
-            # Print summary statistics using raw depth data
-            cat("\nCoverage Summary Statistics:\n")
-            cat("==========================\n")
-            cat("Mean coverage:", mean(as.numeric(raw_depth_data$depth)), "\n")
-            cat("Median coverage:", median(as.numeric(raw_depth_data$depth)), "\n")
-            cat("Max coverage:", max(as.numeric(raw_depth_data$depth)), "\n")
-            cat("Bases with coverage > 0:", sum(as.numeric(raw_depth_data$depth) > 0), "\n")
-            cat("Total bases:", nrow(raw_depth_data), "\n")
-            cat("Coverage percentage:", (sum(as.numeric(raw_depth_data$depth) > 0)/nrow(raw_depth_data))*100, "%\n")
-            
-            # Print window-based statistics
-            cat("\nWindow-based Statistics (1000bp windows):\n")
-            cat("=======================================\n")
-            cat("Mean window coverage:", mean(windowed_data$avg_depth), "\n")
-            cat("Median window coverage:", median(windowed_data$avg_depth), "\n")
-            cat("Max window coverage:", max(windowed_data$avg_depth), "\n")
-            cat("Total windows:", nrow(windowed_data), "\n")
-            cat("Windows with coverage > 0:", sum(windowed_data$avg_depth > 0), "\n")
-            cat("Window coverage percentage:", (sum(windowed_data$avg_depth > 0)/nrow(windowed_data))*100, "%\n")
-        } else {
-            # Create empty plot if no data
-            pdf("${bam_meta}_peak_coverage_plot.pdf", width=12, height=6)
-            plot(1, type="n", axes=FALSE, xlab="", ylab="")
-            text(1, 1, "No coverage data available", cex=1.5)
-            dev.off()
-            
-            cat("\nNo coverage data available for analysis\n")
-        }
-    } else {
-        # Create empty plot if file doesn't exist
-        pdf("${bam_meta}_peak_coverage_plot.pdf", width=12, height=6)
-        plot(1, type="n", axes=FALSE, xlab="", ylab="")
-        text(1, 1, "Depth file not found", cex=1.5)
-        dev.off()
-        
-        cat("\nDepth file not found: ${bam_meta}_viral_depth.txt\n")
-    }
-    '
     """
 }
 
