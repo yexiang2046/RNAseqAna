@@ -125,64 +125,17 @@ process COUNT_PEAK_READS {
     tuple val(bam_meta), path("*_viral_depth.txt"), emit: viral_depth
     
     script:
-    def bam_file = file(bam).exists() && file("${bam}.bai").exists() ? bam : "${bam_meta}_sorted.bam"
-    def peaks_file = file(peaks).exists() && file("${peaks}.sorted").exists() ? peaks : "${peaks}.sorted"
     """
-    # Sort and index BAM file if not already indexed
-    if [ ! -f "${bam}.bai" ]; then
-        samtools sort -@ 4 -o ${bam_meta}_sorted.bam $bam
-        samtools index -@ 4 ${bam_meta}_sorted.bam
-    fi
+    # Make script executable and copy it to current directory
+    cp ${projectDir}/bin/count_peak_reads.sh .
+    chmod +x count_peak_reads.sh
     
-    # Sort peaks file if not already sorted
-    if [ ! -f "${peaks}.sorted" ]; then
-        sort -k1,1 -k2,2n $peaks > ${peaks}.sorted
-    fi
-    
-    # Count reads in peaks using bedtools with memory-efficient options
-    bedtools coverage -a ${peaks_file} -b ${bam_file} -counts -s -sorted > ${bam_meta}_peak_counts.txt
-    
-    # Calculate viral genome coverage
-    samtools depth -r ${viral_chr} ${bam_file} > ${bam_meta}_viral_depth.txt
-    
-    # Calculate coverage statistics
-    awk -v chr="${viral_chr}" -v len=\$(samtools view -H ${bam_file} | grep "SN:${viral_chr}" | awk '{print \$3}' | sed 's/LN://') '
-    BEGIN {
-        total_bases = 0
-        covered_bases = 0
-        total_depth = 0
-        max_depth = 0
-    }
-    {
-        if (\$3 > 0) {
-            covered_bases++
-            total_depth += \$3
-            if (\$3 > max_depth) max_depth = \$3
-        }
-        total_bases++
-    }
-    END {
-        avg_depth = (total_bases > 0) ? total_depth/total_bases : 0
-        coverage = (total_bases > 0) ? (covered_bases/total_bases)*100 : 0
-        print "Viral Genome Coverage Statistics"
-        print "================================"
-        print "Chromosome: " chr
-        print "Genome length: " len " bp"
-        print "Total bases sequenced: " total_bases
-        print "Bases with coverage: " covered_bases
-        print "Average depth: " avg_depth
-        print "Maximum depth: " max_depth
-        print "Coverage percentage: " coverage "%"
-        print "Total reads: " total_depth
-    }' ${bam_meta}_viral_depth.txt > ${bam_meta}_viral_coverage.txt
-    
-    # Clean up temporary files
-    if [ -f "${bam_meta}_sorted.bam" ]; then
-        rm ${bam_meta}_sorted.bam ${bam_meta}_sorted.bam.bai
-    fi
-    if [ -f "${peaks}.sorted" ]; then
-        rm ${peaks}.sorted
-    fi
+    # Run the script
+    ./count_peak_reads.sh \\
+        -b $bam \\
+        -p $peaks \\
+        -c ${viral_chr} \\
+        -o ${bam_meta}
     """
 }
 
