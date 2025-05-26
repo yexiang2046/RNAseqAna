@@ -1,3 +1,0 @@
-process.container = 'nfcore/rnaseq:1.4.2'
-docker.enabled = true
-docker.runOptions       = '-u $(id -u):$(id -g)'
