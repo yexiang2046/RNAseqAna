@@ -48,7 +48,7 @@ fi
 
 # Count reads in peaks using bedtools
 echo "Counting reads in peaks..."
-bedtools coverage -a "$PEAKS_FILE" -b "$BAM_FILE" -counts -s -sorted > "${OUTPUT_PREFIX}_peak_counts.txt"
+bedtools coverage -a "$PEAKS_FILE" -b "$BAM_FILE" -counts -S > "${OUTPUT_PREFIX}_peak_counts.txt"
 
 # Calculate viral genome coverage
 echo "Calculating viral genome coverage..."
