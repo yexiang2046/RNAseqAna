@@ -59,8 +59,6 @@ process BAM_PREPROCESSING {
     # Clean up intermediate files
     rm ${bam.simpleName}_namesort.bam \
        ${bam.simpleName}_fixmate.bam \
-       ${bam.simpleName}_sorted.bam \
-       ${bam.simpleName}_sorted.bam.bai \
        ${bam.simpleName}_filtered.bam
     """
 } 
