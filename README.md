@@ -27,6 +27,7 @@ This pipeline performs:
 
 ```bash
 nextflow run rnaseq_pipeline.nf \
+    --cpus 8 \ # change base on your computer cpus
     --genome "genome.fasta" \
     --gtf "reference.gtf" \
     --outdir "results"
