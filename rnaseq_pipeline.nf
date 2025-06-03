@@ -7,10 +7,6 @@ include { FASTQC } from './modules/fastqc.nf'
 include { STAR_INDEX; ALIGN } from './modules/star_align.nf'
 include { TRIM } from './modules/fastp_trim.nf'
 include { FEATURECOUNT } from './modules/featurecount.nf'
-include { MULTIQC } from './modules/multiqc.nf'
-include { DE_ANALYSIS } from './modules/de_analysis.nf'
-include { FUNCTIONAL_ANALYSIS } from './modules/functional_analysis.nf'
-include { PIRANHA_PEAK_CALLING } from './modules/piranha_peak_calling.nf'
 
 
 /*
@@ -72,8 +68,6 @@ workflow RNASEQ {
 	// Run feature counting
 	FEATURECOUNT(file(params.gtf), ALIGN.out.bam.collect())
 
-	// Run DE analysis
-	DE_ANALYSIS(FEATURECOUNT.out, file(params.metadata))
 }
 
 workflow {
