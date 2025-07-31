@@ -16,6 +16,6 @@ process FEATURECOUNT {
 
 	script:
 	"""
-	featureCounts -T ${cpus} -p -t exon -g gene_id -F GTF -a ${gtf} -o counts.txt ${bamfile}
+	featureCounts -T ${cpus} -p --countReadPairs -B -t exon -g gene_id -F GTF -a ${gtf} -o counts.txt ${bamfile}
 	"""
 }
