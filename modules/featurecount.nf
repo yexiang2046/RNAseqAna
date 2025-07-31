@@ -9,10 +9,10 @@ process FEATURECOUNT {
 
 	input:
 	path    gtf
-    path    bamfile
+    	path    bamfile
 
-    output:
-    path    "*.txt"
+    	output:
+    	path    "*.txt"
 
 	script:
 	"""
