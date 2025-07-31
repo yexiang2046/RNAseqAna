@@ -35,12 +35,12 @@ nextflow run rnaseq_pipeline.nf \
 
 ### Step2: differential gene expression analysis
 ```bash
-docker run –w $(pwd) –v $(pwd):$(pwd) \
+docker run -w $(pwd) -v $(pwd):$(pwd) \
     xiang2019/rnaseq_renv:v1.0.1 \
     Rscript bin/edger.r \
-    –c counts.txt \
+    -c counts.txt \
     -m metadata.txt \
-    -o output_folder \
+    -o output_dir \
     -g path/to/gtf \
     -s human
 ```
