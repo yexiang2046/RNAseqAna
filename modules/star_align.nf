@@ -4,7 +4,7 @@
  */
 process STAR_INDEX {
 	container 'alexdobin/star:2.6.1d'
-	publishDir "${projectDir}", mode: 'copy'
+	publishDir "${params.outdir}", mode: 'copy'
 
 	input:
 	path refgenome
@@ -29,7 +29,7 @@ process STAR_INDEX {
 process ALIGN {
 	container 'alexdobin/star:2.6.1d'
 	tag "STAR on $sample_id"
-	publishDir "${projectDir}/aligned", mode: 'copy'
+	publishDir "${params.outdir}/aligned", mode: 'copy'
 	maxForks 1
 	input:
 	path star_index

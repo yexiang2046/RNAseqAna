@@ -5,7 +5,7 @@
 process DE_ANALYSIS {
     debug true
     container 'xiang2019/rnaseq_renv:v1.0.1'
-	publishDir "${projectDir}", mode:'copy'
+    publishDir "${params.outdir}", mode:'copy'
     input:
     path counts_file
     path metadata_file

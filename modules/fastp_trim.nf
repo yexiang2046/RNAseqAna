@@ -4,7 +4,7 @@
  */
 process TRIM {
 	tag "fastp on $sample_id"
-	publishDir "${projectDir}/trimmed", mode: 'copy'
+	publishDir "${params.outdir}/trimmed", mode: 'copy'
 	
 	container 'staphb/fastp:0.24.0'
 	
