@@ -9,15 +9,14 @@ process FEATURECOUNT {
 	publishDir "${params.outdir}/feature_counts", mode:'copy'
 
 	input:
-	path gtf
-	path bamfile
+	path    gtf
+    	path    bamfile
 
-	output:
-	path "counts.txt", emit: counts
-	path "counts.txt.summary", emit: summary
+    	output:
+    	path    "*.txt"
 
 	script:
 	"""
-	featureCounts -T ${task.cpus} -p -t exon -g gene_id -F GTF -a ${gtf} -o counts.txt ${bamfile}
+	featureCounts -T ${cpus} -p --countReadPairs -B -t exon -g gene_id -F GTF -a ${gtf} -o counts.txt ${bamfile}
 	"""
 }
