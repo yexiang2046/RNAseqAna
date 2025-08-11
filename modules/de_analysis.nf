@@ -9,15 +9,17 @@ process DE_ANALYSIS {
     input:
     path counts_file
     path metadata_file
+    path gtffile
+    val sp
     
     output:
-    path "*.csv"
-    path "PCA_plot.png"
-    path "DEG_barplot_*.png"
+    path "de_results/*.csv"
+    path "de_results/PCA_plot.png"
+    path "de_results/DEG_barplot_*.png"
 
     script:
     """
     mkdir -p de_results
-    edger.r --counts $counts_file --metadata $metadata_file --output "de_results"
+    edger.r -c $counts_file -g $gtffile  -m $metadata_file -o "de_results" -s $sp
     """
 }

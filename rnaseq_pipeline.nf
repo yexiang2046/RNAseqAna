@@ -24,6 +24,7 @@ params.aligneddir = "$projectDir/aligned"
 params.gtf = "$projectDir/gencode.v47.primary_assembly.basic.annotation.gtf"
 params.genome = "$projectDir/GRCh38.primary_assembly_KSHV.genome.fa"
 params.metadata = "$projectDir/metadata.txt"
+params.species = "human"
 
 
 
@@ -49,14 +50,15 @@ workflow RNASEQ {
 	}
 
 	// Create channel for read pairs - more flexible pattern
-	Channel
-	   	.fromFilePairs("${params.readspath}/*{_R1,_R2}_*.fastq.gz", checkIfExists: true)
-	   	.set { read_pairs_ch }
-	
-	// Check if any read pairs were found
-	if (read_pairs_ch.count().toInteger() == 0) {
-		error "No read pairs found in ${params.readspath} matching pattern *{_R1,_R2}_*.fastq.gz"
-	}
+        Channel
+                .fromFilePairs("${params.readspath}/*{_R1,_R2}_*.fastq.gz", checkIfExists: true)
+                .ifEmpty { error "No read pairs found in ${params.readspath} matching pattern *{_R1,_R2}_*.fastq.gz" }
+                .set { read_pairs_ch }
+
+        // Debug output for read pairs
+        println "DEBUG: Read pairs channel contents:"
+        read_pairs_ch.view()
+
 	
 	// Debug output for read pairs
 	println "DEBUG: Read pairs channel contents:"
@@ -87,7 +89,7 @@ workflow RNASEQ {
 	FEATURECOUNT(file(params.gtf), ALIGN.out.bam.collect())
 	
 	// Run deg analysis
-	DE_ANALYSIS(FEATURECOUNT.out.counts, file(params.metadata))
+	DE_ANALYSIS(FEATURECOUNT.out.counts, file(params.metadata), file(params.gtf), params.species)
 
 }
 

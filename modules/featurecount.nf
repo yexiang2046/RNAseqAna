@@ -3,20 +3,21 @@
  * given the GTF file and the BAM file
  */
 process FEATURECOUNT {
-	debug true
-	cpus = 8
-	container 'xiang2019/rnaseq_cmd:v1.0.0'
-	publishDir "${params.outdir}/feature_counts", mode:'copy'
+        debug true
+        cpus 8
+        container 'xiang2019/rnaseq_cmd:v1.0.0'
+        publishDir "${params.outdir}/feature_counts", mode:'copy'
 
-	input:
-	path    gtf
-    	path    bamfile
+        input:
+        path    gtf
+        path    bamfile
 
-    	output:
-    	path    "*.txt"
+        output:
+        path    "counts.txt", emit: counts
+        path    "counts.txt.summary"  // Optional: captures the summary for publishing
 
-	script:
-	"""
-	featureCounts -T ${cpus} -p --countReadPairs -B -t exon -g gene_id -F GTF -a ${gtf} -o counts.txt ${bamfile}
-	"""
+        script:
+        """
+        featureCounts -T ${task.cpus} -p --countReadPairs -B -t exon -g gene_id -F GTF -a ${gtf} -o counts.txt ${bamfile}
+        """
 }
