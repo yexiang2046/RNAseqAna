@@ -1,12 +1,23 @@
 # RNA-seq Analysis Pipeline
 
-A Nextflow pipeline for RNA-seq data analysis, including differential expression analysis using edgeR.
+A comprehensive Nextflow pipeline for RNA-seq data analysis, including quality control, alignment, feature counting, and differential expression analysis.
+
+## Overview
+
+This pipeline performs a complete RNA-seq analysis workflow:
+
+1. **Read Trimming**: fastp for adapter trimming and quality filtering
+2. **Genome Indexing**: STAR genome index generation
+3. **Read Alignment**: STAR for RNA-seq read alignment
+4. **Feature Counting**: featureCounts for gene expression quantification
+5. **Differential Expression**: edgeR-based differential gene expression analysis
+6. **Visualization**: PCA plots and DEG barplots
 
 ## Prerequisites
 
-- Nextflow (>=21.04.0)
-- R (>=4.0.0)
-- Required R packages:
+- **Nextflow** (>=21.04.0)
+- **Docker** or container runtime
+- **R** (>=4.0.0) with required packages:
   - edgeR
   - limma
   - pheatmap
@@ -14,40 +25,75 @@ A Nextflow pipeline for RNA-seq data analysis, including differential expression
   - optparse
   - tidyverse
 
-## Pipeline Overview
+## Pipeline Architecture
 
-This pipeline performs:
-1. Quality control and preprocessing of RNA-seq data
-2. Differential expression analysis using edgeR
-3. Visualization of results with heatmaps and plots
+The pipeline is organized into modular processes:
+
+- **TRIM**: Read trimming and quality filtering using fastp
+- **STAR_INDEX**: Genome index generation for STAR
+- **ALIGN**: RNA-seq read alignment using STAR
+- **FEATURECOUNT**: Gene expression quantification
+- **DE_ANALYSIS**: Differential expression analysis using edgeR
+
+## Input Requirements
+
+### Data folder with fastq.gz files
+```
+data/
+├── sample1_R1_001.fastq.gz
+├── sample1_R2_001.fastq.gz
+├── sample2_R1_001.fastq.gz
+├── sample2_R2_001.fastq.gz
+└── ...
+```
+
+### Required Files
+- **Genome FASTA**: Reference genome sequence file
+- **GTF Annotation**: Gene annotation file (e.g., GENCODE)
+- **Metadata**: Sample information file (tab-delimited)
+
+### Metadata File Format
+The `metadata.txt` file should be tab-delimited with:
+- **SampleID**: Sample identifier
+- **group**: Experimental group/condition
 
 ## Usage
 
-### Step1: trim reads -> align -> count
-
+### Basic Run
 ```bash
 nextflow run rnaseq_pipeline.nf \
-    --cpus 8 \ # change base on your computer cpus
-    --genome "genome.fasta" \
-    --gtf "reference.gtf" \
-    --outdir "results"
+    --readspath "data" \
+    --genome "path/to/genome.fa" \
+    --gtf "path/to/annotation.gtf" \
+    --metadata "metadata.txt" \
+    --outdir "results" \
+    --species human
 ```
 
-### Step2: differential gene expression analysis
-```bash
-docker run -w $(pwd) -v $(pwd):$(pwd) \
-    xiang2019/rnaseq_renv:v1.0.1 \
-    Rscript bin/edger.r \
-    -c counts.txt \
-    -m metadata.txt \
-    -o output_dir \
-    -g path/to/gtf \
-    -s human
+### Parameter Options
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--readspath` | "data" | Directory containing FASTQ files |
+| `--genome` | Required | Reference genome FASTA file |
+| `--gtf` | Required | Gene annotation GTF file |
+| `--metadata` | Required | Sample metadata file |
+| `--outdir` | "results" | Output directory |
+| `--cpus` | 12 | Number of CPU cores |
+| `--ram` | 60000000000 | Memory limit (~60GB) |
+| `--species` | "human" | Species for annotation |
+
+### Output Structure
+```
+results/
+├── trimmed/             # Trimmed FASTQ files
+├── star_index/          # STAR genome index
+├── aligned/             # Aligned BAM files
+├── feature_counts/      # Gene expression counts
+└── de_results/          # Differential expression results
+    ├── *.csv           # DE analysis results
+    ├── PCA_plot.png    # Principal component analysis
+    └── DEG_barplot_*.png # Differential gene plots
 ```
 
-### Metadata File Format
-
-The metadata.txt file should be tab-delimited with the following columns:
-- SampleID
-- group
 
