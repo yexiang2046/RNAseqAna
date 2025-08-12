@@ -1,11 +1,7 @@
 {
+	"name": "RNAseq R environment",
     "image": "xiang2019/rnaseq_renv:v1.0.1",
   
-    "customizations": {
-      "vscode": {
-        "extensions": ["dbaeumer.vscode-eslint"]
-      }
-    },
 	"containerEnv": {
 		"PATH": "${localEnv:PATH}",
 		"userHome": "${localEnv:HOME}",
@@ -38,8 +34,4 @@
 	},
 
     "forwardPorts": [3000]
-  }  "image": "mcr.microsoft.com/devcontainers/universal:2",
-  "features": {
-    "ghcr.io/devcontainers/features/aws-cli:1": {}
-  }
-}
+  }  
