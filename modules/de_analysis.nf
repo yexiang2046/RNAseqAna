@@ -15,7 +15,6 @@ process DE_ANALYSIS {
     output:
     path "de_results/*.csv"
     path "de_results/PCA_plot.png"
-    path "de_results/DEG_barplot_*.png"
 
     script:
     """
