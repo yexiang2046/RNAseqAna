@@ -14,8 +14,10 @@ option_list <- list(
   make_option(c("-m", "--metadata"), type = "character", help = "Path to metadata file"),
   make_option(c("-o", "--output"), type = "character", help = "Output directory for results"),
   make_option(c("-g", "--gtf"), type = "character", help = "Path to GTF annotation file"),
-  make_option(c("-s", "--species"), type = "character", default = "human", 
-             help = "Species for GO analysis (human or mouse)")
+  make_option(c("-s", "--species"), type = "character", default = "human",
+             help = "Species for GO analysis (human or mouse)"),
+  make_option(c("-p", "--paired"), type = "character", default = NULL,
+             help = "Column name in metadata for paired samples (e.g., 'patient_id', 'subject')")
 )
 
 # Parse command-line options
@@ -100,13 +102,33 @@ normalized_counts_with_annotations <- cbind(
   filtered_gene_annotations[row.names(normalized_counts), ],
   normalized_counts
 )
-write.csv(normalized_counts_with_annotations, 
+write.csv(normalized_counts_with_annotations,
           file = file.path(opt$output, "normalized_counts_CPM.csv"),
           row.names = FALSE)
 
 # Create design matrix
-design <- model.matrix(~0 + group)
-colnames(design) <- levels(group)
+# Check if paired analysis is requested
+if (!is.null(opt$paired)) {
+  # Verify the paired column exists in metadata
+  if (!(opt$paired %in% colnames(metaData))) {
+    stop(paste("Paired column", opt$paired, "not found in metadata"))
+  }
+
+  # Create paired factor
+  pair <- factor(metaData[[opt$paired]])
+
+  # Create design matrix with paired samples
+  design <- model.matrix(~pair + group)
+
+  cat("Performing paired analysis using column:", opt$paired, "\n")
+  cat("Design matrix formula: ~pair + group\n")
+} else {
+  # Unpaired design (original behavior)
+  design <- model.matrix(~0 + group)
+  colnames(design) <- levels(group)
+
+  cat("Performing unpaired analysis\n")
+}
 
 # Estimate dispersion
 y <- estimateDisp(y, design)
@@ -118,18 +140,53 @@ fit <- glmQLFit(y, design)
 group_levels <- levels(group)
 comparison_results <- list()
 
-for (i in 1:(length(group_levels) - 1)) {
-  for (j in (i + 1):length(group_levels)) {
-    contrast_name <- paste(group_levels[j], "vs", group_levels[i], sep = "_")
-    contrast <- makeContrasts(contrasts = paste(group_levels[j], "-", group_levels[i]), levels = design)
-    qlf <- glmQLFTest(fit, contrast = contrast)
-    results <- topTags(qlf, n = Inf)
-    # add annotation to results
-    results$table$gene_id <- rownames(results$table)
-    results$table$gene_name <- filtered_gene_annotations$gene_name[match(results$table$gene_id, filtered_gene_annotations$gene_id)]
-    results$table$gene_type <- filtered_gene_annotations$gene_type[match(results$table$gene_id, filtered_gene_annotations$gene_id)]
-    comparison_results[[contrast_name]] <- results
-    write.csv(results, file = file.path(opt$output, paste0("DEG_", contrast_name, ".csv")), row.names = FALSE)
+if (!is.null(opt$paired)) {
+  # Paired design: test coefficients directly
+  # The design matrix has intercept + pair effects + group effects
+  # For paired design with model ~pair + group, coefficients represent:
+  # - Intercept (baseline)
+  # - pair levels (except reference)
+  # - group levels (except reference)
+
+  # Find which coefficients correspond to groups
+  group_coefs <- grep("^group", colnames(design))
+
+  if (length(group_coefs) > 0) {
+    for (coef in group_coefs) {
+      coef_name <- colnames(design)[coef]
+      # Extract group name from coefficient name
+      group_name <- gsub("^group", "", coef_name)
+      contrast_name <- paste(group_name, "vs", levels(group)[1], sep = "_")
+
+      qlf <- glmQLFTest(fit, coef = coef)
+      results <- topTags(qlf, n = Inf)
+
+      # Add annotation to results
+      results$table$gene_id <- rownames(results$table)
+      results$table$gene_name <- filtered_gene_annotations$gene_name[match(results$table$gene_id, filtered_gene_annotations$gene_id)]
+      results$table$gene_type <- filtered_gene_annotations$gene_type[match(results$table$gene_id, filtered_gene_annotations$gene_id)]
+
+      comparison_results[[contrast_name]] <- results
+      write.csv(results, file = file.path(opt$output, paste0("DEG_", contrast_name, ".csv")), row.names = FALSE)
+    }
+  }
+} else {
+  # Unpaired design: use contrasts
+  for (i in 1:(length(group_levels) - 1)) {
+    for (j in (i + 1):length(group_levels)) {
+      contrast_name <- paste(group_levels[j], "vs", group_levels[i], sep = "_")
+      contrast <- makeContrasts(contrasts = paste(group_levels[j], "-", group_levels[i]), levels = design)
+      qlf <- glmQLFTest(fit, contrast = contrast)
+      results <- topTags(qlf, n = Inf)
+
+      # Add annotation to results
+      results$table$gene_id <- rownames(results$table)
+      results$table$gene_name <- filtered_gene_annotations$gene_name[match(results$table$gene_id, filtered_gene_annotations$gene_id)]
+      results$table$gene_type <- filtered_gene_annotations$gene_type[match(results$table$gene_id, filtered_gene_annotations$gene_id)]
+
+      comparison_results[[contrast_name]] <- results
+      write.csv(results, file = file.path(opt$output, paste0("DEG_", contrast_name, ".csv")), row.names = FALSE)
+    }
   }
 }
 
