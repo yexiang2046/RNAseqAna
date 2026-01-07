@@ -23,6 +23,7 @@ process TRIM {
 		--out2 ${sample_id}_2.fastq.gz \
 		--thread ${task.cpus} \
 		--detect_adapter_for_pe \
+		--cut_tail \
 		--cut_mean_quality 20 \
 		--cut_window_size 4
 	"""
