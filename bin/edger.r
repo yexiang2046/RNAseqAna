@@ -48,10 +48,9 @@ extract_gene_info <- function(gtf_file) {
 
 # Load count data and metadata
 counts <- read.delim(opt$counts, header = TRUE, skip = 1)
-colnames(counts) <- sapply(colnames(counts), function(x){strsplit(x, "_")}[[1]][1])
-colnames(counts) <- gsub("\\.", "-", colnames(counts))
-colnames(counts) <- gsub("^X", "", colnames(counts))
-colnames(counts) <- gsub("Aligned.sortedByCoord.out.bam", "", colnames(counts))
+# R converts column names: X14197.XZ.0003_S1_L005Aligned... -> X14197.XZ.0003_S1_L005Aligned...
+# Convert X14197.XZ.0003_S1_L005Aligned.sortedByCoord.out.bam -> 14197-XZ-3
+colnames(counts) <- gsub("^X(\\d+)\\.(\\w+)\\.0*(\\d+)_.*", "\\1-\\2-\\3", colnames(counts))
 # Extract gene expression counts (columns 7 onwards) 
 counts_matrix <- counts[,7:ncol(counts)]
 
@@ -117,11 +116,12 @@ if (!is.null(opt$paired)) {
   # Create paired factor
   pair <- factor(metaData[[opt$paired]])
 
-  # Create design matrix with paired samples
-  design <- model.matrix(~pair + group)
+  # Create design matrix with paired samples (use ~0 to remove intercept for consistent column naming)
+  design <- model.matrix(~0 + pair + group)
 
   cat("Performing paired analysis using column:", opt$paired, "\n")
-  cat("Design matrix formula: ~pair + group\n")
+  cat("Design matrix formula: ~0 + pair + group\n")
+  cat("Design matrix columns:", paste(colnames(design), collapse = ", "), "\n")
 } else {
   # Unpaired design (original behavior)
   design <- model.matrix(~0 + group)
@@ -141,24 +141,40 @@ group_levels <- levels(group)
 comparison_results <- list()
 
 if (!is.null(opt$paired)) {
-  # Paired design: test coefficients directly
-  # The design matrix has intercept + pair effects + group effects
-  # For paired design with model ~pair + group, coefficients represent:
-  # - Intercept (baseline)
-  # - pair levels (except reference)
-  # - group levels (except reference)
-
-  # Find which coefficients correspond to groups
-  group_coefs <- grep("^group", colnames(design))
-
-  if (length(group_coefs) > 0) {
-    for (coef in group_coefs) {
-      coef_name <- colnames(design)[coef]
-      # Extract group name from coefficient name
-      group_name <- gsub("^group", "", coef_name)
-      contrast_name <- paste(group_name, "vs", levels(group)[1], sep = "_")
-
-      qlf <- glmQLFTest(fit, coef = coef)
+  # Paired design: perform all pairwise comparisons using contrasts
+  # The design matrix includes pair effects, so contrasts control for pairing
+  # Note: reference group level won't have a column, so we need to handle that
+  
+  for (i in 1:(length(group_levels) - 1)) {
+    for (j in (i + 1):length(group_levels)) {
+      contrast_name <- paste(group_levels[j], "vs", group_levels[i], sep = "_")
+      
+      # Build contrast string: if group is in design matrix use it, otherwise use negative of others
+      group_j_col <- paste0("group", group_levels[j])
+      group_i_col <- paste0("group", group_levels[i])
+      
+      cat("Comparing:", contrast_name, "\n")
+      cat("  group_j_col:", group_j_col, "exists:", (group_j_col %in% colnames(design)), "\n")
+      cat("  group_i_col:", group_i_col, "exists:", (group_i_col %in% colnames(design)), "\n")
+      
+      # Check which columns exist in design matrix
+      if (group_j_col %in% colnames(design) & group_i_col %in% colnames(design)) {
+        contrast_str <- paste0("`", group_j_col, "` - `", group_i_col, "`")
+      } else if (group_j_col %in% colnames(design)) {
+        # group_i is reference, so contrast is just the group_j coefficient
+        contrast_str <- paste0("`", group_j_col, "`")
+      } else if (group_i_col %in% colnames(design)) {
+        # group_j is reference, so contrast is -group_i
+        contrast_str <- paste0("-`", group_i_col, "`")
+      } else {
+        # Both are reference level, skip
+        cat("  Skipping: both are reference level\n")
+        next
+      }
+      
+      cat("  contrast_str:", contrast_str, "\n")
+      contrast <- makeContrasts(contrasts = contrast_str, levels = design)
+      qlf <- glmQLFTest(fit, contrast = contrast)
       results <- topTags(qlf, n = Inf)
 
       # Add annotation to results
@@ -171,11 +187,12 @@ if (!is.null(opt$paired)) {
     }
   }
 } else {
-  # Unpaired design: use contrasts
+  # Unpaired design: use contrasts for all pairwise comparisons
   for (i in 1:(length(group_levels) - 1)) {
     for (j in (i + 1):length(group_levels)) {
       contrast_name <- paste(group_levels[j], "vs", group_levels[i], sep = "_")
-      contrast <- makeContrasts(contrasts = paste(group_levels[j], "-", group_levels[i]), levels = design)
+      contrast_str <- paste0("`", group_levels[j], "` - `", group_levels[i], "`")
+      contrast <- makeContrasts(contrasts = contrast_str, levels = design)
       qlf <- glmQLFTest(fit, contrast = contrast)
       results <- topTags(qlf, n = Inf)
 
@@ -199,8 +216,3 @@ pca_plot <- fviz_pca_ind(pca_data,
   ggtitle("PCA of Samples") +
   theme_classic()
 ggsave(filename = file.path(opt$output, "PCA_plot.png"), plot = pca_plot)
-
-
-
-
-
