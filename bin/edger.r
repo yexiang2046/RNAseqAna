@@ -245,7 +245,8 @@ pca_data <- prcomp(t(cpm(y, log = TRUE)), scale. = TRUE)
 pca_plot <- fviz_pca_ind(pca_data, 
                          label = "none", 
                          habillage = group, 
-                         addEllipses = FALSE) +
+                         addEllipses = FALSEk,
+                         mean.point = FALSE) +
   ggtitle("PCA of Samples") +
   theme_classic()
 ggsave(filename = file.path(opt$output, "PCA_plot.png"), plot = pca_plot)
