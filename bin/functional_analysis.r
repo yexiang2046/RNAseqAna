@@ -83,6 +83,73 @@ if (nrow(gene_entrez) < 5) {
 cat("Genes mapped to Entrez IDs:", nrow(gene_entrez), "\n")
 
 # =============================================================================
+# Helper Function: Remove Overlapping Gene Sets
+# =============================================================================
+
+#' Remove highly overlapping gene sets based on Jaccard similarity
+#'
+#' @param enrich_result enrichResult object from clusterProfiler
+#' @param overlap_cutoff Jaccard similarity threshold (default 0.7)
+#' @return Filtered enrichResult object
+remove_overlapping_genesets <- function(enrich_result, overlap_cutoff = 0.7) {
+  if (is.null(enrich_result) || nrow(enrich_result@result) == 0) {
+    return(enrich_result)
+  }
+
+  result_df <- enrich_result@result
+
+  # Extract gene lists for each term
+  gene_lists <- strsplit(result_df$geneID, "/")
+  names(gene_lists) <- result_df$ID
+
+  # Calculate pairwise Jaccard similarity
+  n_terms <- length(gene_lists)
+  if (n_terms < 2) {
+    return(enrich_result)
+  }
+
+  to_remove <- c()
+
+  for (i in 1:(n_terms - 1)) {
+    if (names(gene_lists)[i] %in% to_remove) next
+
+    for (j in (i + 1):n_terms) {
+      if (names(gene_lists)[j] %in% to_remove) next
+
+      genes_i <- gene_lists[[i]]
+      genes_j <- gene_lists[[j]]
+
+      # Calculate Jaccard similarity
+      intersection <- length(intersect(genes_i, genes_j))
+      union <- length(union(genes_i, genes_j))
+      jaccard <- intersection / union
+
+      if (jaccard > overlap_cutoff) {
+        # Remove the one with higher p-value (less significant)
+        pval_i <- result_df$pvalue[result_df$ID == names(gene_lists)[i]]
+        pval_j <- result_df$pvalue[result_df$ID == names(gene_lists)[j]]
+
+        if (pval_i <= pval_j) {
+          to_remove <- c(to_remove, names(gene_lists)[j])
+        } else {
+          to_remove <- c(to_remove, names(gene_lists)[i])
+          break  # Move to next i since current i is removed
+        }
+      }
+    }
+  }
+
+  # Filter result
+  if (length(to_remove) > 0) {
+    cat("  Removed", length(to_remove), "overlapping terms (>",
+        overlap_cutoff * 100, "% similarity)\n")
+    enrich_result@result <- result_df[!result_df$ID %in% to_remove, ]
+  }
+
+  return(enrich_result)
+}
+
+# =============================================================================
 # 1. Gene Ontology (GO) Enrichment Analysis
 # =============================================================================
 
@@ -99,14 +166,22 @@ tryCatch({
                      readable = TRUE)
 
   if (!is.null(ego_bp) && nrow(ego_bp@result) > 0) {
-    write.csv(ego_bp@result,
+    cat("GO BP enrichment: Found", nrow(ego_bp@result), "enriched terms\n")
+
+    # Remove overlapping gene sets
+    ego_bp_filtered <- remove_overlapping_genesets(ego_bp, overlap_cutoff = 0.7)
+
+    # Save filtered results
+    write.csv(ego_bp_filtered@result,
               file = file.path(output_dir, paste0("GO_BP_", comparison_name, ".csv")),
               row.names = FALSE)
 
-    pdf(file.path(output_dir, paste0("GO_BP_", comparison_name, ".pdf")), width = 10, height = 8)
-    print(dotplot(ego_bp, showCategory = 20, title = paste("GO BP -", comparison_name)))
-    dev.off()
-    cat("GO BP enrichment: Found", nrow(ego_bp@result), "enriched terms\n")
+    # Plot filtered results
+    if (nrow(ego_bp_filtered@result) > 0) {
+      pdf(file.path(output_dir, paste0("GO_BP_", comparison_name, ".pdf")), width = 10, height = 8)
+      print(dotplot(ego_bp_filtered, showCategory = 20, title = paste("GO BP -", comparison_name)))
+      dev.off()
+    }
   } else {
     cat("GO BP enrichment: No significant terms found\n")
   }
@@ -125,14 +200,22 @@ tryCatch({
                      readable = TRUE)
 
   if (!is.null(ego_mf) && nrow(ego_mf@result) > 0) {
-    write.csv(ego_mf@result,
+    cat("GO MF enrichment: Found", nrow(ego_mf@result), "enriched terms\n")
+
+    # Remove overlapping gene sets
+    ego_mf_filtered <- remove_overlapping_genesets(ego_mf, overlap_cutoff = 0.7)
+
+    # Save filtered results
+    write.csv(ego_mf_filtered@result,
               file = file.path(output_dir, paste0("GO_MF_", comparison_name, ".csv")),
               row.names = FALSE)
 
-    pdf(file.path(output_dir, paste0("GO_MF_", comparison_name, ".pdf")), width = 10, height = 8)
-    print(dotplot(ego_mf, showCategory = 20, title = paste("GO MF -", comparison_name)))
-    dev.off()
-    cat("GO MF enrichment: Found", nrow(ego_mf@result), "enriched terms\n")
+    # Plot filtered results
+    if (nrow(ego_mf_filtered@result) > 0) {
+      pdf(file.path(output_dir, paste0("GO_MF_", comparison_name, ".pdf")), width = 10, height = 8)
+      print(dotplot(ego_mf_filtered, showCategory = 20, title = paste("GO MF -", comparison_name)))
+      dev.off()
+    }
   } else {
     cat("GO MF enrichment: No significant terms found\n")
   }
@@ -151,14 +234,22 @@ tryCatch({
                      readable = TRUE)
 
   if (!is.null(ego_cc) && nrow(ego_cc@result) > 0) {
-    write.csv(ego_cc@result,
+    cat("GO CC enrichment: Found", nrow(ego_cc@result), "enriched terms\n")
+
+    # Remove overlapping gene sets
+    ego_cc_filtered <- remove_overlapping_genesets(ego_cc, overlap_cutoff = 0.7)
+
+    # Save filtered results
+    write.csv(ego_cc_filtered@result,
               file = file.path(output_dir, paste0("GO_CC_", comparison_name, ".csv")),
               row.names = FALSE)
 
-    pdf(file.path(output_dir, paste0("GO_CC_", comparison_name, ".pdf")), width = 10, height = 8)
-    print(dotplot(ego_cc, showCategory = 20, title = paste("GO CC -", comparison_name)))
-    dev.off()
-    cat("GO CC enrichment: Found", nrow(ego_cc@result), "enriched terms\n")
+    # Plot filtered results
+    if (nrow(ego_cc_filtered@result) > 0) {
+      pdf(file.path(output_dir, paste0("GO_CC_", comparison_name, ".pdf")), width = 10, height = 8)
+      print(dotplot(ego_cc_filtered, showCategory = 20, title = paste("GO CC -", comparison_name)))
+      dev.off()
+    }
   } else {
     cat("GO CC enrichment: No significant terms found\n")
   }
@@ -183,14 +274,22 @@ tryCatch({
     # Convert Entrez IDs to gene symbols for readability
     kegg <- setReadable(kegg, OrgDb = orgdb, keyType = "ENTREZID")
 
-    write.csv(kegg@result,
+    cat("KEGG enrichment: Found", nrow(kegg@result), "enriched pathways\n")
+
+    # Remove overlapping gene sets
+    kegg_filtered <- remove_overlapping_genesets(kegg, overlap_cutoff = 0.7)
+
+    # Save filtered results
+    write.csv(kegg_filtered@result,
               file = file.path(output_dir, paste0("KEGG_", comparison_name, ".csv")),
               row.names = FALSE)
 
-    pdf(file.path(output_dir, paste0("KEGG_", comparison_name, ".pdf")), width = 10, height = 8)
-    print(dotplot(kegg, showCategory = 20, title = paste("KEGG Pathways -", comparison_name)))
-    dev.off()
-    cat("KEGG enrichment: Found", nrow(kegg@result), "enriched pathways\n")
+    # Plot filtered results
+    if (nrow(kegg_filtered@result) > 0) {
+      pdf(file.path(output_dir, paste0("KEGG_", comparison_name, ".pdf")), width = 10, height = 8)
+      print(dotplot(kegg_filtered, showCategory = 20, title = paste("KEGG Pathways -", comparison_name)))
+      dev.off()
+    }
   } else {
     cat("KEGG enrichment: No significant pathways found\n")
   }
@@ -213,14 +312,22 @@ tryCatch({
                            readable = TRUE)
 
   if (!is.null(reactome) && nrow(reactome@result) > 0) {
-    write.csv(reactome@result,
+    cat("Reactome enrichment: Found", nrow(reactome@result), "enriched pathways\n")
+
+    # Remove overlapping gene sets
+    reactome_filtered <- remove_overlapping_genesets(reactome, overlap_cutoff = 0.7)
+
+    # Save filtered results
+    write.csv(reactome_filtered@result,
               file = file.path(output_dir, paste0("Reactome_", comparison_name, ".csv")),
               row.names = FALSE)
 
-    pdf(file.path(output_dir, paste0("Reactome_", comparison_name, ".pdf")), width = 10, height = 8)
-    print(dotplot(reactome, showCategory = 20, title = paste("Reactome Pathways -", comparison_name)))
-    dev.off()
-    cat("Reactome enrichment: Found", nrow(reactome@result), "enriched pathways\n")
+    # Plot filtered results
+    if (nrow(reactome_filtered@result) > 0) {
+      pdf(file.path(output_dir, paste0("Reactome_", comparison_name, ".pdf")), width = 10, height = 8)
+      print(dotplot(reactome_filtered, showCategory = 20, title = paste("Reactome Pathways -", comparison_name)))
+      dev.off()
+    }
   } else {
     cat("Reactome enrichment: No significant pathways found\n")
   }
@@ -296,6 +403,53 @@ tryCatch({
   }
 }, error = function(e) {
   cat("Error in GSEA HALLMARK:", e$message, "\n")
+})
+
+# =============================================================================
+# 5. Over-Representation Analysis (ORA) with HALLMARK gene sets
+# =============================================================================
+
+cat("\n=== Running ORA with HALLMARK gene sets ===\n")
+
+tryCatch({
+  # Get HALLMARK gene sets
+  hallmark <- msigdbr(species = species_msigdb, category = "H")
+
+  # Prepare term2gene format for enricher()
+  hallmark_t2g <- hallmark[, c("gs_name", "gene_symbol")]
+  colnames(hallmark_t2g) <- c("term", "gene")
+
+  # Use gene symbols from significant DEGs
+  ora_hallmark <- enricher(gene = gene_symbols,
+                          TERM2GENE = hallmark_t2g,
+                          pAdjustMethod = "BH",
+                          pvalueCutoff = 0.05,
+                          qvalueCutoff = 0.2)
+
+  if (!is.null(ora_hallmark) && nrow(ora_hallmark@result) > 0) {
+    cat("ORA HALLMARK: Found", nrow(ora_hallmark@result), "enriched gene sets\n")
+
+    # Remove overlapping gene sets
+    ora_hallmark_filtered <- remove_overlapping_genesets(ora_hallmark, overlap_cutoff = 0.7)
+
+    # Save filtered results
+    write.csv(ora_hallmark_filtered@result,
+              file = file.path(output_dir, paste0("ORA_HALLMARK_", comparison_name, ".csv")),
+              row.names = FALSE)
+
+    # Plot filtered results
+    if (nrow(ora_hallmark_filtered@result) > 0) {
+      pdf(file.path(output_dir, paste0("ORA_HALLMARK_", comparison_name, ".pdf")),
+          width = 10, height = 8)
+      print(dotplot(ora_hallmark_filtered, showCategory = 20,
+                   title = paste("ORA HALLMARK -", comparison_name)))
+      dev.off()
+    }
+  } else {
+    cat("ORA HALLMARK: No significant gene sets found\n")
+  }
+}, error = function(e) {
+  cat("Error in ORA HALLMARK:", e$message, "\n")
 })
 
 cat("\nFunctional analysis completed successfully!\n")
