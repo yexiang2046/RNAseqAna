@@ -245,7 +245,7 @@ pca_data <- prcomp(t(cpm(y, log = TRUE)), scale. = TRUE)
 pca_plot <- fviz_pca_ind(pca_data, 
                          label = "none", 
                          habillage = group, 
-                         addEllipses = FALSEk,
+                         addEllipses = FALSE,
                          mean.point = FALSE) +
   ggtitle("PCA of Samples") +
   theme_classic()
