@@ -5,6 +5,7 @@
 
 suppressPackageStartupMessages({
   library(clusterProfiler)
+  library(ReactomePA)
   library(fgsea)
   library(msigdbr)
   library(enrichplot)
@@ -351,28 +352,50 @@ tryCatch({
   gene_list <- de_results_complete$logFC
   names(gene_list) <- de_results_complete$gene_name
   gene_list <- sort(gene_list, decreasing = TRUE)
+  
+  # Remove duplicate gene names (keep first occurrence with highest |logFC|)
+  dup_idx <- duplicated(names(gene_list), fromLast = FALSE)
+  if (sum(dup_idx) > 0) {
+    cat("  Removed", sum(dup_idx), "duplicate gene names\n")
+    gene_list <- gene_list[!dup_idx]
+  }
 
   # Get HALLMARK gene sets
   hallmark <- msigdbr(species = species_msigdb, category = "H")
   hallmark_sets <- split(hallmark$gene_symbol, hallmark$gs_name)
+  # Convert to list of character vectors
+  hallmark_sets <- lapply(hallmark_sets, function(x) as.character(x))
 
-  # Run fgsea
-  fgsea_results <- fgsea(pathways = hallmark_sets,
-                        stats = gene_list,
-                        minSize = 15,
-                        maxSize = 500,
-                        nperm = 10000)
+  # Fix for BiocParallel issue
+  library(BiocParallel)
+  register(SerialParam())
 
-  # Order by padj
-  fgsea_results <- fgsea_results[order(fgsea_results$padj), ]
+  # Run fgseaMultilevel
+  fgsea_results <- fgseaMultilevel(pathways = hallmark_sets,
+                                   stats = gene_list,
+                                   minSize = 15,
+                                   maxSize = 500)
 
-  if (nrow(fgsea_results) > 0) {
-    write.csv(fgsea_results,
+  # Extract key columns and order by padj, excluding list-type columns
+  fgsea_output <- data.frame(
+    pathway = fgsea_results$pathway,
+    pval = fgsea_results$pval,
+    padj = fgsea_results$padj,
+    log2err = fgsea_results$log2err,
+    ES = fgsea_results$ES,
+    NES = fgsea_results$NES,
+    size = fgsea_results$size,
+    stringsAsFactors = FALSE
+  )
+  fgsea_output <- fgsea_output[order(fgsea_output$padj), ]
+
+  if (nrow(fgsea_output) > 0) {
+    write.csv(fgsea_output,
               file = file.path(output_dir, paste0("GSEA_HALLMARK_", comparison_name, ".csv")),
               row.names = FALSE)
 
     # Plot top 20 pathways
-    top_pathways <- head(fgsea_results, 20)
+    top_pathways <- head(fgsea_output, 20)
 
     pdf(file.path(output_dir, paste0("GSEA_HALLMARK_", comparison_name, ".pdf")),
         width = 12, height = 10)
@@ -381,7 +404,8 @@ tryCatch({
     plot_data <- data.frame(
       pathway = gsub("HALLMARK_", "", top_pathways$pathway),
       NES = top_pathways$NES,
-      padj = top_pathways$padj
+      padj = top_pathways$padj,
+      stringsAsFactors = FALSE
     )
     plot_data$pathway <- factor(plot_data$pathway, levels = rev(plot_data$pathway))
 
@@ -396,8 +420,8 @@ tryCatch({
     print(p)
     dev.off()
 
-    cat("GSEA HALLMARK: Analyzed", nrow(fgsea_results), "gene sets\n")
-    cat("GSEA HALLMARK: Found", sum(fgsea_results$padj < 0.05, na.rm = TRUE), "significant gene sets\n")
+    cat("GSEA HALLMARK: Analyzed", nrow(fgsea_output), "gene sets\n")
+    cat("GSEA HALLMARK: Found", sum(fgsea_output$padj < 0.05, na.rm = TRUE), "significant gene sets\n")
   } else {
     cat("GSEA HALLMARK: No results generated\n")
   }
