@@ -361,7 +361,7 @@ tryCatch({
   }
 
   # Get HALLMARK gene sets
-  hallmark <- msigdbr(species = species_msigdb, category = "H")
+  hallmark <- msigdbr(species = species_msigdb, collection = "H")
   hallmark_sets <- split(hallmark$gene_symbol, hallmark$gs_name)
   # Convert to list of character vectors
   hallmark_sets <- lapply(hallmark_sets, function(x) as.character(x))
@@ -437,7 +437,7 @@ cat("\n=== Running ORA with HALLMARK gene sets ===\n")
 
 tryCatch({
   # Get HALLMARK gene sets
-  hallmark <- msigdbr(species = species_msigdb, category = "H")
+  hallmark <- msigdbr(species = species_msigdb, collection = "H")
 
   # Prepare term2gene format for enricher()
   hallmark_t2g <- hallmark[, c("gs_name", "gene_symbol")]
