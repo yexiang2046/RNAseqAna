@@ -64,6 +64,39 @@ gene_annotations <- data.frame(
   gene_type = gene_info$gene_type[match(counts$Geneid, gene_info$gene_id)]
 )
 
+# Remove duplicate gene names by keeping the one with highest total expression
+# This prevents issues in downstream enrichment analyses
+n_before <- nrow(gene_annotations)
+dup_gene_names <- gene_annotations$gene_name[duplicated(gene_annotations$gene_name) |
+                                              duplicated(gene_annotations$gene_name, fromLast = TRUE)]
+dup_gene_names <- unique(dup_gene_names[!is.na(dup_gene_names)])
+
+if (length(dup_gene_names) > 0) {
+  cat("Found", length(dup_gene_names), "duplicated gene names\n")
+
+  # Calculate total expression for each gene
+  total_expr <- rowSums(counts_matrix)
+
+  # For each duplicated gene name, keep only the one with highest expression
+  genes_to_keep <- rep(TRUE, nrow(gene_annotations))
+  for (dup_name in dup_gene_names) {
+    dup_indices <- which(gene_annotations$gene_name == dup_name)
+    if (length(dup_indices) > 1) {
+      # Keep the one with highest total expression
+      max_expr_idx <- dup_indices[which.max(total_expr[dup_indices])]
+      genes_to_keep[dup_indices] <- FALSE
+      genes_to_keep[max_expr_idx] <- TRUE
+    }
+  }
+
+  # Filter counts_matrix and gene_annotations
+  counts_matrix <- counts_matrix[genes_to_keep, ]
+  gene_annotations <- gene_annotations[genes_to_keep, ]
+
+  n_after <- nrow(gene_annotations)
+  cat("Removed", n_before - n_after, "duplicate gene entries (kept highest expressed)\n")
+}
+
 metaData <- read.table(opt$metadata, header = TRUE)
 
 # order counts_matrix to metaData sample order with SampleId
