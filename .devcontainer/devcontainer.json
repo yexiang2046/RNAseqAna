@@ -1,6 +1,6 @@
 {
 	"name": "RNAseq R environment",
-    "image": "xiang2019/rnaseq_renv:v1.0.1",
+    "image": "xiang2019/rnaseq_renv:v1.0.2",
   
 	"containerEnv": {
 		"PATH": "${localEnv:PATH}",
