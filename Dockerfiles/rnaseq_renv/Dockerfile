@@ -2,7 +2,7 @@
 # Includes edgeR, clusterProfiler, functional enrichment tools
 # Version: v1.0.2 - Added ORA HALLMARK, geneset overlap filtering, gene deduplication
 
-FROM rocker/r-ver:4.3.2
+FROM bioconductor/bioconductor_docker:RELEASE_3_22
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
