@@ -1,22 +1,31 @@
 /*
  * process FUNCTIONAL_ANALYSIS
- * performs functional analysis on the differentially expressed genes
- * uses the clusterProfiler and fgsea packages
- * uses the msigdb database
+ * Performs comprehensive functional enrichment analysis on DEGs
+ * - Gene Ontology (BP, MF, CC)
+ * - KEGG pathways
+ * - Reactome pathways
+ * - GSEA with HALLMARK gene sets
  */
 process FUNCTIONAL_ANALYSIS {
-    debug true
+    tag "${comparison_name}"
     container 'xiang2019/rnaseq_renv:v1.0.0'
-    publishDir "${projectDir}/functional_analysis_results", mode:'copy'
+    publishDir "${params.outdir}/functional_analysis", mode: 'copy'
+
     input:
-    path de_results_files from de_results_ch
+    tuple val(comparison_name), path(deg_file)
 
     output:
-    path "functional_analysis_results/*"
+    path "functional_analysis_${comparison_name}/*", optional: true
 
     script:
+    def species = params.species ?: 'human'
     """
-    mkdir -p functional_analysis_results
-    Rscript bin/funtional_analysis.r
+    mkdir -p functional_analysis_${comparison_name}
+
+    Rscript ${projectDir}/bin/functional_analysis.r \\
+        ${deg_file} \\
+        functional_analysis_${comparison_name} \\
+        ${species} \\
+        ${comparison_name}
     """
 }

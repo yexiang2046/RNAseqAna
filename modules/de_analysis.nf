@@ -13,8 +13,9 @@ process DE_ANALYSIS {
     val sp
     
     output:
-    path "de_results/*.csv"
-    path "de_results/PCA_plot.png"
+    path "de_results/*.csv", emit: all_results
+    path "de_results/PCA_plot.png", emit: pca_plot
+    path "de_results/DEG_*.csv", emit: deg_files
 
     script:
     """

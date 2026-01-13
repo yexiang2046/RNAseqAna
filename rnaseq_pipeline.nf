@@ -8,6 +8,7 @@ include { STAR_INDEX; ALIGN } from './modules/star_align.nf'
 include { TRIM } from './modules/fastp_trim.nf'
 include { FEATURECOUNT } from './modules/featurecount.nf'
 include { DE_ANALYSIS } from './modules/de_analysis.nf'
+include { FUNCTIONAL_ANALYSIS } from './modules/functional_analysis.nf'
 
 
 /*
@@ -90,6 +91,20 @@ workflow RNASEQ {
 	
 	// Run deg analysis
 	DE_ANALYSIS(FEATURECOUNT.out.counts, file(params.metadata), file(params.gtf), params.species)
+
+	// Run functional analysis on DEG results (if enabled)
+	if (params.run_functional_analysis) {
+		// Transform DEG files to tuple with comparison name
+		DE_ANALYSIS.out.deg_files
+			.flatten()
+			.map { file ->
+				def comparison_name = file.name.replaceAll(/^DEG_(.+)\.csv$/, '$1')
+				tuple(comparison_name, file)
+			}
+			.set { deg_files_ch }
+
+		FUNCTIONAL_ANALYSIS(deg_files_ch)
+	}
 
 }
 
