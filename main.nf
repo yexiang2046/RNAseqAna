@@ -43,13 +43,18 @@ workflow RNASEQ {
 			.set { read_pairs_ch }
 	}
 
-	STAR_INDEX(refgenome)
+	if (params.star_index) {
+		star_index_ch = Channel.value(file(params.star_index, checkIfExists: true))
+	} else {
+		STAR_INDEX(refgenome)
+		star_index_ch = STAR_INDEX.out.star_index
+	}
 
 	// FASTQC(read_pairs_ch)
 
 	TRIM(read_pairs_ch)
 
-	ALIGN(STAR_INDEX.out, TRIM.out.trimmed_reads)
+	ALIGN(star_index_ch, TRIM.out.trimmed_reads)
 
 	FEATURECOUNT(params.gtf, ALIGN.out.bam.collect())
 
