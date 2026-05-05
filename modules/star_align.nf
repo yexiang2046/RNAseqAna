@@ -3,7 +3,6 @@
  * given the genome file
  */
 process STAR_INDEX {
-	container 'alexdobin/star:2.6.1d'
 	publishDir "${params.outdir}", mode: 'copy'
 
 	input:
@@ -27,7 +26,6 @@ process STAR_INDEX {
  * given the trimmed read pairs and the STAR index
  */
 process ALIGN {
-	container 'alexdobin/star:2.6.1d'
 	tag "STAR on $sample_id"
 	publishDir "${params.outdir}/aligned", mode: 'copy'
 	maxForks 1
