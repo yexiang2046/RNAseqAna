@@ -1,11 +1,10 @@
 /*
- * TRIM process - fastp quality control and trimming for paired-end RNA-seq
+ * TRIM process - fastp quality control and trimming
  * Best practices:
- * - Automatic adapter detection and trimming for PE reads
+ * - Automatic adapter detection and trimming
  * - Quality filtering (Q > 10 for alignment compatibility)
  * - PolyG tail trimming (for NovaSeq/NextSeq)
  * - Length filtering (min 36bp after trimming)
- * - Per-read overlap analysis for base correction
  * - 3' quality trimming with sliding window
  */
 process TRIM {
@@ -18,22 +17,24 @@ process TRIM {
 	tuple val(sample_id), path(reads)
 
 	output:
-	tuple val(sample_id), path("${sample_id}_{1,2}.fastq.gz"), emit: trimmed_reads
+	tuple val(sample_id), path("${sample_id}_*.fastq.gz"), emit: trimmed_reads
 	path "${sample_id}_fastp.json", emit: json
 	path "${sample_id}_fastp.html", emit: html
 
 	script:
+	def in2_arg   = params.single_end ? "" : "--in2 ${reads[1]}"
+	def out2_arg  = params.single_end ? "" : "--out2 ${sample_id}_2.fastq.gz"
+	def pe_args   = params.single_end ? "" : "--detect_adapter_for_pe --correction"
 	"""
 	fastp \
 		--in1 ${reads[0]} \
-		--in2 ${reads[1]} \
+		${in2_arg} \
 		--out1 ${sample_id}_1.fastq.gz \
-		--out2 ${sample_id}_2.fastq.gz \
+		${out2_arg} \
 		--json ${sample_id}_fastp.json \
 		--html ${sample_id}_fastp.html \
 		--thread ${task.cpus} \
-		--detect_adapter_for_pe \
-		--correction \
+		${pe_args} \
 		--qualified_quality_phred 10 \
 		--unqualified_percent_limit 40 \
 		--n_base_limit 5 \

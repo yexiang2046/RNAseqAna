@@ -1,11 +1,10 @@
 /*
- * define the MULTIQC process that performs multiqc analysis
- * given the project directory
+ * define the MULTIQC process that aggregates QC reports
+ * Inputs: fastp JSON reports, STAR Log.final.out files, featureCounts summary
  */
 process MULTIQC {
-	debug true
-	container 'xiang2019/rnaseq_cmd:v1.0.0'
-	publishDir "${params.projectDir}/multiqc_report", mode:'copy'
+	container 'multiqc/multiqc:pdf-v1.34'
+	publishDir "${params.outdir}/multiqc_report", mode: 'copy'
 
 	input:
 	path '*'
@@ -15,6 +14,6 @@ process MULTIQC {
 
 	script:
 	"""
-	multiqc .
+	multiqc . -o multiqc_report
 	"""
 }

@@ -37,11 +37,13 @@ process ALIGN {
 
 	output:
 	path("*Aligned.sortedByCoord.out.bam"), emit: bam
+	path("*Log.final.out"),                 emit: log
 
 	script:
+	def reads_arg = params.single_end ? "${reads[0]}" : "${reads[0]} ${reads[1]}"
 	"""
 	STAR --genomeDir ${star_index} \
-		--readFilesIn ${reads[0]} ${reads[1]} \
+		--readFilesIn ${reads_arg} \
 		--readFilesCommand zcat \
 		--runThreadN ${params.cpus} \
 		--genomeLoad NoSharedMemory \

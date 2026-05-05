@@ -14,10 +14,11 @@ process FEATURECOUNT {
 
         output:
         path    "counts.txt", emit: counts
-        path    "counts.txt.summary"  // Optional: captures the summary for publishing
+        path    "counts.txt.summary", emit: summary
 
         script:
+        def pe_args = params.single_end ? "" : "-p --countReadPairs -B"
         """
-        featureCounts -T ${task.cpus} -p --countReadPairs -B -t exon -g gene_id -F GTF -a ${gtf} -o counts.txt ${bamfile}
+        featureCounts -T ${task.cpus} ${pe_args} -t exon -g gene_id -F GTF -a ${gtf} -o counts.txt ${bamfile}
         """
 }
