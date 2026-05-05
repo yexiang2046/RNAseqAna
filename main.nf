@@ -42,23 +42,16 @@ workflow RNASEQ {
 			.fromFilePairs("${projectDir}/data/*{1,2}*.fastq.gz", checkIfExists: true)
 			.set { read_pairs_ch }
 	}
-	read_pairs_ch.view()
 
 	STAR_INDEX(refgenome)
-	STAR_INDEX.out.view()
-
 
 	// FASTQC(read_pairs_ch)
-	// FASTQC.out.view()
 
 	TRIM(read_pairs_ch)
-	TRIM.out.view()
 
-	ALIGN(STAR_INDEX.out, TRIM.out)
-	ALIGN.out.view()
+	ALIGN(STAR_INDEX.out, TRIM.out.trimmed_reads)
 
 	FEATURECOUNT(params.gtf, ALIGN.out.bam.collect())
-	FEATURECOUNT.out.view()
 
 	MULTIQC(
 		TRIM.out.json
