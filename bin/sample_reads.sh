@@ -54,6 +54,7 @@ sample_file() {
 
     echo "  $(basename "$infile") -> $outfile"
     docker run --rm \
+        --platform linux/amd64 \
         --user "$(id -u):$(id -g)" \
         -v "${indir}:/input:ro" \
         -v "${OUTDIR_ABS}:/output" \
