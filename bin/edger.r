@@ -46,13 +46,26 @@ extract_gene_info <- function(gtf_file) {
   return(gene_info)
 }
 
-# Load count data and metadata
-counts <- read.delim(opt$counts, header = TRUE, skip = 1)
-# R converts column names: X14197.XZ.0003_S1_L005Aligned... -> X14197.XZ.0003_S1_L005Aligned...
-# Convert X14197.XZ.0003_S1_L005Aligned.sortedByCoord.out.bam -> 14197-XZ-3
-colnames(counts) <- gsub("^X(\\d+)\\.(\\w+)\\.0*(\\d+)_.*", "\\1-\\2-\\3", colnames(counts))
-# Extract gene expression counts (columns 7 onwards) 
-counts_matrix <- counts[,7:ncol(counts)]
+# === LOAD COUNTS WITH ROBUST NAME CLEANING + DIAGNOSTICS ===
+counts <- read.delim(opt$counts, header = TRUE, skip = 1, check.names = FALSE)
+
+# Show raw names (so we can debug)
+cat("=== RAW column names from counts.txt (first 6) ===\n")
+print(head(colnames(counts), 6))
+
+# Clean the column names properly
+col_names <- basename(colnames(counts))                    # remove any folder path
+col_names <- gsub("Aligned\\.sortedByCoord\\.out\\.bam$", "", col_names)
+col_names <- gsub("\\.sortedByCoord\\.out\\.bam$", "", col_names)
+col_names <- gsub("\\.bam$", "", col_names)
+col_names <- gsub("^X", "", col_names)                    # remove R's occasional X prefix
+
+colnames(counts) <- col_names
+counts_matrix <- counts[, 7:ncol(counts)]
+
+cat("\n=== CLEANED sample names (first 6) ===\n")
+print(head(colnames(counts_matrix), 6))
+
 
 # Get gene annotations from GTF
 gene_info <- extract_gene_info(opt$gtf)
@@ -98,6 +111,20 @@ if (length(dup_gene_names) > 0) {
 }
 
 metaData <- read.table(opt$metadata, header = TRUE)
+
+# Safety check: do all metadata samples exist in the counts file?
+missing <- setdiff(metaData$SampleId, colnames(counts_matrix))
+if (length(missing) > 0) {
+  cat("\n❌ ERROR: These SampleIds from metadata.txt are MISSING in the counts file:\n")
+  print(missing)
+  stop("Sample name mismatch between metadata and featureCounts output.")
+} else {
+  cat("\n✅ All metadata samples found in counts file.\n")
+}
+
+# Show metadata SampleIds for comparison
+cat("\n=== Metadata SampleId (first 6) ===\n")
+print(head(metaData$SampleId, 6))
 
 # order counts_matrix to metaData sample order with SampleId
 counts_matrix <- counts_matrix[, metaData$SampleId]
@@ -240,13 +267,43 @@ if (!is.null(opt$paired)) {
   }
 }
 
-# Plot PCA
+# Plot PCA - All 6 pairwise combinations of first 4 PCs
 pca_data <- prcomp(t(cpm(y, log = TRUE)), scale. = TRUE)
-pca_plot <- fviz_pca_ind(pca_data, 
-                         label = "none", 
-                         habillage = group, 
-                         addEllipses = FALSE,
-                         mean.point = FALSE) +
-  ggtitle("PCA of Samples") +
-  theme_classic()
-ggsave(filename = file.path(opt$output, "PCA_plot.png"), plot = pca_plot)
+
+# Calculate percentage of variance explained by each PC
+var_explained <- pca_data$sdev^2 / sum(pca_data$sdev^2) * 100
+
+# Helper function to create a PCA plot for any pair of dimensions
+plot_pca_pair <- function(ax1, ax2) {
+  fviz_pca_ind(pca_data, 
+               axes = c(ax1, ax2),
+               label = "none", 
+               habillage = group, 
+               addEllipses = FALSE,
+               mean.point = FALSE) +
+    labs(x = sprintf("PC%d (%.1f%%)", ax1, var_explained[ax1]),
+         y = sprintf("PC%d (%.1f%%)", ax2, var_explained[ax2])) +
+    ggtitle(sprintf("PC%d vs PC%d", ax1, ax2)) +
+    theme_classic()
+}
+
+# Generate all 6 pairwise plots (exactly C(4,2) = 6 combinations)
+p12 <- plot_pca_pair(1, 2)
+p13 <- plot_pca_pair(1, 3)
+p14 <- plot_pca_pair(1, 4)
+p23 <- plot_pca_pair(2, 3)
+p24 <- plot_pca_pair(2, 4)
+p34 <- plot_pca_pair(3, 4)
+
+# Use patchwork for clean multi-panel layout (2 rows × 3 columns)
+library(patchwork)
+
+pca_multi <- (p12 + p13 + p14) / 
+             (p23 + p24 + p34) +
+  plot_annotation(title = "PCA of Samples - All Pairwise Plots (PC1 to PC4)",
+                  theme = theme(plot.title = element_text(size = 16, face = "bold")))
+
+# Save the combined plot (larger size to fit 6 panels nicely)
+ggsave(filename = file.path(opt$output, "PCA_multi_plot.png"), 
+       plot = pca_multi, 
+       width = 15, height = 10, dpi = 300)
