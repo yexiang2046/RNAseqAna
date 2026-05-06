@@ -18,10 +18,8 @@ params.ram = 60000000000 /* ~60GB */
 
 
 params.projectDir = "/home/xiang/Projects/RNAseqAna"
-params.starindex = "$projectDir/star_index"
-params.trimmeddir = "$projectDir/trimmed"
-params.aligneddir = "$projectDir/aligned"
-params.gtf = "$projectDir/gencode.v47.primary_assembly.basic.annotation.gtf"
+params.data_dir   = "${params.projectDir}/data"
+params.gtf        = "${params.projectDir}/gencode.v47.primary_assembly.basic.annotation.gtf"
 
 
 /*
@@ -34,12 +32,12 @@ workflow RNASEQ {
 
 	if (params.single_end) {
 		Channel
-			.fromPath("${projectDir}/data/*.fastq.gz", checkIfExists: true)
+			.fromPath("${params.data_dir}/*.fastq.gz", checkIfExists: true)
 			.map { file -> tuple(file.simpleName, [file]) }
 			.set { read_pairs_ch }
 	} else {
 		Channel
-			.fromFilePairs("${projectDir}/data/*{1,2}*.fastq.gz", checkIfExists: true)
+			.fromFilePairs("${params.data_dir}/*{1,2}*.fastq.gz", checkIfExists: true)
 			.set { read_pairs_ch }
 	}
 
