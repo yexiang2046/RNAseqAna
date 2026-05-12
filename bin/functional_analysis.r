@@ -17,13 +17,26 @@ suppressPackageStartupMessages({
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 4) {
-  stop("Usage: functional_analysis.r <deg_file> <output_dir> <species> <comparison_name>")
+  stop("Usage: functional_analysis.r <deg_file> <output_dir> <species> <comparison_name> [use_logfc_filter]\n",
+       "       use_logfc_filter: TRUE/1/yes  → FDR < 0.05 AND |logFC| > 1 (DEFAULT)\n",
+       "                         FALSE/0/no → FDR < 0.05 only")
 }
 
 deg_file <- args[1]
 output_dir <- args[2]
 species <- args[3]
 comparison_name <- args[4]
+
+# =============================================================================
+# Hard-coded default + optional command-line flag for logFC filter
+# =============================================================================
+# Default = TRUE  → FDR < 0.05 AND |logFC| > 1   (as requested)
+# Pass "FALSE", "0", "no", or "n" as 5th argument to use only FDR < 0.05
+if (length(args) >= 5) {
+  use_logfc <- !tolower(args[5]) %in% c("false", "0", "no", "n")
+} else {
+  use_logfc <- TRUE
+}
 
 # Set species-specific parameters
 if (tolower(species) == "human") {
@@ -40,6 +53,7 @@ if (tolower(species) == "human") {
 
 cat("Starting functional analysis for:", comparison_name, "\n")
 cat("Species:", species, "\n")
+cat("logFC filter enabled (FDR < 0.05 AND |logFC| > 1):", use_logfc, "\n")
 
 # Create output directory
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
@@ -47,13 +61,19 @@ dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 # Load differential expression results
 de_results <- read.csv(deg_file, stringsAsFactors = FALSE)
 
-# Filter significant DEGs (FDR < 0.05, |logFC| > 1)
-sig_genes <- de_results[!is.na(de_results$FDR) &
-                        de_results$FDR < 0.05 &
-                        abs(de_results$logFC) > 1, ]
+# Filter significant DEGs
+if (use_logfc) {
+  sig_genes <- de_results[!is.na(de_results$FDR) &
+                          de_results$FDR < 0.05 &
+                          abs(de_results$logFC) > 1, ]
+  cat("Significant DEGs (FDR < 0.05 AND |logFC| > 1):", nrow(sig_genes), "\n")
+} else {
+  sig_genes <- de_results[!is.na(de_results$FDR) &
+                          de_results$FDR < 0.05, ]
+  cat("Significant DEGs (FDR < 0.05 only):", nrow(sig_genes), "\n")
+}
 
 cat("Total genes:", nrow(de_results), "\n")
-cat("Significant DEGs:", nrow(sig_genes), "\n")
 
 # Check if we have enough genes
 if (nrow(sig_genes) < 5) {
@@ -167,12 +187,18 @@ tryCatch({
                      readable = TRUE)
 
   if (!is.null(ego_bp) && nrow(ego_bp@result) > 0) {
-    cat("GO BP enrichment: Found", nrow(ego_bp@result), "enriched terms\n")
+    n_full <- nrow(ego_bp@result)
+    cat("GO BP enrichment: Found", n_full, "enriched terms (before redundancy removal)\n")
+
+    # === SAVE FULL (ORIGINAL) RESULTS BEFORE removing redundant terms ===
+    write.csv(ego_bp@result,
+              file = file.path(output_dir, paste0("GO_BP_", comparison_name, "_full.csv")),
+              row.names = FALSE)
 
     # Remove overlapping gene sets
     ego_bp_filtered <- remove_overlapping_genesets(ego_bp, overlap_cutoff = 0.7)
 
-    # Save filtered results
+    # Save filtered results (original filename)
     write.csv(ego_bp_filtered@result,
               file = file.path(output_dir, paste0("GO_BP_", comparison_name, ".csv")),
               row.names = FALSE)
@@ -201,12 +227,18 @@ tryCatch({
                      readable = TRUE)
 
   if (!is.null(ego_mf) && nrow(ego_mf@result) > 0) {
-    cat("GO MF enrichment: Found", nrow(ego_mf@result), "enriched terms\n")
+    n_full <- nrow(ego_mf@result)
+    cat("GO MF enrichment: Found", n_full, "enriched terms (before redundancy removal)\n")
+
+    # === SAVE FULL (ORIGINAL) RESULTS BEFORE removing redundant terms ===
+    write.csv(ego_mf@result,
+              file = file.path(output_dir, paste0("GO_MF_", comparison_name, "_full.csv")),
+              row.names = FALSE)
 
     # Remove overlapping gene sets
     ego_mf_filtered <- remove_overlapping_genesets(ego_mf, overlap_cutoff = 0.7)
 
-    # Save filtered results
+    # Save filtered results (original filename)
     write.csv(ego_mf_filtered@result,
               file = file.path(output_dir, paste0("GO_MF_", comparison_name, ".csv")),
               row.names = FALSE)
@@ -235,12 +267,18 @@ tryCatch({
                      readable = TRUE)
 
   if (!is.null(ego_cc) && nrow(ego_cc@result) > 0) {
-    cat("GO CC enrichment: Found", nrow(ego_cc@result), "enriched terms\n")
+    n_full <- nrow(ego_cc@result)
+    cat("GO CC enrichment: Found", n_full, "enriched terms (before redundancy removal)\n")
+
+    # === SAVE FULL (ORIGINAL) RESULTS BEFORE removing redundant terms ===
+    write.csv(ego_cc@result,
+              file = file.path(output_dir, paste0("GO_CC_", comparison_name, "_full.csv")),
+              row.names = FALSE)
 
     # Remove overlapping gene sets
     ego_cc_filtered <- remove_overlapping_genesets(ego_cc, overlap_cutoff = 0.7)
 
-    # Save filtered results
+    # Save filtered results (original filename)
     write.csv(ego_cc_filtered@result,
               file = file.path(output_dir, paste0("GO_CC_", comparison_name, ".csv")),
               row.names = FALSE)
@@ -272,15 +310,21 @@ tryCatch({
                      qvalueCutoff = 0.2)
 
   if (!is.null(kegg) && nrow(kegg@result) > 0) {
-    # Convert Entrez IDs to gene symbols for readability
+    # Convert Entrez IDs to gene symbols for readability (on the full object)
     kegg <- setReadable(kegg, OrgDb = orgdb, keyType = "ENTREZID")
 
-    cat("KEGG enrichment: Found", nrow(kegg@result), "enriched pathways\n")
+    n_full <- nrow(kegg@result)
+    cat("KEGG enrichment: Found", n_full, "enriched pathways (before redundancy removal)\n")
+
+    # === SAVE FULL (ORIGINAL) RESULTS BEFORE removing redundant terms ===
+    write.csv(kegg@result,
+              file = file.path(output_dir, paste0("KEGG_", comparison_name, "_full.csv")),
+              row.names = FALSE)
 
     # Remove overlapping gene sets
     kegg_filtered <- remove_overlapping_genesets(kegg, overlap_cutoff = 0.7)
 
-    # Save filtered results
+    # Save filtered results (original filename)
     write.csv(kegg_filtered@result,
               file = file.path(output_dir, paste0("KEGG_", comparison_name, ".csv")),
               row.names = FALSE)
@@ -313,12 +357,18 @@ tryCatch({
                            readable = TRUE)
 
   if (!is.null(reactome) && nrow(reactome@result) > 0) {
-    cat("Reactome enrichment: Found", nrow(reactome@result), "enriched pathways\n")
+    n_full <- nrow(reactome@result)
+    cat("Reactome enrichment: Found", n_full, "enriched pathways (before redundancy removal)\n")
+
+    # === SAVE FULL (ORIGINAL) RESULTS BEFORE removing redundant terms ===
+    write.csv(reactome@result,
+              file = file.path(output_dir, paste0("Reactome_", comparison_name, "_full.csv")),
+              row.names = FALSE)
 
     # Remove overlapping gene sets
     reactome_filtered <- remove_overlapping_genesets(reactome, overlap_cutoff = 0.7)
 
-    # Save filtered results
+    # Save filtered results (original filename)
     write.csv(reactome_filtered@result,
               file = file.path(output_dir, paste0("Reactome_", comparison_name, ".csv")),
               row.names = FALSE)
@@ -451,12 +501,18 @@ tryCatch({
                           qvalueCutoff = 0.2)
 
   if (!is.null(ora_hallmark) && nrow(ora_hallmark@result) > 0) {
-    cat("ORA HALLMARK: Found", nrow(ora_hallmark@result), "enriched gene sets\n")
+    n_full <- nrow(ora_hallmark@result)
+    cat("ORA HALLMARK: Found", n_full, "enriched gene sets (before redundancy removal)\n")
+
+    # === SAVE FULL (ORIGINAL) RESULTS BEFORE removing redundant terms ===
+    write.csv(ora_hallmark@result,
+              file = file.path(output_dir, paste0("ORA_HALLMARK_", comparison_name, "_full.csv")),
+              row.names = FALSE)
 
     # Remove overlapping gene sets
     ora_hallmark_filtered <- remove_overlapping_genesets(ora_hallmark, overlap_cutoff = 0.7)
 
-    # Save filtered results
+    # Save filtered results (original filename)
     write.csv(ora_hallmark_filtered@result,
               file = file.path(output_dir, paste0("ORA_HALLMARK_", comparison_name, ".csv")),
               row.names = FALSE)
@@ -478,3 +534,5 @@ tryCatch({
 
 cat("\nFunctional analysis completed successfully!\n")
 cat("Results saved to:", output_dir, "\n")
+cat("   → _full.csv files contain the original enrichment results (before removing redundant terms)\n")
+cat("   → .csv files contain the filtered (non-redundant) results\n")
