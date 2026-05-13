@@ -16,19 +16,13 @@ A comprehensive Nextflow pipeline for RNA-seq data analysis, including quality c
 
 6. **Differential Expression**: edgeR-based differential gene expression (`bin/edger.r`)
 7. **Functional Analysis**: GO, KEGG, Reactome, and GSEA enrichment analysis (`bin/functional_analysis.r`)
+8. **Heatmap**: DEG expression heatmap across samples (`bin/heatmap.r`)
 
 ## Prerequisites
 
 - **Nextflow** (>=21.04.0)
 - **Docker** or container runtime
-- **R** (>=4.0.0) with required packages for downstream analysis:
-  - edgeR, limma
-  - clusterProfiler, ReactomePA
-  - fgsea, msigdbr
-  - enrichplot, ggplot2
-  - org.Hs.eg.db, org.Mm.eg.db
-  - BiocParallel
-  - optparse, tidyverse
+- **Docker** image `xiang2019/rnaseq_renv:v1.0.2` for all downstream R scripts (edgeR, functional analysis, heatmap)
 
 ## Pipeline Architecture
 
@@ -105,12 +99,16 @@ nextflow run main.nf -resume
 Run after the Nextflow pipeline produces a count matrix:
 
 ```bash
-Rscript bin/edger.r \
-    -c results/feature_counts/counts.txt \
-    -m metadata.txt \
-    -g /path/to/annotation.gtf \
-    -o de_results \
-    -s human
+docker run --rm \
+    --user "$(id -u):$(id -g)" \
+    -v "$(pwd):/data" \
+    xiang2019/rnaseq_renv:v1.0.2 \
+    Rscript /data/bin/edger.r \
+        -c /data/results/feature_counts/counts.txt \
+        -m /data/metadata.txt \
+        -g /data/annotation.gtf \
+        -o /data/de_results \
+        -s human
 ```
 
 | Option | Description |
@@ -128,18 +126,95 @@ Rscript bin/edger.r \
 Run on each DEG file produced by `edger.r`:
 
 ```bash
-Rscript bin/functional_analysis.r \
-    de_results/DEG_<comparison>.csv \
-    functional_analysis_<comparison> \
-    human \
-    <comparison_name>
+docker run --rm \
+    --user "$(id -u):$(id -g)" \
+    -v "$(pwd):/data" \
+    xiang2019/rnaseq_renv:v1.0.2 \
+    Rscript /data/bin/functional_analysis.r \
+        /data/de_results/DEG_<comparison>.csv \
+        /data/functional_analysis_<comparison> \
+        human \
+        <comparison_name>
 ```
 
 Pass `FALSE` as a 5th argument to use FDR < 0.05 only (default requires FDR < 0.05 **and** |logFC| > 1):
 
 ```bash
-Rscript bin/functional_analysis.r DEG_KO_vs_WT.csv output_dir human KO_vs_WT FALSE
+docker run --rm \
+    --user "$(id -u):$(id -g)" \
+    -v "$(pwd):/data" \
+    xiang2019/rnaseq_renv:v1.0.2 \
+    Rscript /data/bin/functional_analysis.r \
+        /data/de_results/DEG_KO_vs_WT.csv \
+        /data/functional_analysis_KO_vs_WT \
+        human KO_vs_WT FALSE
 ```
+
+### Heatmap
+
+Run on DEG files and normalized counts from `edger.r`:
+
+```bash
+# Single comparison
+docker run --rm \
+    --user "$(id -u):$(id -g)" \
+    -v "$(pwd):/data" \
+    xiang2019/rnaseq_renv:v1.0.2 \
+    Rscript /data/bin/heatmap.r \
+        -d /data/de_results/DEG_KO_vs_WT.csv \
+        -n /data/de_results/normalized_counts_CPM.csv \
+        -m /data/metadata.txt \
+        -o /data/heatmaps
+
+# Union of DEGs from multiple comparisons
+docker run --rm \
+    --user "$(id -u):$(id -g)" \
+    -v "$(pwd):/data" \
+    xiang2019/rnaseq_renv:v1.0.2 \
+    Rscript /data/bin/heatmap.r \
+        -d /data/de_results/DEG_KO_vs_WT.csv,/data/de_results/DEG_OE_vs_WT.csv \
+        -n /data/de_results/normalized_counts_CPM.csv \
+        -m /data/metadata.txt \
+        --prefix KO_OE_union \
+        -o /data/heatmaps
+
+# Multiple counts files (e.g. separate experiments), with sample ordering and gaps
+docker run --rm \
+    --user "$(id -u):$(id -g)" \
+    -v "$(pwd):/data" \
+    xiang2019/rnaseq_renv:v1.0.2 \
+    Rscript /data/bin/heatmap.r \
+        -d /data/de_results/DEG_KO_vs_WT.csv \
+        -n /data/exp1/normalized_counts_CPM.csv,/data/exp2/normalized_counts_CPM.csv \
+        --samples "WT_1,WT_2,WT_3,KO_1,KO_2,KO_3" \
+        --gap_samples "WT_3" \
+        -o /data/heatmaps
+
+# Stricter thresholds, FDR only (no logFC filter), cap at 50 genes
+docker run --rm \
+    --user "$(id -u):$(id -g)" \
+    -v "$(pwd):/data" \
+    xiang2019/rnaseq_renv:v1.0.2 \
+    Rscript /data/bin/heatmap.r \
+        -d /data/de_results/DEG_KO_vs_WT.csv \
+        -n /data/de_results/normalized_counts_CPM.csv \
+        --fdr 0.01 --use_logfc FALSE --max_genes 50 \
+        -o /data/heatmaps
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-d` / `--deg` | required | Comma-separated DEG CSV file(s); significant genes are unioned |
+| `-n` / `--norm_counts` | required | Comma-separated normalized counts CPM CSV file(s); merged by `gene_id` |
+| `-m` / `--metadata` | — | Metadata file for column annotation (SampleId + group columns) |
+| `-o` / `--output` | `.` | Output directory |
+| `-f` / `--fdr` | `0.05` | FDR threshold |
+| `-l` / `--logfc` | `1.0` | Minimum \|logFC\| threshold |
+| `--use_logfc` | `TRUE` | `FALSE` to filter by FDR only |
+| `--max_genes` | `100` | Max genes to plot, ranked by max \|logFC\| across comparisons |
+| `--samples` | all | Comma-separated sample IDs to include, in display order |
+| `--gap_samples` | — | Comma-separated sample IDs after which to draw a column gap; disables column clustering |
+| `--prefix` | from filename | Output file prefix |
 
 ## Functional Analysis Details
 
@@ -184,6 +259,10 @@ functional_analysis_<comparison>/    # From functional_analysis.r
 ├── Reactome_<comparison>.csv / .pdf
 ├── GSEA_HALLMARK_<comparison>.csv / .pdf
 └── ORA_HALLMARK_<comparison>.csv / .pdf
+
+heatmaps/                            # From heatmap.r
+├── heatmap_<prefix>.pdf
+└── heatmap_<prefix>.png
 ```
 
 ## Setup
