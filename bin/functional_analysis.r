@@ -17,9 +17,11 @@ suppressPackageStartupMessages({
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 4) {
-  stop("Usage: functional_analysis.r <deg_file> <output_dir> <species> <comparison_name> [use_logfc_filter]\n",
+  stop("Usage: functional_analysis.r <deg_file> <output_dir> <species> <comparison_name> [use_logfc_filter] [sig_only]\n",
        "       use_logfc_filter: TRUE/1/yes  → FDR < 0.05 AND |logFC| > 1 (DEFAULT)\n",
-       "                         FALSE/0/no → FDR < 0.05 only")
+       "                         FALSE/0/no → FDR < 0.05 only\n",
+       "       sig_only:         TRUE/1/yes → save only significant results (padj < 0.05)\n",
+       "                         FALSE/0/no → save all results (DEFAULT)")
 }
 
 deg_file <- args[1]
@@ -27,15 +29,19 @@ output_dir <- args[2]
 species <- args[3]
 comparison_name <- args[4]
 
-# =============================================================================
-# Hard-coded default + optional command-line flag for logFC filter
-# =============================================================================
-# Default = TRUE  → FDR < 0.05 AND |logFC| > 1   (as requested)
+# Default = TRUE  → FDR < 0.05 AND |logFC| > 1
 # Pass "FALSE", "0", "no", or "n" as 5th argument to use only FDR < 0.05
 if (length(args) >= 5) {
   use_logfc <- !tolower(args[5]) %in% c("false", "0", "no", "n")
 } else {
   use_logfc <- TRUE
+}
+
+# Default = FALSE → save all results; pass TRUE to save only padj < 0.05
+if (length(args) >= 6) {
+  sig_only <- tolower(args[6]) %in% c("true", "1", "yes", "y")
+} else {
+  sig_only <- FALSE
 }
 
 # Set species-specific parameters
@@ -54,6 +60,7 @@ if (tolower(species) == "human") {
 cat("Starting functional analysis for:", comparison_name, "\n")
 cat("Species:", species, "\n")
 cat("logFC filter enabled (FDR < 0.05 AND |logFC| > 1):", use_logfc, "\n")
+cat("Significant results only (padj < 0.05):", sig_only, "\n")
 
 # Create output directory
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
@@ -171,6 +178,17 @@ remove_overlapping_genesets <- function(enrich_result, overlap_cutoff = 0.7) {
 }
 
 # =============================================================================
+# Helper: optionally keep only significant rows (padj < 0.05)
+# Applies to ORA enrichResult@result (p.adjust column) and GSEA data frames (padj column)
+# =============================================================================
+
+filter_significant <- function(df, padj_col = "p.adjust", cutoff = 0.05) {
+  if (!sig_only) return(df)
+  if (!padj_col %in% colnames(df)) return(df)
+  df[!is.na(df[[padj_col]]) & df[[padj_col]] < cutoff, ]
+}
+
+# =============================================================================
 # 1. Gene Ontology (GO) Enrichment Analysis
 # =============================================================================
 
@@ -199,12 +217,14 @@ tryCatch({
     ego_bp_filtered <- remove_overlapping_genesets(ego_bp, overlap_cutoff = 0.7)
 
     # Save filtered results (original filename)
-    write.csv(ego_bp_filtered@result,
+    write.csv(filter_significant(ego_bp_filtered@result),
               file = file.path(output_dir, paste0("GO_BP_", comparison_name, ".csv")),
               row.names = FALSE)
 
     # Plot filtered results
-    if (nrow(ego_bp_filtered@result) > 0) {
+    plot_df <- filter_significant(ego_bp_filtered@result)
+    if (nrow(plot_df) > 0) {
+      ego_bp_filtered@result <- plot_df
       pdf(file.path(output_dir, paste0("GO_BP_", comparison_name, ".pdf")), width = 10, height = 8)
       print(dotplot(ego_bp_filtered, showCategory = 20, title = paste("GO BP -", comparison_name)))
       dev.off()
@@ -239,12 +259,14 @@ tryCatch({
     ego_mf_filtered <- remove_overlapping_genesets(ego_mf, overlap_cutoff = 0.7)
 
     # Save filtered results (original filename)
-    write.csv(ego_mf_filtered@result,
+    write.csv(filter_significant(ego_mf_filtered@result),
               file = file.path(output_dir, paste0("GO_MF_", comparison_name, ".csv")),
               row.names = FALSE)
 
     # Plot filtered results
-    if (nrow(ego_mf_filtered@result) > 0) {
+    plot_df <- filter_significant(ego_mf_filtered@result)
+    if (nrow(plot_df) > 0) {
+      ego_mf_filtered@result <- plot_df
       pdf(file.path(output_dir, paste0("GO_MF_", comparison_name, ".pdf")), width = 10, height = 8)
       print(dotplot(ego_mf_filtered, showCategory = 20, title = paste("GO MF -", comparison_name)))
       dev.off()
@@ -279,12 +301,14 @@ tryCatch({
     ego_cc_filtered <- remove_overlapping_genesets(ego_cc, overlap_cutoff = 0.7)
 
     # Save filtered results (original filename)
-    write.csv(ego_cc_filtered@result,
+    write.csv(filter_significant(ego_cc_filtered@result),
               file = file.path(output_dir, paste0("GO_CC_", comparison_name, ".csv")),
               row.names = FALSE)
 
     # Plot filtered results
-    if (nrow(ego_cc_filtered@result) > 0) {
+    plot_df <- filter_significant(ego_cc_filtered@result)
+    if (nrow(plot_df) > 0) {
+      ego_cc_filtered@result <- plot_df
       pdf(file.path(output_dir, paste0("GO_CC_", comparison_name, ".pdf")), width = 10, height = 8)
       print(dotplot(ego_cc_filtered, showCategory = 20, title = paste("GO CC -", comparison_name)))
       dev.off()
@@ -325,12 +349,14 @@ tryCatch({
     kegg_filtered <- remove_overlapping_genesets(kegg, overlap_cutoff = 0.7)
 
     # Save filtered results (original filename)
-    write.csv(kegg_filtered@result,
+    write.csv(filter_significant(kegg_filtered@result),
               file = file.path(output_dir, paste0("KEGG_", comparison_name, ".csv")),
               row.names = FALSE)
 
     # Plot filtered results
-    if (nrow(kegg_filtered@result) > 0) {
+    plot_df <- filter_significant(kegg_filtered@result)
+    if (nrow(plot_df) > 0) {
+      kegg_filtered@result <- plot_df
       pdf(file.path(output_dir, paste0("KEGG_", comparison_name, ".pdf")), width = 10, height = 8)
       print(dotplot(kegg_filtered, showCategory = 20, title = paste("KEGG Pathways -", comparison_name)))
       dev.off()
@@ -369,12 +395,14 @@ tryCatch({
     reactome_filtered <- remove_overlapping_genesets(reactome, overlap_cutoff = 0.7)
 
     # Save filtered results (original filename)
-    write.csv(reactome_filtered@result,
+    write.csv(filter_significant(reactome_filtered@result),
               file = file.path(output_dir, paste0("Reactome_", comparison_name, ".csv")),
               row.names = FALSE)
 
     # Plot filtered results
-    if (nrow(reactome_filtered@result) > 0) {
+    plot_df <- filter_significant(reactome_filtered@result)
+    if (nrow(plot_df) > 0) {
+      reactome_filtered@result <- plot_df
       pdf(file.path(output_dir, paste0("Reactome_", comparison_name, ".pdf")), width = 10, height = 8)
       print(dotplot(reactome_filtered, showCategory = 20, title = paste("Reactome Pathways -", comparison_name)))
       dev.off()
@@ -439,13 +467,16 @@ tryCatch({
   )
   fgsea_output <- fgsea_output[order(fgsea_output$padj), ]
 
-  if (nrow(fgsea_output) > 0) {
-    write.csv(fgsea_output,
+  # Apply sig_only filter (padj column in fgsea output)
+  fgsea_save <- filter_significant(fgsea_output, padj_col = "padj")
+
+  if (nrow(fgsea_save) > 0) {
+    write.csv(fgsea_save,
               file = file.path(output_dir, paste0("GSEA_HALLMARK_", comparison_name, ".csv")),
               row.names = FALSE)
 
     # Plot top 20 pathways
-    top_pathways <- head(fgsea_output, 20)
+    top_pathways <- head(fgsea_save, 20)
 
     pdf(file.path(output_dir, paste0("GSEA_HALLMARK_", comparison_name, ".pdf")),
         width = 12, height = 10)
@@ -471,9 +502,10 @@ tryCatch({
     dev.off()
 
     cat("GSEA HALLMARK: Analyzed", nrow(fgsea_output), "gene sets\n")
-    cat("GSEA HALLMARK: Found", sum(fgsea_output$padj < 0.05, na.rm = TRUE), "significant gene sets\n")
+    cat("GSEA HALLMARK: Saved", nrow(fgsea_save), "gene sets",
+        if (sig_only) "(padj < 0.05 only)" else "(all)", "\n")
   } else {
-    cat("GSEA HALLMARK: No results generated\n")
+    cat("GSEA HALLMARK: No", if (sig_only) "significant" else "", "results to save\n")
   }
 }, error = function(e) {
   cat("Error in GSEA HALLMARK:", e$message, "\n")
@@ -513,12 +545,14 @@ tryCatch({
     ora_hallmark_filtered <- remove_overlapping_genesets(ora_hallmark, overlap_cutoff = 0.7)
 
     # Save filtered results (original filename)
-    write.csv(ora_hallmark_filtered@result,
+    write.csv(filter_significant(ora_hallmark_filtered@result),
               file = file.path(output_dir, paste0("ORA_HALLMARK_", comparison_name, ".csv")),
               row.names = FALSE)
 
     # Plot filtered results
-    if (nrow(ora_hallmark_filtered@result) > 0) {
+    plot_df <- filter_significant(ora_hallmark_filtered@result)
+    if (nrow(plot_df) > 0) {
+      ora_hallmark_filtered@result <- plot_df
       pdf(file.path(output_dir, paste0("ORA_HALLMARK_", comparison_name, ".pdf")),
           width = 10, height = 8)
       print(dotplot(ora_hallmark_filtered, showCategory = 20,
@@ -534,5 +568,6 @@ tryCatch({
 
 cat("\nFunctional analysis completed successfully!\n")
 cat("Results saved to:", output_dir, "\n")
-cat("   → _full.csv files contain the original enrichment results (before removing redundant terms)\n")
-cat("   → .csv files contain the filtered (non-redundant) results\n")
+cat("   → _full.csv  original enrichment results (before redundancy removal)\n")
+cat("   → .csv       non-redundant results",
+    if (sig_only) "(padj < 0.05 only)" else "(all terms)", "\n")

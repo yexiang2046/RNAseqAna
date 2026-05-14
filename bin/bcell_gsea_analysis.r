@@ -23,9 +23,11 @@ suppressPackageStartupMessages({
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 4) {
-  stop("Usage: bcell_gsea_analysis.r <deg_file> <output_dir> <species> <comparison_name> [use_logfc_filter]\n",
+  stop("Usage: bcell_gsea_analysis.r <deg_file> <output_dir> <species> <comparison_name> [use_logfc_filter] [sig_only]\n",
        "       use_logfc_filter: TRUE/1/yes  → FDR < 0.05 AND |logFC| > 1 (DEFAULT)\n",
-       "                         FALSE/0/no → FDR < 0.05 only")
+       "                         FALSE/0/no → FDR < 0.05 only\n",
+       "       sig_only:         TRUE/1/yes → save only significant results (padj < 0.05)\n",
+       "                         FALSE/0/no → save all results (DEFAULT)")
 }
 
 deg_file <- args[1]
@@ -33,13 +35,16 @@ output_dir <- args[2]
 species <- args[3]
 comparison_name <- args[4]
 
-# =============================================================================
-# Hard-coded default + optional command-line flag for logFC filter
-# =============================================================================
 if (length(args) >= 5) {
   use_logfc <- !tolower(args[5]) %in% c("false", "0", "no", "n")
 } else {
   use_logfc <- TRUE
+}
+
+if (length(args) >= 6) {
+  sig_only <- tolower(args[6]) %in% c("true", "1", "yes", "y")
+} else {
+  sig_only <- FALSE
 }
 
 # Set species-specific parameters
@@ -54,6 +59,7 @@ if (tolower(species) == "human") {
 cat("Starting B-cell focused GSEA for:", comparison_name, "\n")
 cat("Species:", species, "\n")
 cat("logFC filter enabled (FDR < 0.05 AND |logFC| > 1):", use_logfc, "\n")
+cat("Significant results only (padj < 0.05):", sig_only, "\n")
 
 # Create output directory
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
@@ -117,36 +123,49 @@ run_bcell_gsea <- function(pathways_list, collection_name, output_prefix, minSiz
   )
   fgsea_output <- fgsea_output[order(fgsea_output$padj), ]
 
-  # Save full results
-  write.csv(fgsea_output,
+  # Apply sig_only filter before saving and plotting
+  fgsea_save <- if (sig_only) {
+    fgsea_output[!is.na(fgsea_output$padj) & fgsea_output$padj < 0.05, ]
+  } else {
+    fgsea_output
+  }
+
+  write.csv(fgsea_save,
             file = file.path(output_dir, paste0(output_prefix, "_", comparison_name, ".csv")),
             row.names = FALSE)
 
   n_sig <- sum(fgsea_output$padj < 0.05, na.rm = TRUE)
   cat(collection_name, ": Analyzed", length(pathways_list), "gene sets\n")
   cat(collection_name, ": Found", n_sig, "significant gene sets (padj < 0.05)\n")
+  cat(collection_name, ": Saved", nrow(fgsea_save), "gene sets",
+      if (sig_only) "(padj < 0.05 only)" else "(all)", "\n")
 
   # =============================================================================
   # Plot top 20 pathways – now handles SUPER LONG names
   # =============================================================================
-  if (nrow(fgsea_output) > 0) {
-    top_pathways <- head(fgsea_output[order(abs(fgsea_output$NES), decreasing = TRUE), ], 20)
-    
+  if (nrow(fgsea_save) > 0) {
+    top_pathways <- head(fgsea_save[order(abs(fgsea_save$NES), decreasing = TRUE), ], 20)
+    n_pathways <- nrow(top_pathways)
+
+    # Scale dimensions to the number of bars
+    plot_height <- max(4, 0.45 * n_pathways + 2)
+    plot_width  <- if (n_pathways <= 5) 10 else if (n_pathways <= 10) 12 else 14
+    # Shrink y-axis text for dense plots
+    y_text_size <- if (n_pathways <= 5) 11 else if (n_pathways <= 10) 9.5 else 8.5
+
     pdf(file.path(output_dir, paste0(output_prefix, "_", comparison_name, ".pdf")),
-        width = 14, height = 12)   # ← increased width + height for long labels
-    
+        width = plot_width, height = plot_height)
+
     plot_data <- data.frame(
       pathway = gsub("HALLMARK_|REACTOME_|KEGG_|BIOCARTA_", "", top_pathways$pathway),
       NES = top_pathways$NES,
       padj = top_pathways$padj,
       stringsAsFactors = FALSE
     )
-    
-    # ← NEW: Wrap super-long pathway names (45 characters is a good balance)
+
     plot_data$pathway <- str_wrap(plot_data$pathway, width = 45)
-    
     plot_data$pathway <- factor(plot_data$pathway, levels = rev(plot_data$pathway))
-    
+
     p <- ggplot(plot_data, aes(x = NES, y = pathway, fill = padj)) +
       geom_bar(stat = "identity") +
       scale_fill_gradient(low = "red", high = "blue", limits = c(0, 0.05)) +
@@ -155,12 +174,14 @@ run_bcell_gsea <- function(pathways_list, collection_name, output_prefix, minSiz
            y = "Pathway") +
       theme_minimal(base_size = 10) +
       theme(
-        axis.text.y = element_text(size = 8.5, lineheight = 0.9),   # smaller + tighter line spacing
-        plot.margin = margin(t = 10, r = 20, b = 10, l = 10, unit = "mm"),  # extra right margin
+        axis.text.y = element_text(size = y_text_size, lineheight = 0.9),
+        plot.margin = margin(t = 10, r = 20, b = 10, l = 10, unit = "mm"),
         panel.grid.major.y = element_line(color = "grey90")
       )
     print(p)
     dev.off()
+    cat(collection_name, ": Plot saved (", n_pathways, "pathways,",
+        round(plot_width, 1), "x", round(plot_height, 1), "in)\n")
   }
   
   return(fgsea_output)
@@ -232,4 +253,4 @@ cat("   → GSEA_HALLMARK_*.csv/pdf\n")
 cat("   → GSEA_C2_*.csv/pdf\n")
 cat("   → GSEA_C2_BCELL_*.csv/pdf\n")
 cat("   → GSEA_C7_BCELL_*.csv/pdf\n")
-cat("   → Plots now handle very long pathway names (Reactome, etc.) via automatic wrapping\n")
+cat("   → CSV/PDF contain", if (sig_only) "significant (padj < 0.05) results only" else "all results", "\n")
