@@ -128,6 +128,7 @@ Run on each DEG file produced by `edger.r`:
 ```bash
 docker run --rm \
     --user "$(id -u):$(id -g)" \
+    -e HOME=/tmp \
     -v "$(pwd):/data" \
     xiang2019/rnaseq_renv:v1.0.2 \
     Rscript /data/bin/functional_analysis.r \
@@ -137,18 +138,27 @@ docker run --rm \
         <comparison_name>
 ```
 
-Pass `FALSE` as a 5th argument to use FDR < 0.05 only (default requires FDR < 0.05 **and** |logFC| > 1):
+Positional arguments 5 and 6 are optional:
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| 5 `use_logfc_filter` | `TRUE` | `FALSE` to filter DEGs by FDR < 0.05 only (no \|logFC\| threshold) |
+| 6 `sig_only` | `FALSE` | `TRUE` to save only significant results (padj < 0.05) in output CSV and PDF |
 
 ```bash
+# FDR-only DEG filter + save significant enrichment results only
 docker run --rm \
     --user "$(id -u):$(id -g)" \
+    -e HOME=/tmp \
     -v "$(pwd):/data" \
     xiang2019/rnaseq_renv:v1.0.2 \
     Rscript /data/bin/functional_analysis.r \
         /data/de_results/DEG_KO_vs_WT.csv \
         /data/functional_analysis_KO_vs_WT \
-        human KO_vs_WT FALSE
+        human KO_vs_WT FALSE TRUE
 ```
+
+> **Note:** `-e HOME=/tmp` is required when running with `--user`. Without it, R cannot write its package cache and will error on MSigDB downloads.
 
 ### Heatmap
 
