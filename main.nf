@@ -54,7 +54,7 @@ workflow RNASEQ {
 
 	ALIGN(star_index_ch, TRIM.out.trimmed_reads)
 
-	FEATURECOUNT(params.gtf, ALIGN.out.bam.collect())
+	FEATURECOUNT(file(params.gtf), ALIGN.out.bam.collect())
 
 	MULTIQC(
 		TRIM.out.json
