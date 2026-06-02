@@ -8,7 +8,7 @@
  */
 process FUNCTIONAL_ANALYSIS {
     tag "${comparison_name}"
-    container 'xiang2019/rnaseq_renv:v1.0.0'
+    container 'xiang2019/rnaseq_renv:v1.0.2'
     publishDir "${params.outdir}/functional_analysis", mode: 'copy'
 
     input:

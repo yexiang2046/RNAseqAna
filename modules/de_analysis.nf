@@ -4,14 +4,14 @@
  */
 process DE_ANALYSIS {
     debug true
-    container 'xiang2019/rnaseq_renv:v1.0.1'
+    container 'xiang2019/rnaseq_renv:v1.0.2'
     publishDir "${params.outdir}", mode:'copy'
     input:
     path counts_file
     path metadata_file
     path gtffile
     val sp
-    
+
     output:
     path "de_results/*.csv", emit: all_results
     path "de_results/PCA_plot.png", emit: pca_plot
