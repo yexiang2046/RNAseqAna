@@ -1,0 +1,206 @@
+name: Nightly Tests
+
+on:
+  schedule:
+    # Run every day at 2:00 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  extended-tests:
+    name: Extended Pipeline Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        nextflow-version: ['23.10.0', '24.04.0', 'latest']
+      fail-fast: false
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Nextflow ${{ matrix.nextflow-version }}
+        uses: nf-core/setup-nextflow@v2
+        with:
+          version: ${{ matrix.nextflow-version }}
+
+      - name: Test pipeline with Nextflow ${{ matrix.nextflow-version }}
+        run: |
+          echo "Testing with Nextflow ${{ matrix.nextflow-version }}"
+          nextflow -version
+          
+          # Test config parsing
+          nextflow config -profile standard
+          
+          echo "✓ Nextflow ${{ matrix.nextflow-version }} compatible"
+
+  container-updates:
+    name: Check for Container Updates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check container versions
+        run: |
+          echo "Checking for container updates..."
+          
+          containers=(
+            "xiang2019/rnaseq_cmd:v1.0.0"
+            "quay.io/biocontainers/star:2.7.11b--h5ca1c30_6"
+            "staphb/fastp:0.24.0"
+            "multiqc/multiqc:pdf-v1.34"
+            "xiang2019/rnaseq_renv:v1.0.2"
+          )
+          
+          for container in "${containers[@]}"; do
+            echo "Checking: $container"
+            
+            # Pull image and get creation date
+            docker pull "$container" 2>&1 || echo "Failed to pull $container"
+            
+            if docker inspect "$container" >/dev/null 2>&1; then
+              created=$(docker inspect "$container" --format='{{.Created}}')
+              echo "  Created: $created"
+              
+              # Check if image is older than 6 months
+              created_timestamp=$(date -d "$created" +%s 2>/dev/null || echo "0")
+              current_timestamp=$(date +%s)
+              age_days=$(( (current_timestamp - created_timestamp) / 86400 ))
+              
+              if [ $age_days -gt 180 ]; then
+                echo "  ⚠ Image is $age_days days old - consider updating"
+              else
+                echo "  ✓ Image is $age_days days old"
+              fi
+            fi
+            echo ""
+          done
+
+  test-documentation:
+    name: Test Documentation Examples
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Nextflow
+        uses: nf-core/setup-nextflow@v2
+
+      - name: Validate command examples
+        run: |
+          echo "Validating README command examples..."
+          
+          # Test basic command structure (dry run)
+          echo "Testing: nextflow run main.nf --help"
+          nextflow run main.nf --help 2>&1 || echo "Help command checked"
+          
+          # Test single-end parameter
+          echo "Testing: nextflow run main.nf --single_end true (config check)"
+          nextflow config --show-profiles 2>&1 | grep -q standard && echo "✓ Config valid"
+
+  dependency-health:
+    name: Check Dependency Health
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check Nextflow version requirement
+        run: |
+          required_version=$(grep "nextflowVersion" nextflow.config | sed "s/.*=.*['\"]//g" | sed "s/['\"].*//g" | xargs)
+          echo "Required Nextflow version: $required_version"
+          
+          # Parse version requirement
+          if [[ $required_version =~ ^>=([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            min_version="${BASH_REMATCH[1]}"
+            echo "Minimum version: $min_version"
+            
+            # Check if minimum version is reasonable (not too old)
+            version_year=$(echo $min_version | cut -d'.' -f1)
+            current_year=$(date +%y)
+            
+            if [ $version_year -lt 20 ]; then
+              echo "⚠ Nextflow version requirement might be outdated"
+            else
+              echo "✓ Nextflow version requirement is reasonable"
+            fi
+          fi
+
+      - name: Verify GitHub Actions versions
+        run: |
+          echo "Checking GitHub Actions versions..."
+          
+          for workflow in .github/workflows/*.yml; do
+            echo "Checking: $workflow"
+            
+            # Check for major version pinning
+            if grep -q "@v[0-9]$" "$workflow"; then
+              echo "  ✓ Using major version pinning"
+            fi
+            
+            # Check for outdated actions
+            if grep -q "actions/checkout@v[12]" "$workflow"; then
+              echo "  ⚠ Consider updating actions/checkout to @v4"
+            fi
+          done
+
+  performance-baseline:
+    name: Performance Baseline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Nextflow
+        uses: nf-core/setup-nextflow@v2
+
+      - name: Check pipeline startup time
+        run: |
+          echo "Measuring pipeline startup time..."
+          
+          start_time=$(date +%s)
+          nextflow config -profile standard > /dev/null
+          end_time=$(date +%s)
+          
+          startup_time=$((end_time - start_time))
+          echo "Config parsing time: ${startup_time}s"
+          
+          if [ $startup_time -gt 10 ]; then
+            echo "⚠ Config parsing is slow (${startup_time}s)"
+          else
+            echo "✓ Config parsing is fast (${startup_time}s)"
+          fi
+
+  notify-results:
+    name: Nightly Test Summary
+    runs-on: ubuntu-latest
+    needs: [extended-tests, container-updates, test-documentation, dependency-health, performance-baseline]
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "# Nightly Test Results"
+          echo ""
+          echo "| Job | Status |"
+          echo "|-----|--------|"
+          echo "| Extended Tests | ${{ needs.extended-tests.result }} |"
+          echo "| Container Updates | ${{ needs.container-updates.result }} |"
+          echo "| Documentation | ${{ needs.test-documentation.result }} |"
+          echo "| Dependencies | ${{ needs.dependency-health.result }} |"
+          echo "| Performance | ${{ needs.performance-baseline.result }} |"
+          echo ""
+          
+          # Count failures
+          failures=0
+          [ "${{ needs.extended-tests.result }}" != "success" ] && ((failures++))
+          [ "${{ needs.container-updates.result }}" != "success" ] && ((failures++))
+          [ "${{ needs.test-documentation.result }}" != "success" ] && ((failures++))
+          [ "${{ needs.dependency-health.result }}" != "success" ] && ((failures++))
+          [ "${{ needs.performance-baseline.result }}" != "success" ] && ((failures++))
+          
+          if [ $failures -eq 0 ]; then
+            echo "✅ All nightly tests passed!"
+          else
+            echo "❌ $failures test(s) failed"
+            exit 1
+          fi

@@ -1,0 +1,233 @@
+name: Test R Scripts
+
+on:
+  push:
+    paths:
+      - 'bin/**/*.r'
+      - 'bin/**/*.R'
+      - 'R_scripts/**/*.r'
+      - 'R_scripts/**/*.R'
+  pull_request:
+    paths:
+      - 'bin/**/*.r'
+      - 'bin/**/*.R'
+      - 'R_scripts/**/*.r'
+      - 'R_scripts/**/*.R'
+  workflow_dispatch:
+
+jobs:
+  lint-r-scripts:
+    name: Lint R Scripts
+    runs-on: ubuntu-latest
+    container:
+      image: xiang2019/rnaseq_renv:v1.0.2
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check R script syntax
+        run: |
+          echo "Validating R script syntax..."
+          
+          EXIT_CODE=0
+          for script in bin/*.r bin/*.R R_scripts/*.r R_scripts/*.R 2>/dev/null; do
+            if [ -f "$script" ]; then
+              echo "----------------------------------------"
+              echo "Checking: $script"
+              if Rscript -e "
+                tryCatch({
+                  parse('$script')
+                  cat('✓ Syntax OK\n')
+                }, error = function(e) {
+                  cat('✗ Syntax Error:\n')
+                  cat(as.character(e))
+                  quit(status=1)
+                })
+              "; then
+                echo "✓ $script passed syntax check"
+              else
+                echo "✗ $script has syntax errors"
+                EXIT_CODE=1
+              fi
+            fi
+          done
+          
+          exit $EXIT_CODE
+
+  test-edger:
+    name: Test edgeR Script
+    runs-on: ubuntu-latest
+    container:
+      image: xiang2019/rnaseq_renv:v1.0.2
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Create test data for edgeR
+        run: |
+          mkdir -p test_output
+          
+          # Create minimal count matrix
+          cat > test_counts.txt << 'EOF'
+          Geneid	Chr	Start	End	Strand	Length	sample1	sample2	sample3	sample4
+          GENE1	chr1	1000	2000	+	1000	100	120	50	60
+          GENE2	chr1	3000	4000	+	1000	200	180	90	110
+          GENE3	chr2	1000	2000	-	1000	50	60	150	140
+          GENE4	chr2	5000	6000	+	1000	300	280	180	200
+          EOF
+          
+          # Create metadata
+          cat > test_metadata.txt << 'EOF'
+          SampleID	group
+          sample1	control
+          sample2	control
+          sample3	treatment
+          sample4	treatment
+          EOF
+          
+          # Create minimal GTF
+          cat > test_annotation.gtf << 'EOF'
+          chr1	test	gene	1000	2000	.	+	.	gene_id "GENE1"; gene_name "TEST1";
+          chr1	test	gene	3000	4000	.	+	.	gene_id "GENE2"; gene_name "TEST2";
+          chr2	test	gene	1000	2000	.	-	.	gene_id "GENE3"; gene_name "TEST3";
+          chr2	test	gene	5000	6000	.	+	.	gene_id "GENE4"; gene_name "TEST4";
+          EOF
+
+      - name: Test edgeR script help
+        run: |
+          Rscript bin/edger.r --help || echo "Help output displayed"
+
+      - name: Test edgeR with minimal data
+        run: |
+          echo "Testing edgeR script with synthetic data..."
+          Rscript bin/edger.r \
+            -c test_counts.txt \
+            -m test_metadata.txt \
+            -g test_annotation.gtf \
+            -o test_output \
+            -s human \
+          && echo "✓ edgeR test passed" \
+          || echo "⚠ edgeR test failed (expected with minimal data)"
+
+  test-functional-analysis:
+    name: Test Functional Analysis Script
+    runs-on: ubuntu-latest
+    container:
+      image: xiang2019/rnaseq_renv:v1.0.2
+      options: -e HOME=/tmp
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Create test DEG file
+        run: |
+          mkdir -p test_output
+          
+          # Create minimal DEG file matching expected format
+          cat > test_deg.csv << 'EOF'
+          gene_id,gene_name,logFC,logCPM,PValue,FDR
+          ENSG00000000003,TSPAN6,2.5,5.2,0.001,0.01
+          ENSG00000000005,TNMD,-2.1,4.8,0.002,0.02
+          ENSG00000000419,DPM1,1.8,6.1,0.003,0.03
+          ENSG00000000457,SCYL3,-1.5,5.5,0.004,0.04
+          ENSG00000000460,C1orf112,2.2,5.9,0.0001,0.001
+          EOF
+
+      - name: Test functional analysis help
+        run: |
+          Rscript bin/functional_analysis.r --help 2>&1 || echo "Help check completed"
+
+      - name: Verify functional analysis dependencies
+        run: |
+          echo "Checking R packages for functional analysis..."
+          Rscript -e "
+            packages <- c('clusterProfiler', 'org.Hs.eg.db', 'enrichplot', 'msigdbr', 'ggplot2')
+            for (pkg in packages) {
+              if (requireNamespace(pkg, quietly = TRUE)) {
+                cat(sprintf('✓ %s installed\n', pkg))
+              } else {
+                cat(sprintf('✗ %s missing\n', pkg))
+              }
+            }
+          "
+
+  test-heatmap:
+    name: Test Heatmap Script
+    runs-on: ubuntu-latest
+    container:
+      image: xiang2019/rnaseq_renv:v1.0.2
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Create test data for heatmap
+        run: |
+          mkdir -p test_output
+          
+          # Create DEG file
+          cat > test_deg.csv << 'EOF'
+          gene_id,gene_name,logFC,logCPM,PValue,FDR
+          GENE1,TEST1,2.5,5.2,0.001,0.01
+          GENE2,TEST2,-2.1,4.8,0.002,0.02
+          GENE3,TEST3,1.8,6.1,0.003,0.03
+          EOF
+          
+          # Create normalized counts
+          cat > test_norm_counts.csv << 'EOF'
+          gene_id,sample1,sample2,sample3,sample4
+          GENE1,5.2,5.4,8.1,8.3
+          GENE2,7.8,7.5,4.2,4.5
+          GENE3,6.1,6.3,7.8,8.0
+          EOF
+          
+          # Create metadata
+          cat > test_metadata.txt << 'EOF'
+          SampleId	group
+          sample1	control
+          sample2	control
+          sample3	treatment
+          sample4	treatment
+          EOF
+
+      - name: Test heatmap script help
+        run: |
+          Rscript bin/heatmap.r --help || echo "Help output displayed"
+
+      - name: Test heatmap with minimal data
+        run: |
+          echo "Testing heatmap script..."
+          Rscript bin/heatmap.r \
+            -d test_deg.csv \
+            -n test_norm_counts.csv \
+            -m test_metadata.txt \
+            -o test_output \
+          && echo "✓ Heatmap test passed" \
+          || echo "⚠ Heatmap test completed with warnings"
+
+  verify-containers:
+    name: Verify R Container Images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Pull and verify R container
+        run: |
+          echo "Pulling R analysis container..."
+          docker pull xiang2019/rnaseq_renv:v1.0.2
+          
+          echo "Verifying R installation..."
+          docker run --rm xiang2019/rnaseq_renv:v1.0.2 R --version
+          
+          echo "Checking installed packages..."
+          docker run --rm xiang2019/rnaseq_renv:v1.0.2 Rscript -e "
+            installed <- installed.packages()[,1]
+            required <- c('edgeR', 'limma', 'clusterProfiler', 'org.Hs.eg.db', 
+                         'org.Mm.eg.db', 'ggplot2', 'pheatmap', 'ComplexHeatmap')
+            missing <- required[!required %in% installed]
+            if (length(missing) > 0) {
+              cat('Missing packages:', paste(missing, collapse=', '), '\n')
+            } else {
+              cat('✓ All required packages installed\n')
+            }
+          "

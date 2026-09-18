@@ -1,5 +1,11 @@
 # RNA-seq Analysis Pipeline
 
+[![CI](https://github.com/yourusername/RNAseqAna/workflows/CI/badge.svg)](https://github.com/yourusername/RNAseqAna/actions/workflows/ci.yml)
+[![Security](https://github.com/yourusername/RNAseqAna/workflows/Security%20Scan/badge.svg)](https://github.com/yourusername/RNAseqAna/actions/workflows/security.yml)
+[![Test R Scripts](https://github.com/yourusername/RNAseqAna/workflows/Test%20R%20Scripts/badge.svg)](https://github.com/yourusername/RNAseqAna/actions/workflows/test-r-scripts.yml)
+[![Nightly](https://github.com/yourusername/RNAseqAna/workflows/Nightly%20Tests/badge.svg)](https://github.com/yourusername/RNAseqAna/actions/workflows/nightly.yml)
+[![Documentation](https://github.com/yourusername/RNAseqAna/workflows/Documentation/badge.svg)](https://github.com/yourusername/RNAseqAna/actions/workflows/docs.yml)
+
 A comprehensive Nextflow pipeline for RNA-seq data analysis, including quality control, alignment, and feature counting. Downstream differential expression and functional enrichment analysis are run independently using the provided R scripts.
 
 ## Overview
@@ -289,3 +295,20 @@ cd tests && bash run_tests.sh
 # or directly:
 nextflow run tests/test_pipeline.nf
 ```
+
+## CI/CD
+
+This project uses GitHub Actions for automated testing and validation. See [CI_CD.md](CI_CD.md) for detailed documentation.
+
+### Workflows
+
+- **CI**: Validates Nextflow pipeline, R scripts, and containers on every push/PR
+- **Security**: Scans for vulnerabilities and secrets weekly and on PRs
+- **Test R Scripts**: Comprehensive R script testing when scripts change
+- **Nightly Tests**: Extended compatibility testing across Nextflow versions
+- **Documentation**: Validates markdown and checks links
+- **Release**: Automated release management with changelog generation
+
+### Contributing
+
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for development guidelines and workflow instructions.

@@ -1,0 +1,205 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  schedule:
+    # Run weekly on Monday at 00:00 UTC
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+jobs:
+  container-scan:
+    name: Scan Container Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  secret-scan:
+    name: Scan for Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-review:
+    name: Review Dependencies
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+
+  dockerfile-lint:
+    name: Lint Dockerfiles
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Lint Dockerfiles
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          recursive: true
+          failure-threshold: warning
+
+  verify-container-sources:
+    name: Verify Container Image Sources
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Extract container references
+        run: |
+          echo "Extracting container images from nextflow.config..."
+          
+          # List all containers used
+          containers=$(grep -E "container\s*=\s*['\"]" nextflow.config | sed "s/.*container.*=.*['\"]//g" | sed "s/['\"].*//g" | sort | uniq)
+          
+          echo "Containers used in pipeline:"
+          echo "$containers"
+          
+          # Check for non-official registries
+          echo ""
+          echo "Checking container sources..."
+          for container in $containers; do
+            registry=$(echo $container | cut -d'/' -f1)
+            case $registry in
+              "docker.io"|"quay.io"|"ghcr.io")
+                echo "✓ Official registry: $container"
+                ;;
+              *)
+                if [[ $container == *"/"* ]]; then
+                  echo "⚠ Custom registry: $container"
+                else
+                  echo "✓ Docker Hub: $container"
+                fi
+                ;;
+            esac
+          done
+
+  permissions-check:
+    name: Check File Permissions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check for overly permissive files
+        run: |
+          echo "Checking file permissions..."
+          
+          # Find scripts that should be executable
+          scripts=(
+            "prepare.sh"
+            "install_for_ami2023linux_aws.sh"
+            "tests/run_tests.sh"
+          )
+          
+          for script in "${scripts[@]}"; do
+            if [ -f "$script" ]; then
+              if [ -x "$script" ]; then
+                echo "✓ $script is executable"
+              else
+                echo "⚠ $script should be executable"
+              fi
+            fi
+          done
+          
+          # Check for sensitive files that shouldn't be committed
+          sensitive_patterns=(
+            "*.pem"
+            "*.key"
+            "*password*"
+            "*secret*"
+            ".env"
+            "*.credentials"
+          )
+          
+          echo ""
+          echo "Checking for sensitive files..."
+          for pattern in "${sensitive_patterns[@]}"; do
+            if git ls-files | grep -qi "$pattern"; then
+              echo "⚠ Found files matching sensitive pattern: $pattern"
+              git ls-files | grep -i "$pattern"
+            fi
+          done
+
+  code-quality:
+    name: Code Quality Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check for hardcoded credentials
+        run: |
+          echo "Scanning for potential hardcoded credentials..."
+          
+          # Check AWS keys patterns
+          if grep -r "AKIA[0-9A-Z]{16}" . --exclude-dir=.git 2>/dev/null; then
+            echo "❌ Potential AWS access key found!"
+            exit 1
+          fi
+          
+          # Check for AWS secret key patterns
+          if grep -r -E "['\"][0-9a-zA-Z/+]{40}['\"]" nextflow.config 2>/dev/null | grep -i secret; then
+            echo "⚠ Potential secret found in config"
+          fi
+          
+          echo "✓ No obvious hardcoded credentials detected"
+
+      - name: Check nextflow.config security
+        run: |
+          echo "Checking nextflow.config for security issues..."
+          
+          # Check if AWS credentials are properly handled
+          if grep -E "accessKey.*=.*['\"][^'\"]" nextflow.config; then
+            echo "⚠ AWS credentials should use environment variables or AWS profiles"
+          fi
+          
+          if grep -E "secretKey.*=.*['\"][^'\"]" nextflow.config; then
+            echo "⚠ AWS secret keys should use environment variables"
+          fi
+          
+          # Check for proper container image pinning
+          echo ""
+          echo "Checking container image tags..."
+          if grep "container.*latest" nextflow.config; then
+            echo "⚠ Using 'latest' tag is not recommended for reproducibility"
+          else
+            echo "✓ Container images are properly pinned"
+          fi

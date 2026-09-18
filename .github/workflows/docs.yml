@@ -1,0 +1,142 @@
+name: Documentation
+
+on:
+  push:
+    paths:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    paths:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+jobs:
+  lint-markdown:
+    name: Lint Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Lint markdown files
+        uses: avto-dev/markdown-lint@v1
+        with:
+          config: '.markdownlint.json'
+          args: '**/*.md'
+          ignore: 'node_modules'
+        continue-on-error: true
+
+  check-links:
+    name: Check Links
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check links in markdown
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          use-verbose-mode: 'yes'
+          config-file: '.markdown-link-check.json'
+        continue-on-error: true
+
+  validate-examples:
+    name: Validate Code Examples
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Extract and validate bash examples
+        run: |
+          echo "Extracting bash code blocks from README.md..."
+          
+          # Simple validation - check for common mistakes
+          if grep -A 5 '```bash' README.md | grep -q 'sudo.*rm.*-rf.*\/'; then
+            echo "❌ Dangerous command found in documentation"
+            exit 1
+          fi
+          
+          # Check for placeholder values that might confuse users
+          if grep -A 5 '```bash' README.md | grep -E "YOUR_|PLACEHOLDER|REPLACE"; then
+            echo "⚠ Found placeholder values in examples"
+          fi
+          
+          echo "✓ Basic validation passed"
+
+  check-structure:
+    name: Check Documentation Structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify required documentation
+        run: |
+          required_docs=(
+            "README.md"
+            "LICENSE.md"
+            "CLAUDE.md"
+            ".github/CONTRIBUTING.md"
+            ".github/PULL_REQUEST_TEMPLATE.md"
+          )
+          
+          missing=0
+          for doc in "${required_docs[@]}"; do
+            if [ -f "$doc" ]; then
+              echo "✓ $doc"
+            else
+              echo "✗ Missing: $doc"
+              missing=$((missing + 1))
+            fi
+          done
+          
+          if [ $missing -gt 0 ]; then
+            echo "❌ $missing required document(s) missing"
+            exit 1
+          fi
+          
+          echo "✅ All required documentation present"
+
+      - name: Check README sections
+        run: |
+          sections=(
+            "Overview"
+            "Prerequisites"
+            "Usage"
+            "Output"
+            "Pipeline Architecture"
+          )
+          
+          missing=0
+          for section in "${sections[@]}"; do
+            if grep -q "## $section" README.md || grep -q "# $section" README.md; then
+              echo "✓ Section: $section"
+            else
+              echo "⚠ Missing section: $section"
+              missing=$((missing + 1))
+            fi
+          done
+          
+          if [ $missing -gt 0 ]; then
+            echo "⚠ $missing recommended section(s) missing from README"
+          fi
+
+  spelling:
+    name: Check Spelling
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check spelling
+        uses: reviewdog/action-misspell@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          locale: "US"
+          reporter: github-pr-review
+          level: warning
+          filter_mode: diff_context
+        continue-on-error: true

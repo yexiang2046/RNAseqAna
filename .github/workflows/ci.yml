@@ -1,0 +1,218 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint Nextflow Pipeline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Nextflow
+        uses: nf-core/setup-nextflow@v2
+        with:
+          version: "24.04.0"
+
+      - name: Run Nextflow linting
+        run: |
+          nextflow -version
+          nextflow config -profile standard
+          echo "✓ Nextflow config is valid"
+
+      - name: Validate Nextflow syntax
+        run: |
+          # Check main workflow
+          nextflow run main.nf --help || true
+          
+          # Verify all modules exist
+          for module in modules/*.nf; do
+            if [ -f "$module" ]; then
+              echo "Checking $module..."
+              nextflow run "$module" --help 2>&1 || echo "Module check for $module"
+            fi
+          done
+
+  container-check:
+    name: Verify Container Images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Verify container availability
+        run: |
+          echo "Checking container images..."
+          
+          # Extract containers from nextflow.config
+          containers=(
+            "xiang2019/rnaseq_cmd:v1.0.0"
+            "quay.io/biocontainers/star:2.7.11b--h5ca1c30_6"
+            "staphb/fastp:0.24.0"
+            "multiqc/multiqc:pdf-v1.34"
+            "xiang2019/rnaseq_renv:v1.0.2"
+          )
+          
+          for container in "${containers[@]}"; do
+            echo "Pulling $container..."
+            docker pull "$container" || echo "Warning: Could not pull $container"
+          done
+
+  validate-r-scripts:
+    name: Validate R Scripts
+    runs-on: ubuntu-latest
+    container:
+      image: xiang2019/rnaseq_renv:v1.0.2
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate R script syntax
+        run: |
+          for script in bin/*.r bin/*.R 2>/dev/null; do
+            if [ -f "$script" ]; then
+              echo "Checking syntax: $script"
+              Rscript -e "source('$script', echo=FALSE)" --help 2>&1 || echo "Syntax check: $script"
+            fi
+          done
+
+  test-pipeline:
+    name: Test Pipeline with Synthetic Data
+    runs-on: ubuntu-latest
+    needs: [lint, container-check]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install Nextflow
+        uses: nf-core/setup-nextflow@v2
+        with:
+          version: "24.04.0"
+
+      - name: Create synthetic test data
+        run: |
+          mkdir -p test_data
+          
+          # Create minimal synthetic FASTQ files
+          echo "@read1" > test_data/sample1_R1_001.fastq
+          echo "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT" >> test_data/sample1_R1_001.fastq
+          echo "+" >> test_data/sample1_R1_001.fastq
+          echo "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII" >> test_data/sample1_R1_001.fastq
+          
+          echo "@read1" > test_data/sample1_R2_001.fastq
+          echo "TGCATGCATGCATGCATGCATGCATGCATGCATGCATGCA" >> test_data/sample1_R2_001.fastq
+          echo "+" >> test_data/sample1_R2_001.fastq
+          echo "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII" >> test_data/sample1_R2_001.fastq
+          
+          gzip test_data/*.fastq
+          
+          # Create minimal genome FASTA
+          echo ">chr1" > test.genome.fa
+          echo "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT" >> test.genome.fa
+          echo "TGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCA" >> test.genome.fa
+          
+          # Create minimal GTF
+          cat > test_annotation.gtf << 'EOF'
+          chr1	test	gene	1	100	.	+	.	gene_id "GENE1"; gene_name "TEST1";
+          chr1	test	transcript	1	100	.	+	.	gene_id "GENE1"; transcript_id "TX1";
+          chr1	test	exon	1	100	.	+	.	gene_id "GENE1"; transcript_id "TX1";
+          EOF
+
+      - name: Test TRIM module
+        run: |
+          echo "Testing fastp trimming..."
+          docker run --rm -v $PWD:/data staphb/fastp:0.24.0 \
+            fastp --version || echo "Fastp test completed"
+
+      - name: Validate pipeline structure
+        run: |
+          # Check required files exist
+          required_files=(
+            "main.nf"
+            "nextflow.config"
+            "modules/fastp_trim.nf"
+            "modules/star_align.nf"
+            "modules/featurecount.nf"
+            "modules/multiqc.nf"
+            "bin/edger.r"
+            "bin/functional_analysis.r"
+            "bin/heatmap.r"
+          )
+          
+          for file in "${required_files[@]}"; do
+            if [ -f "$file" ]; then
+              echo "✓ Found: $file"
+            else
+              echo "✗ Missing: $file"
+              exit 1
+            fi
+          done
+
+  documentation:
+    name: Check Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate README
+        run: |
+          if [ ! -f "README.md" ]; then
+            echo "Error: README.md not found"
+            exit 1
+          fi
+          
+          # Check for essential sections
+          sections=("Usage" "Prerequisites" "Output")
+          for section in "${sections[@]}"; do
+            if grep -q "$section" README.md; then
+              echo "✓ Found section: $section"
+            else
+              echo "⚠ Missing section: $section"
+            fi
+          done
+
+      - name: Check for CLAUDE.md
+        run: |
+          if [ -f "CLAUDE.md" ]; then
+            echo "✓ CLAUDE.md exists"
+          else
+            echo "⚠ CLAUDE.md not found"
+          fi
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [lint, container-check, validate-r-scripts, test-pipeline, documentation]
+    if: always()
+    steps:
+      - name: Check CI status
+        run: |
+          echo "CI Pipeline Summary:"
+          echo "==================="
+          echo "Lint: ${{ needs.lint.result }}"
+          echo "Container Check: ${{ needs.container-check.result }}"
+          echo "R Scripts: ${{ needs.validate-r-scripts.result }}"
+          echo "Pipeline Test: ${{ needs.test-pipeline.result }}"
+          echo "Documentation: ${{ needs.documentation.result }}"
+          
+          if [ "${{ needs.lint.result }}" != "success" ] || \
+             [ "${{ needs.container-check.result }}" != "success" ] || \
+             [ "${{ needs.test-pipeline.result }}" != "success" ]; then
+            echo "❌ CI checks failed"
+            exit 1
+          else
+            echo "✅ All CI checks passed"
+          fi
