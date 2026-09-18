@@ -26,11 +26,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check R script syntax
+        shell: bash
         run: |
           echo "Validating R script syntax..."
           
           EXIT_CODE=0
-          for script in bin/*.r bin/*.R R_scripts/*.r R_scripts/*.R 2>/dev/null; do
+          shopt -s nullglob
+          for script in bin/*.r bin/*.R R_scripts/*.r R_scripts/*.R; do
             if [ -f "$script" ]; then
               echo "----------------------------------------"
               echo "Checking: $script"

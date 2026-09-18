@@ -64,13 +64,13 @@ jobs:
           git diff --name-only origin/${{ github.base_ref }}...HEAD
           
           # Count file types
-          WORKFLOW_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -c "\.nf$" || echo "0")
-          SCRIPTS_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -c "bin/.*\.[rR]$" || echo "0")
-          DOCS_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -c "\.md$" || echo "0")
+          WORKFLOW_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep "\.nf$" | wc -l || true)
+          SCRIPTS_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep "bin/.*\.[rR]$" | wc -l || true)
+          DOCS_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep "\.md$" | wc -l || true)
           
-          echo "workflow_files=$WORKFLOW_CHANGED" >> $GITHUB_OUTPUT
-          echo "script_files=$SCRIPTS_CHANGED" >> $GITHUB_OUTPUT
-          echo "doc_files=$DOCS_CHANGED" >> $GITHUB_OUTPUT
+          echo "workflow_files=${WORKFLOW_CHANGED}" >> $GITHUB_OUTPUT
+          echo "script_files=${SCRIPTS_CHANGED}" >> $GITHUB_OUTPUT
+          echo "doc_files=${DOCS_CHANGED}" >> $GITHUB_OUTPUT
 
       - name: Suggest reviewers
         run: |
