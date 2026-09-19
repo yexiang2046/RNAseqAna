@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Nextflow ${{ matrix.nextflow-version }}
-        uses: nf-core/setup-nextflow@v2
+        uses: nf-core/setup-nextflow@v3
         with:
           version: ${{ matrix.nextflow-version }}
 
@@ -84,7 +84,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Nextflow
-        uses: nf-core/setup-nextflow@v2
+        uses: nf-core/setup-nextflow@v3
 
       - name: Validate command examples
         run: |
@@ -152,7 +152,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Nextflow
-        uses: nf-core/setup-nextflow@v2
+        uses: nf-core/setup-nextflow@v3
 
       - name: Check pipeline startup time
         run: |
