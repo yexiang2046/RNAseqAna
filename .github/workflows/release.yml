@@ -1,0 +1,141 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            echo "First release - generating full changelog"
+            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            echo "Generating changelog since $PREV_TAG"
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          
+          # Save changelog to file
+          cat > CHANGELOG.md << EOF
+          ## What's Changed
+          
+          $COMMITS
+          
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${{ steps.get_version.outputs.version }}
+          EOF
+          
+          cat CHANGELOG.md
+
+      - name: Verify pipeline version
+        run: |
+          # Check version in nextflow.config matches tag
+          CONFIG_VERSION=$(grep "version" nextflow.config | head -1 | sed "s/.*version.*=.*['\"]//g" | sed "s/['\"].*//g" | xargs)
+          TAG_VERSION="${{ steps.get_version.outputs.version }}"
+          TAG_VERSION_NO_V="${TAG_VERSION#v}"
+          
+          echo "Config version: $CONFIG_VERSION"
+          echo "Tag version: $TAG_VERSION_NO_V"
+          
+          if [ "$CONFIG_VERSION" != "$TAG_VERSION_NO_V" ]; then
+            echo "⚠️  Warning: Version in nextflow.config ($CONFIG_VERSION) doesn't match tag ($TAG_VERSION_NO_V)"
+          else
+            echo "✓ Version matches"
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+
+  validate-release:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    needs: create-release
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Install Nextflow
+        uses: nf-core/setup-nextflow@v2
+        with:
+          version: "24.04.0"
+
+      - name: Validate pipeline
+        run: |
+          echo "Validating pipeline for release..."
+          nextflow -version
+          nextflow config -profile standard
+          
+          # Check all required files exist
+          required_files=(
+            "main.nf"
+            "nextflow.config"
+            "README.md"
+            "LICENSE.md"
+          )
+          
+          for file in "${required_files[@]}"; do
+            if [ -f "$file" ]; then
+              echo "✓ $file"
+            else
+              echo "✗ Missing: $file"
+              exit 1
+            fi
+          done
+          
+          echo "✅ Release validation passed"
+
+  notify:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    needs: [create-release, validate-release]
+    if: always()
+    steps:
+      - name: Release Status
+        run: |
+          if [ "${{ needs.validate-release.result }}" == "success" ]; then
+            echo "🎉 Release ${{ github.ref_name }} created and validated successfully!"
+          else
+            echo "❌ Release validation failed"
+            exit 1
+          fi
