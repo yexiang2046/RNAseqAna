@@ -23,7 +23,7 @@ jobs:
       image: xiang2019/rnaseq_renv:v1.0.2
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Check R script syntax
         shell: bash
@@ -63,7 +63,7 @@ jobs:
       image: xiang2019/rnaseq_renv:v1.0.2
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Create test data for edgeR
         run: |
@@ -119,7 +119,7 @@ jobs:
       options: -e HOME=/tmp
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Create test DEG file
         run: |
@@ -160,7 +160,7 @@ jobs:
       image: xiang2019/rnaseq_renv:v1.0.2
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Create test data for heatmap
         run: |
@@ -211,7 +211,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Pull and verify R container
         run: |
