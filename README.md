@@ -1,10 +1,10 @@
 # RNA-seq Analysis Pipeline
 
-[![CI](https://github.com/yourusername/RNAseqAna/workflows/CI/badge.svg)](https://github.com/yourusername/RNAseqAna/actions/workflows/ci.yml)
-[![Security](https://github.com/yourusername/RNAseqAna/workflows/Security%20Scan/badge.svg)](https://github.com/yourusername/RNAseqAna/actions/workflows/security.yml)
-[![Test R Scripts](https://github.com/yourusername/RNAseqAna/workflows/Test%20R%20Scripts/badge.svg)](https://github.com/yourusername/RNAseqAna/actions/workflows/test-r-scripts.yml)
-[![Nightly](https://github.com/yourusername/RNAseqAna/workflows/Nightly%20Tests/badge.svg)](https://github.com/yourusername/RNAseqAna/actions/workflows/nightly.yml)
-[![Documentation](https://github.com/yourusername/RNAseqAna/workflows/Documentation/badge.svg)](https://github.com/yourusername/RNAseqAna/actions/workflows/docs.yml)
+[![CI](https://github.com/yexiang2046/RNAseqAna/workflows/CI/badge.svg)](https://github.com/yexiang2046/RNAseqAna/actions/workflows/ci.yml)
+[![Security](https://github.com/yexiang2046/RNAseqAna/workflows/Security%20Scan/badge.svg)](https://github.com/yexiang2046/RNAseqAna/actions/workflows/security.yml)
+[![Test R Scripts](https://github.com/yexiang2046/RNAseqAna/workflows/Test%20R%20Scripts/badge.svg)](https://github.com/yexiang2046/RNAseqAna/actions/workflows/test-r-scripts.yml)
+[![Nightly](https://github.com/yexiang2046/RNAseqAna/workflows/Nightly%20Tests/badge.svg)](https://github.com/yexiang2046/RNAseqAna/actions/workflows/nightly.yml)
+[![Documentation](https://github.com/yexiang2046/RNAseqAna/workflows/Documentation/badge.svg)](https://github.com/yexiang2046/RNAseqAna/actions/workflows/docs.yml)
 
 A comprehensive Nextflow pipeline for RNA-seq data analysis, including quality control, alignment, and feature counting. Downstream differential expression and functional enrichment analysis are run independently using the provided R scripts.
 
@@ -18,6 +18,8 @@ A comprehensive Nextflow pipeline for RNA-seq data analysis, including quality c
 4. **Feature Counting**: featureCounts for gene expression quantification
 5. **Quality Control**: MultiQC aggregated report
 
+**Pipeline Status**: ✅ Fully tested and operational ([see test results](PIPELINE_TEST_RESULTS.md))
+
 ### Downstream Analysis (independent R scripts)
 
 6. **Differential Expression**: edgeR-based differential gene expression (`bin/edger.r`)
@@ -26,9 +28,22 @@ A comprehensive Nextflow pipeline for RNA-seq data analysis, including quality c
 
 ## Prerequisites
 
-- **Nextflow** (>=21.04.0)
-- **Docker** or container runtime
+- **Nextflow** (>=21.04.0) - Tested with v26.04.6
+- **Docker** or container runtime - Tested with v29.1.3
+- **Java** (>= 11) - Required for Nextflow
 - **Docker** image `xiang2019/rnaseq_renv:v1.0.2` for all downstream R scripts (edgeR, functional analysis, heatmap)
+
+### Minimum System Requirements
+
+**For testing/small datasets:**
+- CPUs: 2-4 cores
+- RAM: 8 GB
+- Disk: 10 GB free space
+
+**For production/large datasets:**
+- CPUs: 16+ cores (recommended for STAR alignment)
+- RAM: 64 GB (STAR indexing requires significant memory)
+- Disk: 100+ GB free space (depends on genome size and number of samples)
 
 ## Pipeline Architecture
 
@@ -79,20 +94,27 @@ nextflow run main.nf
 # Single-end
 nextflow run main.nf --single_end true
 
-# Use pre-built STAR index
+# Use pre-built STAR index (saves time for repeated runs)
 nextflow run main.nf --star_index /path/to/star_index
 
-# AWS Batch
+# Custom output directory
+nextflow run main.nf --outdir my_results
+
+# AWS Batch execution
 nextflow run main.nf -profile awsbatch
 
-# Resume a failed run
+# Resume a failed run (only re-runs failed processes)
 nextflow run main.nf -resume
+
+# Resource-constrained environment (CI/testing)
+nextflow run main.nf -c test.config
 ```
 
 ### Key Parameters
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
+| `--data_dir` | `${params.projectDir}/data` | Directory containing input FASTQ files |
 | `--outdir` | `results` | Output directory |
 | `--gtf` | project default | Gene annotation GTF file |
 | `--single_end` | `false` | Set `true` for single-end reads |
@@ -281,20 +303,92 @@ heatmaps/                            # From heatmap.r
 └── heatmap_<prefix>.png
 ```
 
+## Troubleshooting
+
+### Common Issues
+
+#### Docker Permission Denied
+If you see "permission denied" errors when running Docker:
+```bash
+sudo usermod -aG docker $USER
+# Log out and log back in for changes to take effect
+```
+
+#### Out of Memory During STAR Indexing/Alignment
+STAR requires significant memory (32-64 GB for human genome):
+```bash
+# Use pre-built STAR index to skip indexing
+nextflow run main.nf --star_index /path/to/prebuilt/index
+
+# Or reduce resources for testing
+nextflow run main.nf -c test.config
+```
+
+#### Nextflow "Cannot find matching files"
+Ensure FASTQ files follow the naming convention:
+- Paired-end: `*{1,2}*.fastq.gz` (e.g., `sample_R1.fastq.gz`, `sample_R2.fastq.gz`)
+- Single-end: `*.fastq.gz`
+
+#### MultiQC Fails
+This is a known issue with the `multiqc/multiqc:pdf-v1.34` container. Individual QC reports are still generated in their respective directories. To run MultiQC separately:
+```bash
+docker run --rm -v $(pwd):/data multiqc/multiqc:v1.21 multiqc /data/results
+```
+
+#### Pipeline Hangs or Stalls
+- Check Docker daemon is running: `docker ps`
+- Check available disk space: `df -h`
+- Review Nextflow log: `.nextflow.log`
+- Check process work directory for errors
+
+### Getting Help
+
+- **Issues**: Open an issue on [GitHub](https://github.com/yexiang2046/RNAseqAna/issues)
+- **Discussions**: Join discussions for questions and feature requests
+- **CI/CD**: See [CI_CD.md](CI_CD.md) for pipeline troubleshooting
+- **Test Results**: Review [PIPELINE_TEST_RESULTS.md](PIPELINE_TEST_RESULTS.md) for validation details
+
 ## Setup
 
 ```bash
 bash prepare.sh                        # installs Java 17, Nextflow, Docker
 bash install_for_ami2023linux_aws.sh   # full setup on AWS AMI 2023
+
+# Quick Nextflow installation
+curl -s https://get.nextflow.io | bash
+chmod +x nextflow
+sudo mv nextflow /usr/local/bin/
 ```
 
 ## Running Tests
 
+### Production Tests
+
 ```bash
-cd tests && bash run_tests.sh
+cd tests && bash run_tests.sh --star_index /path/to/index --gtf /path/to/annotation.gtf
 # or directly:
 nextflow run tests/test_pipeline.nf
 ```
+
+### Quick Test with Synthetic Data
+
+For CI/testing environments with limited resources:
+
+```bash
+# Generate synthetic test data
+python3 create_fastq.py
+
+# Run pipeline with test configuration
+nextflow run main.nf \
+  --data_dir test_data \
+  --gtf test_annotation.gtf \
+  --outdir test_results \
+  -c test.config
+```
+
+The `test.config` provides reduced resource requirements (2 CPUs, 4-8 GB RAM) suitable for testing environments.
+
+See [PIPELINE_TEST_RESULTS.md](PIPELINE_TEST_RESULTS.md) for detailed test validation results.
 
 ## CI/CD
 
@@ -308,6 +402,14 @@ This project uses GitHub Actions for automated testing and validation. See [CI_C
 - **Nightly Tests**: Extended compatibility testing across Nextflow versions
 - **Documentation**: Validates markdown and checks links
 - **Release**: Automated release management with changelog generation
+
+### Test Results
+
+The pipeline has been successfully tested and validated. See [PIPELINE_TEST_RESULTS.md](PIPELINE_TEST_RESULTS.md) for:
+- Execution results for all pipeline stages
+- Performance metrics and resource usage
+- Validation results and known issues
+- Test configuration examples
 
 ### Contributing
 
