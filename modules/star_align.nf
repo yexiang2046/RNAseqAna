@@ -17,7 +17,7 @@ process STAR_INDEX {
 	STAR --runMode genomeGenerate \
 		--genomeDir star_index \
 		--genomeFastaFiles ${refgenome} \
-		--runThreadN ${params.cpus}
+		--runThreadN ${task.cpus}
 	"""
 }
 
@@ -43,7 +43,7 @@ process ALIGN {
 	STAR --genomeDir ${star_index} \
 		--readFilesIn ${reads_arg} \
 		--readFilesCommand zcat \
-		--runThreadN ${params.cpus} \
+		--runThreadN ${task.cpus} \
 		--genomeLoad NoSharedMemory \
 		--outFilterMultimapNmax 20 \
 		--alignSJoverhangMin 8 \
@@ -57,7 +57,7 @@ process ALIGN {
 		--outSAMattributes NH HI AS NM MD \
 		--outSAMtype BAM SortedByCoordinate \
 		--sjdbScore 1 \
-		--limitBAMsortRAM 3246912681 \
+		--limitBAMsortRAM 60000000000 \
 		--outFileNamePrefix ${sample_id}
 	"""
 }
