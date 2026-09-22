@@ -25,3 +25,8 @@ data/
 *.fastq
 *.fa
 *.fasta
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

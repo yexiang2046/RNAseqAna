@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rnaseq-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-rnaseq}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-rnaseq_dev_password}
+      - POSTGRES_DB=${POSTGRES_DB:-rnaseq}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - rnaseq-network
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rnaseq"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: rnaseq-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - rnaseq-network
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: rnaseq-backend
+    # Note: Running as root for Docker socket access in development
+    # For production, use a job queue service or rootless Docker
+    user: root
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+      - jobs-data:/workspace/jobs
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-rnaseq}:${POSTGRES_PASSWORD:-rnaseq_dev_password}@postgres:5432/${POSTGRES_DB:-rnaseq}
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-in-production}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+    networks:
+      - rnaseq-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  celery-worker:
+    build: ./backend
+    container_name: rnaseq-celery-worker
+    user: root
+    command: celery -A app.celery_app worker --loglevel=info
+    volumes:
+      - ./:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+      - jobs-data:/workspace/jobs
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-rnaseq}:${POSTGRES_PASSWORD:-rnaseq_dev_password}@postgres:5432/${POSTGRES_DB:-rnaseq}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    networks:
+      - rnaseq-network
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: rnaseq-frontend
+    ports:
+      - "3000:8080"
+    depends_on:
+      - backend
+    networks:
+      - rnaseq-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  jobs-data:
+    driver: local
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  rnaseq-network:
+    driver: bridge
