@@ -1,9 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 from datetime import timedelta
 import os
 import asyncio
@@ -12,16 +12,27 @@ from pathlib import Path
 from . import models, auth
 from .database import get_db, init_db
 from .pipeline import PipelineExecutor, JOBS_DIR
+from .middleware.security import SecurityHeadersMiddleware
+from .middleware.rate_limit import limiter, get_limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 
 app = FastAPI(title="RNA-seq Analysis API", version="1.0.0")
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+allowed_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 @app.on_event("startup")
 async def startup_event():
@@ -45,6 +56,13 @@ class JobCreate(BaseModel):
     single_end: bool = False
     gtf: Optional[str] = None
     star_index: Optional[str] = None
+    
+    @validator('gtf', 'star_index')
+    def validate_path(cls, v):
+        if v is not None:
+            if '..' in v or v.startswith('/'):
+                raise ValueError('Invalid path: directory traversal not allowed')
+        return v
 
 class JobResponse(BaseModel):
     id: int
@@ -59,7 +77,8 @@ class JobResponse(BaseModel):
         from_attributes = True
 
 @app.post("/api/auth/register", response_model=Token)
-def register(user: UserCreate, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def register(request: Request, user: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(models.User).filter(
         (models.User.username == user.username) | (models.User.email == user.email)
     ).first()
@@ -84,7 +103,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/api/auth/login", response_model=Token)
-def login(user: UserLogin, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(request: Request, user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.username == user.username).first()
     
     if not db_user or not auth.verify_password(user.password, db_user.hashed_password):
@@ -97,7 +117,9 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/api/jobs", response_model=JobResponse)
+@limiter.limit("10/hour")
 async def create_job(
+    request: Request,
     job_data: JobCreate,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db)
@@ -122,12 +144,21 @@ async def create_job(
     )
 
 @app.post("/api/jobs/{job_id}/upload")
+@limiter.limit("20/minute")
 async def upload_file(
+    request: Request,
     job_id: int,
     file: UploadFile = File(...),
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db)
 ):
+    MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024
+    
+    if not file.filename.endswith(('.fastq.gz', '.fq.gz')):
+        raise HTTPException(
+            status_code=400,
+            detail="Only FASTQ files (.fastq.gz or .fq.gz) are allowed"
+        )
     job = db.query(models.Job).filter(
         models.Job.id == job_id,
         models.Job.user_id == current_user.id
@@ -163,10 +194,10 @@ async def start_job(
     if job.status != "pending":
         raise HTTPException(status_code=400, detail="Job already started")
     
-    executor = PipelineExecutor(job_id, db)
-    asyncio.create_task(executor.run_pipeline(job.parameters))
+    from .tasks import run_pipeline_task
+    task = run_pipeline_task.delay(job_id)
     
-    return {"message": "Job started", "job_id": job_id}
+    return {"message": "Job queued", "job_id": job_id, "task_id": task.id}
 
 @app.get("/api/jobs", response_model=List[JobResponse])
 def list_jobs(
