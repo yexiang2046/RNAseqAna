@@ -49,6 +49,20 @@ ALIGN uses `maxForks 1` — only one STAR alignment runs at a time to avoid memo
 ## Input Requirements
 
 ### Data folder with fastq.gz files
+
+The pipeline automatically detects and supports multiple paired-end naming conventions:
+
+**Supported naming patterns:**
+- Illumina with lane: `sample_R1_001.fastq.gz` / `sample_R2_001.fastq.gz`
+- Underscore R1/R2: `sample_R1.fastq.gz` / `sample_R2.fastq.gz`
+- Underscore 1/2: `sample_1.fastq.gz` / `sample_2.fastq.gz`
+- Dot notation: `sample.R1.fastq.gz` / `sample.R2.fastq.gz`
+- No separator: `sampleR1.fastq.gz` / `sampleR2.fastq.gz`
+- Just numbers: `sample1.fastq.gz` / `sample2.fastq.gz`
+
+Both `.fastq.gz` and `.fq.gz` extensions are supported.
+
+**Example data structure:**
 ```
 data/
 ├── sample1_R1_001.fastq.gz
@@ -56,6 +70,11 @@ data/
 ├── sample2_R1_001.fastq.gz
 ├── sample2_R2_001.fastq.gz
 └── ...
+```
+
+**Custom patterns:** If your files use a different naming convention, specify it explicitly:
+```bash
+nextflow run main.nf --read_pattern '*_read{1,2}.fq.gz'
 ```
 
 ### Required Files
@@ -97,6 +116,7 @@ nextflow run main.nf -resume
 | `--gtf` | project default | Gene annotation GTF file |
 | `--single_end` | `false` | Set `true` for single-end reads |
 | `--star_index` | `null` | Path to pre-built STAR index (skips STAR_INDEX if set) |
+| `--read_pattern` | auto-detect | Custom paired-end file pattern (e.g., `'*_{1,2}.fq.gz'`) |
 | `--cpus` | `12` | CPUs for STAR indexing |
 | `--ram` | `60 GB` | RAM hint for STAR |
 
