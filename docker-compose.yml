@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: rnaseq-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+      - jobs-data:/workspace/jobs
+      - ./backend/rnaseq.db:/app/rnaseq.db
+    environment:
+      - DATABASE_URL=sqlite:///./rnaseq.db
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-in-production}
+    networks:
+      - rnaseq-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build: ./frontend
+    container_name: rnaseq-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - rnaseq-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  jobs-data:
+    driver: local
+
+networks:
+  rnaseq-network:
+    driver: bridge
