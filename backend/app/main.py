@@ -14,10 +14,14 @@ from .database import get_db, init_db
 from .pipeline import PipelineExecutor, JOBS_DIR
 from .middleware.security import SecurityHeadersMiddleware
 from .middleware.rate_limit import limiter, get_limiter
+from .logging_config import logger
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
+from prometheus_fastapi_instrumentator import Instrumentator
 
 app = FastAPI(title="RNA-seq Analysis API", version="1.0.0")
+
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -36,8 +40,10 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 @app.on_event("startup")
 async def startup_event():
+    logger.info("Starting RNA-seq Analysis API")
     init_db()
     JOBS_DIR.mkdir(parents=True, exist_ok=True)
+    logger.info("Application startup complete")
 
 class UserCreate(BaseModel):
     username: str
@@ -79,11 +85,14 @@ class JobResponse(BaseModel):
 @app.post("/api/auth/register", response_model=Token)
 @limiter.limit("5/minute")
 def register(request: Request, user: UserCreate, db: Session = Depends(get_db)):
+    logger.info(f"Registration attempt for username: {user.username}")
+    
     existing_user = db.query(models.User).filter(
         (models.User.username == user.username) | (models.User.email == user.email)
     ).first()
     
     if existing_user:
+        logger.warning(f"Registration failed: username/email already exists - {user.username}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username or email already registered"
@@ -98,6 +107,8 @@ def register(request: Request, user: UserCreate, db: Session = Depends(get_db)):
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+    
+    logger.info(f"User registered successfully: {user.username}")
     
     access_token = auth.create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
@@ -359,5 +370,42 @@ def root():
     return {"message": "RNA-seq Analysis API", "version": "1.0.0"}
 
 @app.get("/health")
-def health():
-    return {"status": "healthy"}
+def health(db: Session = Depends(get_db)):
+    import shutil
+    from sqlalchemy import text
+    
+    health_status = {
+        "status": "healthy",
+        "checks": {}
+    }
+    
+    try:
+        db.execute(text("SELECT 1"))
+        health_status["checks"]["database"] = "healthy"
+    except Exception as e:
+        health_status["status"] = "degraded"
+        health_status["checks"]["database"] = f"unhealthy: {str(e)}"
+        logger.error(f"Database health check failed: {e}")
+    
+    try:
+        disk_usage = shutil.disk_usage("/workspace/jobs")
+        free_gb = disk_usage.free / (1024**3)
+        if free_gb < 10:
+            health_status["status"] = "degraded"
+            health_status["checks"]["disk_space"] = f"low: {free_gb:.2f}GB free"
+        else:
+            health_status["checks"]["disk_space"] = f"healthy: {free_gb:.2f}GB free"
+    except Exception as e:
+        health_status["checks"]["disk_space"] = f"unknown: {str(e)}"
+    
+    try:
+        import redis
+        redis_client = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+        redis_client.ping()
+        health_status["checks"]["redis"] = "healthy"
+    except Exception as e:
+        health_status["status"] = "degraded"
+        health_status["checks"]["redis"] = f"unhealthy: {str(e)}"
+        logger.error(f"Redis health check failed: {e}")
+    
+    return health_status

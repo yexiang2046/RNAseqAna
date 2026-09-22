@@ -7,7 +7,7 @@ A web-based RNA-seq analysis pipeline powered by Nextflow, FastAPI, and React.
 ### Prerequisites
 
 - Docker and Docker Compose installed
-- At least 8GB RAM available for Docker
+- At least 16GB RAM available for Docker (increased from 8GB for PostgreSQL + Redis)
 - Reference genome FASTA file (*.genome.fa) in the workspace root
 - GTF annotation file (optional, or will use default)
 
@@ -20,16 +20,41 @@ A web-based RNA-seq analysis pipeline powered by Nextflow, FastAPI, and React.
 cp .env.example .env
 ```
 
-3. Edit `.env` and change the JWT_SECRET to a secure random string
+3. Edit `.env` and configure:
+   - `JWT_SECRET` - Set to a secure random string
+   - `POSTGRES_PASSWORD` - Set database password
+   - `CORS_ORIGINS` - Add your frontend URLs
 
 4. Start all services using Docker Compose:
 ```bash
 docker-compose up -d
 ```
 
-5. Access the web interface at http://localhost:3000
+This will start:
+- **PostgreSQL** database (port 5432)
+- **Redis** cache/queue (port 6379)
+- **Backend API** (port 8000)
+- **Celery Worker** for async jobs
+- **Frontend UI** (port 3000)
 
-6. The API documentation is available at http://localhost:8000/docs
+5. Run database migrations (first time only):
+```bash
+docker-compose exec backend alembic upgrade head
+```
+
+6. Access the web interface at http://localhost:3000
+
+7. The API documentation is available at http://localhost:8000/docs
+
+8. Prometheus metrics available at http://localhost:8000/metrics
+
+### Verification
+
+Check all services are healthy:
+```bash
+docker-compose ps
+curl http://localhost:8000/health | jq
+```
 
 ### Stopping the Service
 
