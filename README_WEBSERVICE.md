@@ -206,6 +206,17 @@ For production deployment:
 - Configure CORS properly
 - Use environment-specific .env files
 
+### Docker Socket Access
+
+**Development Environment**: The backend container runs as root in docker-compose.yml to access the Docker socket for running Nextflow pipelines with Docker containers. While the Dockerfile defines a non-root user (appuser) for security best practices, docker-compose overrides this for practical Docker socket access in development.
+
+**Production Recommendations**:
+- Use a job queue system (e.g., Celery + Redis) with dedicated worker containers
+- Implement rootless Docker or Podman
+- Use Kubernetes with proper RBAC and pod security policies
+- Separate pipeline execution into isolated worker nodes
+- Use a container orchestration platform that doesn't require socket mounting
+
 ## Support
 
 For issues related to:
