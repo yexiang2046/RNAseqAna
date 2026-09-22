@@ -65,7 +65,7 @@ MULTIQC runs last and aggregates three QC sources: fastp JSON reports (from TRIM
 
 `params.single_end` (default: `false`) controls read mode across all stages:
 
-- **Input channel** (`main.nf`): `fromFilePairs` glob `*{1,2}*.fastq.gz` for paired-end; `fromPath` glob `*.fastq.gz` for single-end.
+- **Input channel** (`main.nf`): For paired-end, the pipeline auto-detects common naming patterns (`*_R1/*_R2`, `*_1/*_2`, `*.R1/*.R2`, etc.) for both `.fastq.gz` and `.fq.gz` extensions. For single-end, uses glob `*.{fastq,fq}.gz`. Users can override with `--read_pattern` if needed.
 - **TRIM** (`fastp_trim.nf`): paired-end adds `--in2`, `--out2`, `--detect_adapter_for_pe`, `--correction`; single-end omits them.
 - **ALIGN** (`star_align.nf`): paired-end passes both files to `--readFilesIn`; single-end passes only `reads[0]`.
 - **FEATURECOUNT** (`featurecount.nf`): paired-end adds `-p --countReadPairs -B`; single-end omits them.
@@ -77,6 +77,7 @@ MULTIQC runs last and aggregates three QC sources: fastp JSON reports (from TRIM
 | `--outdir` | `results` | Output directory |
 | `--gtf` | `null` | Path to annotation GTF (falls back to `params.projectDir` default) |
 | `--single_end` | `false` | Set `true` for single-end reads |
+| `--read_pattern` | auto-detect | Custom paired-end file pattern (e.g., `'*_{1,2}.fq.gz'`); defaults to auto-detection of common patterns |
 | `params.cpus` | `12` | CPUs passed to STAR_INDEX |
 | `params.ram` | `60 GB` | RAM hint for STAR |
 
