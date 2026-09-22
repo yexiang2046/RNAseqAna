@@ -17,15 +17,32 @@ bash install_for_ami2023linux_aws.sh   # full setup including Docker CE on AWS A
 
 ### Running the Pipeline
 
+**Recommended Method** (with automatic Docker management):
+
 ```bash
 # Paired-end (default) — place FASTQs in ./data/ matching *{1,2}*.fastq.gz
+bash run_pipeline.sh
+
+# Single-end
+bash run_pipeline.sh --single_end true
+
+# Override output directory
+bash run_pipeline.sh --outdir my_results/
+
+# Resume a failed run
+bash run_pipeline.sh -resume
+```
+
+The `run_pipeline.sh` launcher automatically ensures Docker is running before starting the pipeline.
+
+**Direct Method** (requires Docker to be running):
+
+```bash
+# Paired-end (default)
 nextflow run main.nf
 
 # Single-end
 nextflow run main.nf --single_end true
-
-# Override output directory
-nextflow run main.nf --outdir my_results/
 
 # AWS Batch
 nextflow run main.nf -profile awsbatch

@@ -90,21 +90,47 @@ find work -name ".command.sh" -exec grep -l "fastp" {} \; | head -1 | xargs dirn
 
 ### Issue 5: Docker Container Issues
 
-**Symptom**: Process fails to start or exits immediately
+**Symptom**: Process fails to start or exits immediately with Docker-related errors
 
-**Cause**: Docker not running, or image pull failures
+**Cause**: Docker not running, image pull failures, or permission issues
 
 **Solution**:
+
+**Option 1: Use the automatic launcher (recommended)**
 ```bash
-# Check Docker is running
+# The run_pipeline.sh script automatically handles Docker startup
+bash run_pipeline.sh
+```
+
+**Option 2: Manual Docker management**
+```bash
+# Check Docker status
 docker ps
 
-# Manually pull required images
+# If Docker is not running, start it
+sudo systemctl start docker
+
+# Or enable it to start automatically at boot
+sudo systemctl enable docker
+
+# Verify Docker is accessible (without sudo)
+docker ps
+
+# If you get permission errors, add your user to docker group
+sudo usermod -aG docker $USER
+# Then log out and log back in
+
+# Manually pull required images if needed
 docker pull quay.io/biocontainers/star:2.7.11b--h5ca1c30_6
 docker pull staphb/fastp:0.24.0
 docker pull xiang2019/rnaseq_cmd:v1.0.0
 docker pull multiqc/multiqc:pdf-v1.34
 ```
+
+**Common Docker Error Messages:**
+- `Cannot connect to the Docker daemon` → Docker is not running
+- `permission denied while trying to connect` → User not in docker group
+- `docker: command not found` → Docker not installed (run setup script)
 
 ### Issue 6: Configuration Path Issues
 

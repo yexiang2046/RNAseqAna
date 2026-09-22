@@ -91,15 +91,43 @@ The `metadata.txt` file should be tab-delimited with:
 
 ### Running the Nextflow Pipeline
 
+#### Recommended: Using the Pipeline Launcher (Automatic Docker Management)
+
+The `run_pipeline.sh` script automatically checks and starts Docker if needed before running the pipeline:
+
 ```bash
 # Paired-end (default) — FASTQs in ./data/ matching *{1,2}*.fastq.gz
+bash run_pipeline.sh
+
+# Single-end
+bash run_pipeline.sh --single_end true
+
+# Use pre-built STAR index
+bash run_pipeline.sh --star_index /path/to/star_index
+
+# Custom output directory
+bash run_pipeline.sh --outdir my_results/
+
+# Resume a failed run
+bash run_pipeline.sh -resume
+```
+
+The launcher script will:
+1. Check if Docker is installed
+2. Check if Docker is running
+3. Automatically start Docker if it's not running (requires sudo)
+4. Launch the Nextflow pipeline with your specified options
+
+#### Alternative: Direct Nextflow Execution
+
+If you prefer to manage Docker manually or know it's already running:
+
+```bash
+# Paired-end (default)
 nextflow run main.nf
 
 # Single-end
 nextflow run main.nf --single_end true
-
-# Use pre-built STAR index
-nextflow run main.nf --star_index /path/to/star_index
 
 # AWS Batch
 nextflow run main.nf -profile awsbatch
@@ -107,6 +135,8 @@ nextflow run main.nf -profile awsbatch
 # Resume a failed run
 nextflow run main.nf -resume
 ```
+
+**Note:** Direct execution requires Docker to be running beforehand.
 
 ### Key Parameters
 
